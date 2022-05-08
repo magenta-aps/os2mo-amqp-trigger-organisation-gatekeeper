@@ -1,0 +1,51 @@
+# SPDX-FileCopyrightText: Magenta ApS
+#
+# SPDX-License-Identifier: MPL-2.0
+
+version: "3.9"
+services:
+  orggatekeeper:
+    build: .
+    environment:
+      AMQP_URL: "amqp://guest:guest@msg_broker:5672/"
+
+      AUTH_SERVER: "http://proxy/auth"
+
+      MO_URL: "http://mo"
+      CLIENT_ID: "dipex"
+      CLIENT_SECRET: "603f1c82-d012-4d04-9382-dbe659c533fb"
+    networks:
+      - os2mo_default
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://amqp_trigger_orggatekeeper:8000/metrics"]
+      interval: 5s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    depends_on:
+      init:
+        condition: service_completed_successfully
+
+  init:
+    image: magentaaps/os2mo-init:latest
+    environment:
+      AUTH_SERVER: "http://proxy/auth"
+
+      MO_URL: "http://mo"
+      CLIENT_SECRET: "603f1c82-d012-4d04-9382-dbe659c533fb"
+
+      LORA_URL: "http://mox"
+      LORA_CLIENT_SECRET: "a091ed82-6e82-4efc-a8f0-001e2b127853"
+    networks:
+      - os2mo_default
+    volumes:
+      - type: bind
+        source: ./init.config.yaml
+        target: /config/config.yml
+        read_only: true
+
+networks:
+  os2mo_default:
+    external: true
