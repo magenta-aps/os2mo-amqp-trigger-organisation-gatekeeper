@@ -34,6 +34,13 @@ class Settings(BaseSettings):
 
     # pylint: disable=too-few-public-methods
 
+    commit_tag: str = Field(
+        "HEAD", description="Git commit tag."
+    )
+    commit_sha: str = Field(
+        "HEAD", description="Git commit SHA."
+    )
+
     metrics_port: Port = Field(
         8011, description="Port to host Prometheus metrics on."
     )

@@ -30,6 +30,9 @@ variables:
 .if-merge-request: &if-merge-request
   if: '$CI_MERGE_REQUEST_IID'
 
+.if-schedule: &if-schedule
+  if: '$CI_PIPELINE_SOURCE == "schedule"'
+
 
 # Workflow
 ###########
@@ -49,9 +52,6 @@ include:
     file: gitlab-ci-templates/python/pytest.v1.yml
   - project: labs/salt-automation
     ref: master
-    file: /gitlab-ci-templates/common/docker-build.v1.yml
-  - project: labs/salt-automation
-    ref: master
     file: /gitlab-ci-templates/common/docker-release.v1.yml
 
 
@@ -65,3 +65,34 @@ Pre-commit:
     - poetry install
   script:
     - poetry run pre-commit run --all-files
+
+
+# Build
+########
+.build-base:
+  stage: build
+  needs: []
+  image:
+    name: gcr.io/kaniko-project/executor:${KANIKO_VERSION}
+    entrypoint: [""]
+
+.build:release-image:
+  extends:
+    - .build-base
+  rules:
+    - <<: *if-schedule
+      when: never
+    - when: on_success
+
+Build:
+  extends: .build:release-image
+  # TODO: Use gitlab-ci-templates/common/docker-build-meta.v1.yml instead
+  script:
+    - echo "{\"auths\":{\"$CI_REGISTRY\":{\"username\":\"$CI_REGISTRY_USER\",\"password\":\"$CI_REGISTRY_PASSWORD\"}}}" > /kaniko/.docker/config.json
+    - /kaniko/executor
+      --cache
+      --context=$CI_PROJECT_DIR
+      --dockerfile=$CI_PROJECT_DIR/docker/Dockerfile
+      --destination=${IMAGE_SHA}
+      --build-arg=COMMIT_SHA=${CI_COMMIT_SHA}
+      --build-arg=COMMIT_TAG=${CI_COMMIT_TAG}

@@ -4,6 +4,7 @@
 """Event handling."""
 import structlog
 from prometheus_client import Counter
+from prometheus_client import Info
 from prometheus_client import start_http_server
 from ramqp.mo_models import ObjectType
 from ramqp.mo_models import PayloadType
@@ -14,13 +15,34 @@ from ramqp.moqp import MOAMQPSystem
 from .calculate import update_line_management
 from .config import get_settings
 
+
+logger = structlog.get_logger()
+
+
 update_counter = Counter(
     "orggatekeeper_changes",
     "Number of updates made",
     ["updated"],
 )
+build_information = Info('build_information', 'Build inforomation')
 
-logger = structlog.get_logger()
+
+def update_build_information(version: str, build_hash: str) -> None:
+    """Update build information.
+
+    Args:
+        version: The version to set.
+        build_hash: The build hash to set.
+
+    Returns:
+        None.
+    """
+    build_information.info(
+        {
+            'version': version,
+            'hash': build_hash,
+        }
+    )
 
 
 async def organisation_gatekeeper_callback(
@@ -60,6 +82,11 @@ def main() -> None:
         None
     """
     settings = get_settings()
+
+    update_build_information(
+        version=settings.commit_tag,
+        build_hash=settings.commit_sha
+    )
 
     logger.info("Starting metrics server", port=settings.metrics_port)
     start_http_server(settings.metrics_port)

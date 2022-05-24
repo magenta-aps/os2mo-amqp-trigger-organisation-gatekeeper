@@ -2,7 +2,6 @@
 #
 # SPDX-License-Identifier: MPL-2.0
 
-# Builder
 FROM python:3.10
 
 ENV PYTHONUNBUFFERED=1 \
@@ -12,17 +11,16 @@ ENV PYTHONUNBUFFERED=1 \
 RUN pip install --no-cache-dir poetry==1.1.13
 
 WORKDIR /opt
-COPY .git ./
 COPY poetry.lock pyproject.toml ./
-
-RUN poetry version --short > VERSION
-RUN git rev-parse --verify HEAD > HASH
-RUN cat VERSION HASH
-
 RUN poetry install --no-dev
 
 WORKDIR /app
-RUN cp /opt/VERSION .
-RUN cp /opt/HASH .
 COPY orggatekeeper .
+
 CMD [ "python", "./main.py" ]
+
+# Add build version to the environment last to avoid build cache misses
+ARG COMMIT_TAG
+ARG COMMIT_SHA
+ENV COMMIT_TAG=${COMMIT_TAG:-HEAD} \
+    COMMIT_SHA=${COMMIT_SHA}
