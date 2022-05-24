@@ -117,7 +117,7 @@ def test_main(
 
     get_settings.assert_called_once()
     start_http_server.assert_called_once_with(8011)
-    MOAMQPSystem.assert_called_once_with()
+    MOAMQPSystem.assert_called_once()
     assert amqp_system.mock_calls == [
         call.register(ServiceType.ORG_UNIT, ObjectType.ORG_UNIT, RequestType.WILDCARD),
         call.register()(organisation_gatekeeper_callback),
