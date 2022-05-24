@@ -7,6 +7,7 @@ from typing import Any
 from typing import cast
 from typing import Set
 from typing import Tuple
+from functools import partial
 from unittest.mock import call
 from unittest.mock import MagicMock
 from unittest.mock import patch
@@ -19,7 +20,7 @@ from ramqp.mo_models import ServiceType
 
 from orggatekeeper.config import get_settings as original_get_settings
 from orggatekeeper.main import main
-from orggatekeeper.main import organisation_gatekeeper_callback
+from orggatekeeper.main import callback_generator
 from orggatekeeper.main import update_counter
 
 
@@ -69,57 +70,72 @@ async def test_update_metric(update_line_management: MagicMock) -> None:
     """Test that our update_counter metric is updated as expected."""
     payload = PayloadType(uuid=uuid4(), object_uuid=uuid4(), time=datetime.now())
 
+    callback_caller = partial(
+        callback_generator(None, None, None),
+        None, None, None
+    )
+
     clear_metric_value(update_counter)
     assert get_metric_labels(update_counter) == set()
 
     # Returning false, counts up false once
     update_line_management.return_value = False
-    await organisation_gatekeeper_callback(None, None, None, payload)
+    await callback_caller(payload)
     assert get_metric_labels(update_counter) == {("False",)}
     assert get_metric_value(update_counter, ("False",)) == 1.0
 
     # Returning false, counts up false once
     update_line_management.return_value = False
-    await organisation_gatekeeper_callback(None, None, None, payload)
+    await callback_caller(payload)
     assert get_metric_labels(update_counter) == {("False",)}
     assert get_metric_value(update_counter, ("False",)) == 2.0
 
     # Returning true, counts up true once
     update_line_management.return_value = True
-    await organisation_gatekeeper_callback(None, None, None, payload)
+    await callback_caller(payload)
     assert get_metric_labels(update_counter) == {("False",), ("True",)}
     assert get_metric_value(update_counter, ("False",)) == 2.0
     assert get_metric_value(update_counter, ("True",)) == 1.0
 
     # Returning true, counts up true once
     update_line_management.return_value = True
-    await organisation_gatekeeper_callback(None, None, None, payload)
+    await callback_caller(payload)
     assert get_metric_labels(update_counter) == {("False",), ("True",)}
     assert get_metric_value(update_counter, ("False",)) == 2.0
     assert get_metric_value(update_counter, ("True",)) == 2.0
 
 
 @patch("orggatekeeper.main.MOAMQPSystem")
+@patch("orggatekeeper.main.callback_generator")
 @patch("orggatekeeper.main.start_http_server")
 @patch("orggatekeeper.main.get_settings")
 def test_main(
     get_settings: MagicMock,
     start_http_server: MagicMock,
+    callback_generator: MagicMock,
     MOAMQPSystem: MagicMock,  # pylint: disable=invalid-name
 ) -> None:
     """Test that main behaves as we expect."""
-    get_settings.return_value = original_get_settings(client_secret="hunter2")
+    settings = original_get_settings(client_secret="hunter2")
+    get_settings.return_value = settings
 
     amqp_system = MagicMock()
     MOAMQPSystem.return_value = amqp_system
+
+    callback = MagicMock()
+    callback_generator.return_value = callback
 
     main()
 
     get_settings.assert_called_once()
     start_http_server.assert_called_once_with(8011)
     MOAMQPSystem.assert_called_once()
-    assert amqp_system.mock_calls == [
-        call.register(ServiceType.ORG_UNIT, ObjectType.ORG_UNIT, RequestType.WILDCARD),
-        call.register()(organisation_gatekeeper_callback),
-        call.run_forever(queue_prefix="os2mo-amqp-trigger-organisation-gatekeeper"),
-    ]
+
+    assert len(amqp_system.mock_calls) == 3
+    assert amqp_system.mock_calls[0] == call.register(
+        ServiceType.ORG_UNIT, ObjectType.ORG_UNIT, RequestType.WILDCARD
+    )
+    assert amqp_system.mock_calls[1] == call.register()(callback)
+    assert amqp_system.mock_calls[2] == call.run_forever(
+        queue_prefix="os2mo-amqp-trigger-organisation-gatekeeper"
+    )

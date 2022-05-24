@@ -5,6 +5,7 @@
 import re
 from functools import cache
 from operator import itemgetter
+from typing import Callable
 from uuid import UUID
 
 import structlog
@@ -275,7 +276,12 @@ async def get_hidden_uuid(session: AsyncClientSession, settings: Settings) -> UU
     return hidden_uuid
 
 
-async def update_line_management(uuid: UUID) -> bool:
+async def update_line_management(
+    gql_client: GraphQLClient,
+    model_client: ModelClient,
+    settings: Settings,
+    uuid: UUID
+) -> bool:
     """Update line management information for the provided organisation.
 
     Args:
@@ -284,15 +290,7 @@ async def update_line_management(uuid: UUID) -> bool:
     Returns:
         Whether an update was made.
     """
-    settings = get_settings()
-    client = GraphQLClient(
-        url=settings.mo_url + "/graphql",
-        client_id=settings.client_id,
-        client_secret=settings.client_secret.get_secret_value(),
-        auth_server=settings.auth_server,
-        auth_realm=settings.auth_realm,
-    )
-    async with client as session:
+    async with gql_client as session:
         # Determine the desired org_unit_hierarchy class uuid
         new_org_unit_hierarchy: UUID | None = None
         if await should_hide(session, uuid, settings.hidden):
@@ -317,14 +315,8 @@ async def update_line_management(uuid: UUID) -> bool:
         logger.info("dry-run: Would have send edit payload", org_unit=org_unit)
         return True
 
-    async with ModelClient(
-        base_url=settings.mo_url,
-        client_id=settings.client_id,
-        client_secret=settings.client_secret.get_secret_value(),
-        auth_server=settings.auth_server,
-        auth_realm=settings.auth_realm,
-    ) as client:
+    async with model_client as session:
         logger.debug("Sending ModelClient edit request", org_unit=org_unit)
-        response = await client.edit([org_unit])
+        response = await session.edit([org_unit])
         logger.debug("ModelClient response", response=response)
         return True
