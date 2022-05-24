@@ -393,6 +393,7 @@ async def test_update_line_management_no_change(
     should_hide: MagicMock,
     is_line_management: MagicMock,
     graphql_session: MagicMock,
+    modelclient_session: MagicMock,
     seeded_update_line_management: Callable[[UUID], bool],
     org_unit: OrganisationUnit,
 ) -> None:
@@ -408,6 +409,7 @@ async def test_update_line_management_no_change(
     should_hide.assert_called_once_with(graphql_session, uuid, [])
     is_line_management.assert_called_once_with(graphql_session, uuid)
     fetch_org_unit.assert_called_once_with(graphql_session, uuid)
+    modelclient_session.assert_not_called()
 
 
 @patch("orggatekeeper.calculate.should_hide")
@@ -418,6 +420,7 @@ async def test_update_line_management_dry_run(
     fetch_org_unit: MagicMock,
     should_hide: MagicMock,
     graphql_session: MagicMock,
+    modelclient_session: MagicMock,
     set_settings: Callable[..., Settings],
     seeded_update_line_management: Callable[[UUID], bool],
     org_unit: OrganisationUnit,
@@ -434,6 +437,7 @@ async def test_update_line_management_dry_run(
 
     should_hide.assert_called_once_with(graphql_session, uuid, [])
     fetch_org_unit.assert_called_once_with(graphql_session, uuid)
+    modelclient_session.assert_not_called()
 
 
 @patch("orggatekeeper.calculate.should_hide")
