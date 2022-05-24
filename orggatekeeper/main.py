@@ -144,8 +144,11 @@ def main() -> None:
     callback = callback_generator(gql_client, model_client, settings)
 
     amqp_system = MOAMQPSystem()
-    # TODO: Also need to listen to engagements and associations
-    # Otherwise we will not recognize people being added via engagements, etc.
+    # TODO: What kind of resources do we need to listen to, clearly:
+    # * org_units
+    # * engagements and
+    # * associations
+    # But we need the full list of types, see: #50608
     amqp_system.register(
         ServiceType.ORG_UNIT, ObjectType.ORG_UNIT, RequestType.WILDCARD
     )(callback)

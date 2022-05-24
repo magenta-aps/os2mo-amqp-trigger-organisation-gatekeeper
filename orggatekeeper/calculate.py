@@ -289,7 +289,10 @@ async def update_line_management(
     """Update line management information for the provided organisation.
 
     Args:
-        UUID of the organisation to recalculate.
+        gql_client: The GraphQL client to run queries on.
+        model_client: The MO Model client to modify MO with.
+        settings: The integration settings module.
+        uuid: UUID of the organisation to recalculate.
 
     Returns:
         Whether an update was made.
