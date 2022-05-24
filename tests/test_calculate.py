@@ -290,13 +290,14 @@ async def test_should_hide_parent(
     assert result == expected
 
 
-def get_org_unit() -> OrganisationUnit:
+@pytest.fixture()
+def org_unit() -> Generator[OrganisationUnit, None, None]:
     """Construct a dummy OrganisationUnit.
 
     Return:
         Dummy OrganisationUnit.
     """
-    return OrganisationUnit.from_simplified_fields(
+    yield OrganisationUnit.from_simplified_fields(
         user_key="AAAA",
         name="Test",
         org_unit_type_uuid=uuid4(),
@@ -393,11 +394,11 @@ async def test_update_line_management_no_change(
     is_line_management: MagicMock,
     graphql_session: MagicMock,
     seeded_update_line_management: Callable[[UUID], bool],
+    org_unit: OrganisationUnit,
 ) -> None:
     """Test that update_line_management can do noop."""
     should_hide.return_value = False
     is_line_management.return_value = False
-    org_unit = get_org_unit()
     fetch_org_unit.return_value = org_unit
 
     uuid = org_unit.uuid
@@ -419,12 +420,12 @@ async def test_update_line_management_dry_run(
     graphql_session: MagicMock,
     set_settings: Callable[..., Settings],
     seeded_update_line_management: Callable[[UUID], bool],
+    org_unit: OrganisationUnit,
 ) -> None:
     """Test that update_line_management can set hidden_uuid."""
     set_settings(dry_run=True)
 
     should_hide.return_value = True
-    org_unit = get_org_unit()
     fetch_org_unit.return_value = org_unit
 
     uuid = org_unit.uuid
@@ -445,10 +446,10 @@ async def test_update_line_management_hidden(
     settings: Settings,
     hidden_uuid: UUID,
     seeded_update_line_management: Callable[[UUID], bool],
+    org_unit: OrganisationUnit,
 ) -> None:
     """Test that update_line_management can set hidden_uuid."""
     should_hide.return_value = True
-    org_unit = get_org_unit()
     fetch_org_unit.return_value = org_unit
 
     uuid = org_unit.uuid
@@ -474,11 +475,11 @@ async def test_update_line_management_line(
     settings: Settings,
     line_management_uuid: UUID,
     seeded_update_line_management: Callable[[UUID], bool],
+    org_unit: OrganisationUnit,
 ) -> None:
     """Test that update_line_management can set line_management_uuid."""
     should_hide.return_value = False
     is_line_management.return_value = True
-    org_unit = get_org_unit()
     fetch_org_unit.return_value = org_unit
 
     uuid = org_unit.uuid
