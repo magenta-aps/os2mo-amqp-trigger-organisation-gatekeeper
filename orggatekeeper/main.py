@@ -24,7 +24,7 @@ update_counter = Counter(
     "Number of updates made",
     ["updated"],
 )
-build_information = Info('build_information', 'Build inforomation')
+build_information = Info("build_information", "Build inforomation")
 
 
 def update_build_information(version: str, build_hash: str) -> None:
@@ -39,8 +39,8 @@ def update_build_information(version: str, build_hash: str) -> None:
     """
     build_information.info(
         {
-            'version': version,
-            'hash': build_hash,
+            "version": version,
+            "hash": build_hash,
         }
     )
 
@@ -84,8 +84,7 @@ def main() -> None:
     settings = get_settings()
 
     update_build_information(
-        version=settings.commit_tag,
-        build_hash=settings.commit_sha
+        version=settings.commit_tag, build_hash=settings.commit_sha
     )
 
     logger.info("Starting metrics server", port=settings.metrics_port)

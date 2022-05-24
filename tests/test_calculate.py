@@ -23,13 +23,13 @@ from ra_utils.attrdict import AttrDict
 from ra_utils.attrdict import attrdict
 from ramodels.mo import OrganisationUnit
 
-from orggatekeeper.calculate import calculate_hide
-from orggatekeeper.calculate import calculate_line_management
 from orggatekeeper.calculate import fetch_org_unit
 from orggatekeeper.calculate import fetch_org_unit_hierarchy_class_uuid
 from orggatekeeper.calculate import fetch_org_unit_hierarchy_uuid
 from orggatekeeper.calculate import get_hidden_uuid
 from orggatekeeper.calculate import get_line_management_uuid
+from orggatekeeper.calculate import is_line_management
+from orggatekeeper.calculate import should_hide
 from orggatekeeper.calculate import update_line_management
 from orggatekeeper.config import get_settings
 from orggatekeeper.config import Settings
@@ -200,13 +200,13 @@ async def test_fetch_org_unit_hierarchy_class_uuid() -> None:
         ("Afdelings-niveau", 42, 42, True),
     ],
 )
-async def test_calculate_line_management(
+async def test_is_line_management(
     org_unit_level_user_key: str,
     num_engagements: int,
     num_assocations: int,
     expected: bool,
 ) -> None:
-    """Test that calculate_line_management works as expected."""
+    """Test that is_line_management works as expected."""
     params: dict[str, Any] = {}
 
     async def execute(*args: Any, **kwargs: Any) -> dict[str, Any]:
@@ -233,18 +233,18 @@ async def test_calculate_line_management(
 
     uuid = uuid4()
     session = hashableattrdict({"execute": execute})
-    result = await calculate_line_management(session, uuid)
+    result = await is_line_management(session, uuid)
     assert len(params["args"]) == 2
     assert isinstance(params["args"][0], DocumentNode)
     assert params["args"][1] == {"uuids": [str(uuid)]}
     assert result == expected
 
 
-async def test_calculate_hide_no_list() -> None:
+async def test_should_hide_no_list() -> None:
     """Test that calculate_hidden returns false when given empty list."""
     uuid = uuid4()
     session = hashableattrdict({})
-    result = await calculate_hide(session, uuid, [])
+    result = await should_hide(session, uuid, [])
     assert result is False
 
 
@@ -269,10 +269,10 @@ async def test_calculate_hide_no_list() -> None:
         (UUID("f29d62b6-4aab-44e5-95e4-be602dceaf8b"), ["AAAC"], True),
     ],
 )
-async def test_calculate_hide_parent(
+async def test_should_hide_parent(
     uuid: UUID, hidden_list: list[str], expected: bool
 ) -> None:
-    """Test that calculate_hide works as expected."""
+    """Test that should_hide works as expected."""
     parent_map = {
         UUID("0020f400-2777-4ef9-bfcb-5cdbb561d583"): {
             "user_key": "AAAA",
@@ -303,7 +303,7 @@ async def test_calculate_hide_parent(
         return {"org_units": [{"objects": [parent_map[uuid]]}]}
 
     session = hashableattrdict({"execute": execute})
-    result = await calculate_hide(session, uuid, hidden_list)
+    result = await should_hide(session, uuid, hidden_list)
     assert len(params["args"]) == 2
     assert isinstance(params["args"][0], DocumentNode)
     assert isinstance(params["args"][1], dict)
@@ -402,19 +402,19 @@ def hidden_uuid(
         get_hidden_uuid.assert_called_once_with(graphql_session, settings)
 
 
-@patch("orggatekeeper.calculate.calculate_line_management")
-@patch("orggatekeeper.calculate.calculate_hide")
+@patch("orggatekeeper.calculate.is_line_management")
+@patch("orggatekeeper.calculate.should_hide")
 @patch("orggatekeeper.calculate.fetch_org_unit")
 async def test_update_line_management_no_change(
     fetch_org_unit: MagicMock,
-    calculate_hide: MagicMock,
-    calculate_line_management: MagicMock,
+    should_hide: MagicMock,
+    is_line_management: MagicMock,
     graphql_session: MagicMock,
     settings: Settings,
 ) -> None:
     """Test that update_line_management can do noop."""
-    calculate_hide.return_value = False
-    calculate_line_management.return_value = False
+    should_hide.return_value = False
+    is_line_management.return_value = False
     org_unit = get_org_unit()
     fetch_org_unit.return_value = org_unit
 
@@ -422,25 +422,25 @@ async def test_update_line_management_no_change(
     result = await update_line_management(uuid)
     assert result is False
 
-    calculate_hide.assert_called_once_with(graphql_session, uuid, [])
-    calculate_line_management.assert_called_once_with(graphql_session, uuid)
+    should_hide.assert_called_once_with(graphql_session, uuid, [])
+    is_line_management.assert_called_once_with(graphql_session, uuid)
     fetch_org_unit.assert_called_once_with(graphql_session, uuid)
 
 
-@patch("orggatekeeper.calculate.calculate_hide")
+@patch("orggatekeeper.calculate.should_hide")
 @patch("orggatekeeper.calculate.fetch_org_unit")
 @patch("orggatekeeper.calculate.get_hidden_uuid")
 async def test_update_line_management_dry_run(
     get_hidden_uuid: MagicMock,
     fetch_org_unit: MagicMock,
-    calculate_hide: MagicMock,
+    should_hide: MagicMock,
     graphql_session: MagicMock,
     set_settings: Callable[..., Settings],
 ) -> None:
     """Test that update_line_management can set hidden_uuid."""
     set_settings(dry_run=True)
 
-    calculate_hide.return_value = True
+    should_hide.return_value = True
     org_unit = get_org_unit()
     fetch_org_unit.return_value = org_unit
 
@@ -448,22 +448,22 @@ async def test_update_line_management_dry_run(
     result = await update_line_management(uuid)
     assert result is True
 
-    calculate_hide.assert_called_once_with(graphql_session, uuid, [])
+    should_hide.assert_called_once_with(graphql_session, uuid, [])
     fetch_org_unit.assert_called_once_with(graphql_session, uuid)
 
 
-@patch("orggatekeeper.calculate.calculate_hide")
+@patch("orggatekeeper.calculate.should_hide")
 @patch("orggatekeeper.calculate.fetch_org_unit")
 async def test_update_line_management_hidden(
     fetch_org_unit: MagicMock,
-    calculate_hide: MagicMock,
+    should_hide: MagicMock,
     graphql_session: MagicMock,
     modelclient_session: MagicMock,
     settings: Settings,
     hidden_uuid: UUID,
 ) -> None:
     """Test that update_line_management can set hidden_uuid."""
-    calculate_hide.return_value = True
+    should_hide.return_value = True
     org_unit = get_org_unit()
     fetch_org_unit.return_value = org_unit
 
@@ -471,28 +471,28 @@ async def test_update_line_management_hidden(
     result = await update_line_management(uuid)
     assert result is True
 
-    calculate_hide.assert_called_once_with(graphql_session, uuid, [])
+    should_hide.assert_called_once_with(graphql_session, uuid, [])
     fetch_org_unit.assert_called_once_with(graphql_session, uuid)
     assert modelclient_session.mock_calls == [
         call.edit([org_unit.copy(update={"org_unit_hierarchy_uuid": hidden_uuid})])
     ]
 
 
-@patch("orggatekeeper.calculate.calculate_line_management")
-@patch("orggatekeeper.calculate.calculate_hide")
+@patch("orggatekeeper.calculate.is_line_management")
+@patch("orggatekeeper.calculate.should_hide")
 @patch("orggatekeeper.calculate.fetch_org_unit")
 async def test_update_line_management_line(
     fetch_org_unit: MagicMock,
-    calculate_hide: MagicMock,
-    calculate_line_management: MagicMock,
+    should_hide: MagicMock,
+    is_line_management: MagicMock,
     graphql_session: MagicMock,
     modelclient_session: MagicMock,
     settings: Settings,
     line_management_uuid: UUID,
 ) -> None:
     """Test that update_line_management can set line_management_uuid."""
-    calculate_hide.return_value = False
-    calculate_line_management.return_value = True
+    should_hide.return_value = False
+    is_line_management.return_value = True
     org_unit = get_org_unit()
     fetch_org_unit.return_value = org_unit
 
@@ -500,8 +500,8 @@ async def test_update_line_management_line(
     result = await update_line_management(uuid)
     assert result is True
 
-    calculate_hide.assert_called_once_with(graphql_session, uuid, [])
-    calculate_line_management.assert_called_once_with(graphql_session, uuid)
+    should_hide.assert_called_once_with(graphql_session, uuid, [])
+    is_line_management.assert_called_once_with(graphql_session, uuid)
     fetch_org_unit.assert_called_once_with(graphql_session, uuid)
     assert modelclient_session.mock_calls == [
         call.edit(

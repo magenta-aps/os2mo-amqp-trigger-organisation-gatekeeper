@@ -4,20 +4,22 @@
 """Settings handling."""
 from functools import cache
 from typing import Any
-from typing import Type
 from uuid import UUID
 
 import structlog
 from pydantic import AnyHttpUrl
 from pydantic import BaseSettings
-from pydantic import conint
+from pydantic import ConstrainedInt
 from pydantic import Field
 from pydantic import parse_obj_as
 from pydantic import SecretStr
-from pydantic import ConstrainedInt
 
 
 class Port(ConstrainedInt):
+    """Port number type."""
+
+    # pylint: disable=too-few-public-methods
+
     ge = 0
     le = 65535
 
@@ -34,16 +36,10 @@ class Settings(BaseSettings):
 
     # pylint: disable=too-few-public-methods
 
-    commit_tag: str = Field(
-        "HEAD", description="Git commit tag."
-    )
-    commit_sha: str = Field(
-        "HEAD", description="Git commit SHA."
-    )
+    commit_tag: str = Field("HEAD", description="Git commit tag.")
+    commit_sha: str = Field("HEAD", description="Git commit SHA.")
 
-    metrics_port: Port = Field(
-        8011, description="Port to host Prometheus metrics on."
-    )
+    metrics_port: Port = Field(8011, description="Port to host Prometheus metrics on.")
 
     mo_url: AnyHttpUrl = Field(
         parse_obj_as(AnyHttpUrl, "http://mo-service:5000"),

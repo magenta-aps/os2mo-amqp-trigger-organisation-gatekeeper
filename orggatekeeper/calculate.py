@@ -5,7 +5,6 @@
 import re
 from functools import cache
 from operator import itemgetter
-from typing import Pattern
 from uuid import UUID
 
 import structlog
