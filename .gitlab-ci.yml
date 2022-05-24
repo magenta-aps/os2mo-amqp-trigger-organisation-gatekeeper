@@ -19,6 +19,27 @@ variables:
   PYTEST_COV_FAIL_UNDER: 100
 
 
+# Conditions
+#############
+.if-default-branch-refs: &if-default-branch-refs
+  if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+
+.if-tag: &if-tag
+  if: '$CI_COMMIT_TAG'
+
+.if-merge-request: &if-merge-request
+  if: '$CI_MERGE_REQUEST_IID'
+
+
+# Workflow
+###########
+workflow:
+  rules:
+    - <<: *if-tag
+    - <<: *if-default-branch-refs
+    - <<: *if-merge-request
+
+
 include:
   - project: labs/salt-automation
     ref: master
@@ -32,16 +53,6 @@ include:
   - project: labs/salt-automation
     ref: master
     file: /gitlab-ci-templates/common/docker-release.v1.yml
-
-
-# This is a workaround for a bug causing detached pipelines on MRs
-# See: https://gitlab.com/gitlab-org/gitlab/-/issues/34756
-#      https://docs.gitlab.com/ee/ci/yaml/#workflowrules-templates
-workflow:
-  rules:
-    - if: $CI_COMMIT_TAG
-    - if: $CI_COMMIT_BRANCH
-    - if: $CI_MERGE_REQUEST_IID
 
 
 Pre-commit:

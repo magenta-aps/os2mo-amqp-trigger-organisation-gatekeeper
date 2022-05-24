@@ -24,5 +24,5 @@ RUN poetry install --no-dev
 WORKDIR /app
 RUN cp /opt/VERSION .
 RUN cp /opt/HASH .
-COPY orggatekeeper/main.py .
+COPY orggatekeeper .
 CMD [ "python", "./main.py" ]

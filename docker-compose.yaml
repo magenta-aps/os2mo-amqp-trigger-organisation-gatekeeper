@@ -9,7 +9,7 @@ services:
     environment:
       AMQP_URL: "amqp://guest:guest@msg_broker:5672/"
 
-      AUTH_SERVER: "http://proxy/auth"
+      AUTH_SERVER: "http://keycloak:8080/auth"
 
       MO_URL: "http://mo"
       CLIENT_ID: "dipex"
@@ -20,7 +20,7 @@ services:
       - "8000:8000"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://amqp_trigger_orggatekeeper:8000/metrics"]
-      interval: 5s
+      interval: 15s
       timeout: 5s
       retries: 3
       start_period: 30s
@@ -31,7 +31,7 @@ services:
   init:
     image: magentaaps/os2mo-init:latest
     environment:
-      AUTH_SERVER: "http://proxy/auth"
+      AUTH_SERVER: "http://keycloak:8080/auth"
 
       MO_URL: "http://mo"
       CLIENT_SECRET: "603f1c82-d012-4d04-9382-dbe659c533fb"

@@ -101,7 +101,7 @@ def ny_regex() -> Pattern:
     return re.compile(r"NY\d-niveau")
 
 
-async def calculate_line_management(session: AsyncClientSession, uuid: UUID) -> bool:
+async def is_line_management(session: AsyncClientSession, uuid: UUID) -> bool:
     """Determine whether the organisation is part of line management.
 
     Args:
@@ -137,8 +137,10 @@ async def calculate_line_management(session: AsyncClientSession, uuid: UUID) -> 
 
     unit_level_user_key = obj["org_unit_level"]["user_key"]
 
+    # Part of line management if userkey matches regex
     if ny_regex().fullmatch(unit_level_user_key) is not None:
         return True
+    # Or if it is "Afdelings-niveau" and it has people attached
     if unit_level_user_key == "Afdelings-niveau":
         # TODO: Check owners, leaders, it?
         if len(obj["engagements"]) > 0:
@@ -192,7 +194,7 @@ async def fetch_org_unit(session: AsyncClientSession, uuid: UUID) -> Organisatio
     return org_unit
 
 
-async def calculate_hide(
+async def should_hide(
     session: AsyncClientSession, uuid: UUID, hidden: list[str]
 ) -> bool:
     """Determine whether the organisation unit should be hidden.
@@ -207,7 +209,7 @@ async def calculate_hide(
     """
     # TODO: Should we really just be updating the top-most parent itself?
     if not hidden:
-        logger.debug("calculate_hide called without hidden list")
+        logger.debug("should_hide called without hidden list")
         return False
 
     query = gql(
@@ -230,7 +232,7 @@ async def calculate_hide(
     if obj["user_key"] in hidden:
         return True
     if obj["parent_uuid"] is not None:
-        return await calculate_hide(session, obj["parent_uuid"], hidden)
+        return await should_hide(session, obj["parent_uuid"], hidden)
     return False
 
 
@@ -304,10 +306,10 @@ async def update_line_management(uuid: UUID) -> bool:
     async with client as session:
         # Determine the desired org_unit_hierarchy class uuid
         new_org_unit_hierarchy: UUID | None = None
-        if await calculate_hide(session, uuid, settings.hidden):
+        if await should_hide(session, uuid, settings.hidden):
             logger.debug("Organisation Unit needs to be hidden", uuid=uuid)
             new_org_unit_hierarchy = await get_hidden_uuid(session, settings)
-        elif await calculate_line_management(session, uuid):
+        elif await is_line_management(session, uuid):
             logger.debug("Organisation Unit needs to be in line management", uuid=uuid)
             new_org_unit_hierarchy = await get_line_management_uuid(session, settings)
 

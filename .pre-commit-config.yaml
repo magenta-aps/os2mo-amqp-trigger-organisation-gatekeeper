@@ -8,6 +8,7 @@ repos:
     hooks:
       - id: black
         args:
+          # Preview is needed to get automatic string-breaking
           - '--preview'
 
   - repo: https://github.com/asottile/reorder_python_imports
