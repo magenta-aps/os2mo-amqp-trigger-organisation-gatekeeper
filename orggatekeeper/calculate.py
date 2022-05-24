@@ -91,14 +91,7 @@ async def fetch_org_unit_hierarchy_class_uuid(
     return UUID(class_uuid)
 
 
-@cache
-def ny_regex() -> Pattern:
-    """Compile 'NYx-niveau' regex.
-
-    Returns:
-        Regex matching 'NYx-niveau', with 'x' being an integer.
-    """
-    return re.compile(r"NY\d-niveau")
+ny_regex = re.compile(r"NY\d-niveau")
 
 
 async def is_line_management(session: AsyncClientSession, uuid: UUID) -> bool:
@@ -131,14 +124,13 @@ async def is_line_management(session: AsyncClientSession, uuid: UUID) -> bool:
         """
     )
     result = await session.execute(query, {"uuids": [str(uuid)]})
-    logger.debug("GraphQL result", result=result)
     obj = one(one(result["org_units"])["objects"])
     logger.debug("GraphQL obj", obj=obj)
 
     unit_level_user_key = obj["org_unit_level"]["user_key"]
 
     # Part of line management if userkey matches regex
-    if ny_regex().fullmatch(unit_level_user_key) is not None:
+    if ny_regex.fullmatch(unit_level_user_key) is not None:
         return True
     # Or if it is "Afdelings-niveau" and it has people attached
     if unit_level_user_key == "Afdelings-niveau":
@@ -183,7 +175,6 @@ async def fetch_org_unit(session: AsyncClientSession, uuid: UUID) -> Organisatio
     )
     logger.debug("Fetching org-unit via GraphQL", uuid=uuid)
     result = await session.execute(query, {"uuids": [str(uuid)]})
-    logger.debug("GraphQL result", result=result)
     obj = one(one(result["org_units"])["objects"])
     logger.debug("GraphQL obj", obj=obj)
     obj["from_date"] = obj["validity"]["from"]
@@ -209,7 +200,7 @@ async def should_hide(
     """
     # TODO: Should we really just be updating the top-most parent itself?
     if not hidden:
-        logger.debug("should_hide called without hidden list")
+        logger.debug("should_hide called with empty hidden list")
         return False
 
     query = gql(
@@ -225,7 +216,6 @@ async def should_hide(
         """
     )
     result = await session.execute(query, {"uuids": [str(uuid)]})
-    logger.debug("GraphQL result", result=result)
     obj = one(one(result["org_units"])["objects"])
     logger.debug("GraphQL obj", obj=obj)
 

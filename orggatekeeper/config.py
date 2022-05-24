@@ -14,9 +14,12 @@ from pydantic import conint
 from pydantic import Field
 from pydantic import parse_obj_as
 from pydantic import SecretStr
+from pydantic import ConstrainedInt
 
 
-Port: Type[int] = conint(ge=0, le=65535)
+class Port(ConstrainedInt):
+    ge = 0
+    le = 65535
 
 
 logger = structlog.get_logger()
@@ -31,7 +34,7 @@ class Settings(BaseSettings):
 
     # pylint: disable=too-few-public-methods
 
-    metrics_port: Port = Field(  # type: ignore
+    metrics_port: Port = Field(
         8011, description="Port to host Prometheus metrics on."
     )
 
