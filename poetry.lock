@@ -639,24 +639,6 @@ optional = false
 python-versions = ">=3.6"
 
 [[package]]
-name = "ra-utils"
-version = "1.0.0"
-description = "Utilities for OS2mo/LoRa"
-category = "main"
-optional = false
-python-versions = ">=3.8,<4.0"
-
-[package.dependencies]
-more-itertools = ">=8.8.0,<9.0.0"
-
-[package.extras]
-jinja = ["Jinja2 (>=3.0.1,<4.0.0)"]
-all = ["Jinja2 (>=3.0.1,<4.0.0)", "pydantic (>=1.8.2,<2.0.0)", "requests (>=2.26.0,<3.0.0)", "types-requests (>=2.25.0,<3.0.0)", "frozendict (>=2.0.4,<3.0.0)"]
-pydantic = ["pydantic (>=1.8.2,<2.0.0)"]
-headers = ["pydantic (>=1.8.2,<2.0.0)", "requests (>=2.26.0,<3.0.0)", "types-requests (>=2.25.0,<3.0.0)"]
-frozendict = ["frozendict (>=2.0.4,<3.0.0)"]
-
-[[package]]
 name = "raclients"
 version = "1.2.4"
 description = "Clients for OS2mo/LoRa"
@@ -867,7 +849,7 @@ multidict = ">=4.0"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.10"
-content-hash = "66bb3924a0cd95d195690785cd1eb69690ddaf3205702f73c1b85634295e602b"
+content-hash = "75a4dbe15c9b17d0254ab674f52dd8d2ee1e0954f23dc3ea7a484eb189bfc1e8"
 
 [metadata.files]
 aio-pika = [
@@ -1345,10 +1327,6 @@ pyyaml = [
     {file = "PyYAML-6.0-cp39-cp39-win32.whl", hash = "sha256:b5b9eccad747aabaaffbc6064800670f0c297e52c12754eb1d976c57e4f74dcb"},
     {file = "PyYAML-6.0-cp39-cp39-win_amd64.whl", hash = "sha256:b3d267842bf12586ba6c734f89d1f5b871df0273157918b0ccefa29deb05c21c"},
     {file = "PyYAML-6.0.tar.gz", hash = "sha256:68fb519c14306fec9720a2a5b45bc9f0c8d1b9c72adf45c37baedfcd949c35a2"},
-]
-ra-utils = [
-    {file = "ra-utils-1.0.0.tar.gz", hash = "sha256:f774c904862166cea52a3ae08e3c75ea6e374f04436d8ce7863d14e9e3daeca3"},
-    {file = "ra_utils-1.0.0-py3-none-any.whl", hash = "sha256:d08cf70763687fd5a1467aeed4788cfe1f755b0a8e3733d34a2ca077cf950ad4"},
 ]
 raclients = [
     {file = "raclients-1.2.4-py3-none-any.whl", hash = "sha256:edb5cc5725e0bc4d56d047c8fbb01fb1aa2ae881ad2a7268597fdb6a0c7510a8"},

@@ -20,8 +20,6 @@ from uuid import uuid4
 import pytest
 from graphql import DocumentNode
 from more_itertools import one
-from ra_utils.attrdict import AttrDict
-from ra_utils.attrdict import attrdict
 from ramodels.mo import OrganisationUnit
 
 from orggatekeeper.calculate import fetch_org_unit
@@ -34,31 +32,6 @@ from orggatekeeper.calculate import should_hide
 from orggatekeeper.calculate import update_line_management
 from orggatekeeper.config import get_settings
 from orggatekeeper.config import Settings
-
-
-class HashableAttrDict(AttrDict):
-    """AttrDict which is hashable.
-
-    Care must be taken not to mutate the attrdict after construction.
-    """
-
-    # pylint: disable=too-few-public-methods
-
-    def __hash__(self) -> int:
-        return hash(tuple(sorted(self.items())))
-
-
-def hashableattrdict(*args: Any, **kwargs: Any) -> HashableAttrDict:
-    """HashableAttrDict constructor function.
-
-    Args:
-        args: Forwarded to __init__
-        kwargs: Forwarded to __init__
-
-    Returns:
-        The constructed HashableAttrDict
-    """
-    return HashableAttrDict(*args, **kwargs)
 
 
 async def test_fetch_org_unit() -> None:
@@ -96,7 +69,8 @@ async def test_fetch_org_unit() -> None:
             ]
         }
 
-    session = attrdict({"execute": execute})
+    session = MagicMock()
+    session.execute = execute
     result = await fetch_org_unit(session, uuid)
     assert len(params["args"]) == 2
     assert isinstance(params["args"][0], DocumentNode)
@@ -129,7 +103,8 @@ async def test_fetch_org_unit_hierarchy_uuid() -> None:
             ]
         }
 
-    session = hashableattrdict({"execute": execute})
+    session = MagicMock()
+    session.execute = execute
     result = await fetch_org_unit_hierarchy_uuid(session)
     assert isinstance(one(params["args"]), DocumentNode)
 
@@ -169,7 +144,8 @@ async def test_fetch_org_unit_hierarchy_class_uuid() -> None:
         }
 
     for key, uuid in classes.items():
-        session = hashableattrdict({"execute": execute})
+        session = MagicMock()
+        session.execute = execute
         result = await fetch_org_unit_hierarchy_class_uuid(session, "facet_uuid", key)
         assert len(params["args"]) == 2
         assert isinstance(params["args"][0], DocumentNode)
@@ -233,7 +209,8 @@ async def test_is_line_management(
         }
 
     uuid = uuid4()
-    session = hashableattrdict({"execute": execute})
+    session = MagicMock()
+    session.execute = execute
     result = await is_line_management(session, uuid)
     assert len(params["args"]) == 2
     assert isinstance(params["args"][0], DocumentNode)
@@ -244,7 +221,7 @@ async def test_is_line_management(
 async def test_should_hide_no_list() -> None:
     """Test that calculate_hidden returns false when given empty list."""
     uuid = uuid4()
-    session = hashableattrdict({})
+    session = MagicMock()
     result = await should_hide(session, uuid, [])
     assert result is False
 
@@ -303,7 +280,8 @@ async def test_should_hide_parent(
 
         return {"org_units": [{"objects": [parent_map[uuid]]}]}
 
-    session = hashableattrdict({"execute": execute})
+    session = MagicMock()
+    session.execute = execute
     result = await should_hide(session, uuid, hidden_list)
     assert len(params["args"]) == 2
     assert isinstance(params["args"][0], DocumentNode)
@@ -334,14 +312,11 @@ def gql_client() -> Generator[MagicMock, None, None]:
 
 
 @pytest.fixture()
-def graphql_session(
-    gql_client: MagicMock
-) -> Generator[MagicMock, None, None]:
+def graphql_session(gql_client: MagicMock) -> Generator[MagicMock, None, None]:
     """Fixture to mock AsyncClientSession."""
     session = MagicMock()
     gql_client.__aenter__.return_value = session
     yield session
-    gql_client.__aenter__.assert_called_once()
 
 
 @pytest.fixture()
@@ -351,27 +326,21 @@ def model_client() -> Generator[MagicMock, None, None]:
 
 
 @pytest.fixture()
-def modelclient_session(
-    model_client: MagicMock
-) -> Generator[MagicMock, None, None]:
+def modelclient_session(model_client: MagicMock) -> Generator[MagicMock, None, None]:
     """Fixture to mock ModelClient session."""
     session = AsyncMock()
     model_client.__aenter__.return_value = session
     yield session
-    model_client.__aenter__.assert_called_once()
 
 
 @pytest.fixture()
 def set_settings() -> Generator[Callable[..., Settings], None, None]:
     """Fixture to mock get_settings."""
-    with patch("orggatekeeper.calculate.get_settings") as mock_settings:
+    def setup_mock_settings(*args: Any, **kwargs: Any) -> Settings:
+        settings = get_settings(client_secret="hunter2", *args, **kwargs)
+        return settings
 
-        def setup_mock_settings(*args: Any, **kwargs: Any) -> Settings:
-            settings = get_settings(client_secret="hunter2", *args, **kwargs)
-            mock_settings.return_value = settings
-            return settings
-
-        yield setup_mock_settings
+    yield setup_mock_settings
 
 
 @pytest.fixture()
@@ -391,7 +360,6 @@ def line_management_uuid(
         line_management_uuid = uuid4()
         get_line_management_uuid.return_value = line_management_uuid
         yield line_management_uuid
-        get_line_management_uuid.assert_called_once_with(graphql_session, settings)
 
 
 @pytest.fixture()
@@ -403,14 +371,11 @@ def hidden_uuid(
         hidden_uuid = uuid4()
         get_hidden_uuid.return_value = hidden_uuid
         yield hidden_uuid
-        get_hidden_uuid.assert_called_once_with(graphql_session, settings)
 
 
 @pytest.fixture()
 def seeded_update_line_management(
-    gql_client: MagicMock,
-    model_client: MagicMock,
-    settings: Settings
+    gql_client: MagicMock, model_client: MagicMock, settings: Settings
 ) -> Generator[Callable[[UUID], bool], None, None]:
     """Fixture to generate update_line_management function."""
     seeded_update_line_management = partial(
@@ -533,12 +498,16 @@ async def test_update_line_management_line(
 async def test_get_line_management_uuid_preseed() -> None:
     """Test get_line_management_uuid with pre-seeded uuid."""
     uuid = uuid4()
+    session = MagicMock()
     settings = get_settings(
         client_secret="hunter2",
         line_management_uuid=uuid,
     )
-    session = hashableattrdict()
-    line_management_uuid = await get_line_management_uuid(session, settings)
+    line_management_uuid = await get_line_management_uuid(
+        session,
+        line_management_uuid=settings.line_management_uuid,
+        line_management_user_key=settings.line_management_user_key,
+    )
     assert line_management_uuid == uuid
 
 
@@ -558,8 +527,12 @@ async def test_get_line_management_uuid(
     fetch_org_unit_hierarchy_class_uuid.return_value = uuid
 
     settings = get_settings(client_secret="hunter2")
-    session = hashableattrdict()
-    line_management_uuid = await get_line_management_uuid(session, settings)
+    session = MagicMock()
+    line_management_uuid = await get_line_management_uuid(
+        session,
+        line_management_uuid=settings.line_management_uuid,
+        line_management_user_key=settings.line_management_user_key,
+    )
     assert line_management_uuid == uuid
 
     fetch_org_unit_hierarchy_class_uuid.assert_called_once_with(
@@ -575,8 +548,12 @@ async def test_get_hidden_uuid_preseed() -> None:
         client_secret="hunter2",
         hidden_uuid=uuid,
     )
-    session = hashableattrdict()
-    hidden_uuid = await get_hidden_uuid(session, settings)
+    session = MagicMock()
+    hidden_uuid = await get_hidden_uuid(
+        session,
+        hidden_uuid=settings.hidden_uuid,
+        hidden_user_key=settings.hidden_user_key,
+    )
     assert hidden_uuid == uuid
 
 
@@ -596,8 +573,12 @@ async def test_get_hidden_uuid(
     fetch_org_unit_hierarchy_class_uuid.return_value = uuid
 
     settings = get_settings(client_secret="hunter2")
-    session = hashableattrdict()
-    hidden_uuid = await get_hidden_uuid(session, settings)
+    session = MagicMock()
+    hidden_uuid = await get_hidden_uuid(
+        session,
+        hidden_uuid=settings.hidden_uuid,
+        hidden_user_key=settings.hidden_user_key,
+    )
     assert hidden_uuid == uuid
 
     fetch_org_unit_hierarchy_class_uuid.assert_called_once_with(

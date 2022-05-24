@@ -3,11 +3,11 @@
 # SPDX-License-Identifier: MPL-2.0
 """Test the fetch_org_unit function."""
 from datetime import datetime
+from functools import partial
 from typing import Any
 from typing import cast
 from typing import Set
 from typing import Tuple
-from functools import partial
 from unittest.mock import call
 from unittest.mock import MagicMock
 from unittest.mock import patch
@@ -19,8 +19,8 @@ from ramqp.mo_models import RequestType
 from ramqp.mo_models import ServiceType
 
 from orggatekeeper.config import get_settings as original_get_settings
-from orggatekeeper.main import main
 from orggatekeeper.main import callback_generator
+from orggatekeeper.main import main
 from orggatekeeper.main import update_counter
 
 
@@ -70,10 +70,7 @@ async def test_update_metric(update_line_management: MagicMock) -> None:
     """Test that our update_counter metric is updated as expected."""
     payload = PayloadType(uuid=uuid4(), object_uuid=uuid4(), time=datetime.now())
 
-    callback_caller = partial(
-        callback_generator(None, None, None),
-        None, None, None
-    )
+    callback_caller = partial(callback_generator(None, None, None), None, None, None)
 
     clear_metric_value(update_counter)
     assert get_metric_labels(update_counter) == set()

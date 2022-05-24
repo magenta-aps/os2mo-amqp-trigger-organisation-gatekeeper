@@ -3,14 +3,14 @@
 # SPDX-License-Identifier: MPL-2.0
 """Event handling."""
 from functools import partial
-from typing import Callable
 from typing import Tuple
-from uuid import UUID
 
 import structlog
 from prometheus_client import Counter
 from prometheus_client import Info
 from prometheus_client import start_http_server
+from raclients.graph.client import GraphQLClient
+from raclients.modelclient.mo import ModelClient
 from ramqp.mo_models import MOCallbackType
 from ramqp.mo_models import ObjectType
 from ramqp.mo_models import PayloadType
@@ -18,12 +18,9 @@ from ramqp.mo_models import RequestType
 from ramqp.mo_models import ServiceType
 from ramqp.moqp import MOAMQPSystem
 
-from raclients.graph.client import GraphQLClient
-from raclients.modelclient.mo import ModelClient
-
 from .calculate import update_line_management
-from .config import Settings
 from .config import get_settings
+from .config import Settings
 
 
 logger = structlog.get_logger()
@@ -82,7 +79,9 @@ async def organisation_gatekeeper_callback(
         request_type=request_type,
         payload=payload,
     )
-    changed = await update_line_management(gql_client, model_client, settings, payload.uuid)
+    changed = await update_line_management(
+        gql_client, model_client, settings, payload.uuid
+    )
     update_counter.labels(updated=changed).inc()
 
 

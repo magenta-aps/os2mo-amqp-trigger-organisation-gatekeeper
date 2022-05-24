@@ -5,7 +5,7 @@
 import re
 from functools import cache
 from operator import itemgetter
-from typing import Callable
+from typing import Optional
 from uuid import UUID
 
 import structlog
@@ -16,7 +16,6 @@ from raclients.graph.client import GraphQLClient
 from raclients.modelclient.mo import ModelClient
 from ramodels.mo import OrganisationUnit
 
-from .config import get_settings
 from .config import Settings
 
 logger = structlog.get_logger()
@@ -227,60 +226,65 @@ async def should_hide(
 
 
 async def get_line_management_uuid(
-    session: AsyncClientSession, settings: Settings
+    session: AsyncClientSession,
+    line_management_uuid: Optional[UUID],
+    line_management_user_key: str,
 ) -> UUID:
     """Get the UUID of the line_management class.
 
     Args:
         session: The GraphQL session to run our queries on (if required).
-        settings: The pydantic settings module.
+        line_management_uuid: The UUID (if provided) of the class.
+        line_management_user_key: The user-key of the class.
 
     Returns:
         The UUID of class.
     """
-    line_management_uuid = settings.line_management_uuid
-    if line_management_uuid is None:
-        org_unit_hierarchy_uuid = await fetch_org_unit_hierarchy_uuid(session)
-        line_management_uuid = await fetch_org_unit_hierarchy_class_uuid(
-            session, org_unit_hierarchy_uuid, settings.line_management_user_key
-        )
-        logger.debug(
-            "Line management uuid not set, fetched",
-            user_key=settings.line_management_user_key,
-            uuid=line_management_uuid,
-        )
+    if line_management_uuid:
+        return line_management_uuid
+    org_unit_hierarchy_uuid = await fetch_org_unit_hierarchy_uuid(session)
+    line_management_uuid = await fetch_org_unit_hierarchy_class_uuid(
+        session, org_unit_hierarchy_uuid, line_management_user_key
+    )
+    logger.debug(
+        "Line management uuid not set, fetched",
+        user_key=line_management_user_key,
+        uuid=line_management_uuid,
+    )
     return line_management_uuid
 
 
-async def get_hidden_uuid(session: AsyncClientSession, settings: Settings) -> UUID:
+async def get_hidden_uuid(
+    session: AsyncClientSession,
+    hidden_uuid: Optional[UUID],
+    hidden_user_key: str,
+) -> UUID:
     """Get the UUID of the hidden class.
 
     Args:
         session: The GraphQL session to run our queries on (if required).
-        settings: The pydantic settings module.
+        hidden_uuid: The UUID (if provided) of the class.
+        hidden_user_key: The user-key of the class.
 
     Returns:
         The UUID of class.
     """
-    hidden_uuid = settings.hidden_uuid
-    if hidden_uuid is None:
-        org_unit_hierarchy_uuid = await fetch_org_unit_hierarchy_uuid(session)
-        hidden_uuid = await fetch_org_unit_hierarchy_class_uuid(
-            session, org_unit_hierarchy_uuid, settings.hidden_user_key
-        )
-        logger.debug(
-            "Hidden uuid not set, fetched",
-            user_key=settings.hidden_user_key,
-            uuid=hidden_uuid,
-        )
+    if hidden_uuid:
+        return hidden_uuid
+    org_unit_hierarchy_uuid = await fetch_org_unit_hierarchy_uuid(session)
+    hidden_uuid = await fetch_org_unit_hierarchy_class_uuid(
+        session, org_unit_hierarchy_uuid, hidden_user_key
+    )
+    logger.debug(
+        "Hidden uuid not set, fetched",
+        user_key=hidden_user_key,
+        uuid=hidden_uuid,
+    )
     return hidden_uuid
 
 
 async def update_line_management(
-    gql_client: GraphQLClient,
-    model_client: ModelClient,
-    settings: Settings,
-    uuid: UUID
+    gql_client: GraphQLClient, model_client: ModelClient, settings: Settings, uuid: UUID
 ) -> bool:
     """Update line management information for the provided organisation.
 
@@ -295,10 +299,18 @@ async def update_line_management(
         new_org_unit_hierarchy: UUID | None = None
         if await should_hide(session, uuid, settings.hidden):
             logger.debug("Organisation Unit needs to be hidden", uuid=uuid)
-            new_org_unit_hierarchy = await get_hidden_uuid(session, settings)
+            new_org_unit_hierarchy = await get_hidden_uuid(
+                session,
+                settings.hidden_uuid,
+                settings.hidden_user_key,
+            )
         elif await is_line_management(session, uuid):
             logger.debug("Organisation Unit needs to be in line management", uuid=uuid)
-            new_org_unit_hierarchy = await get_line_management_uuid(session, settings)
+            new_org_unit_hierarchy = await get_line_management_uuid(
+                session,
+                settings.line_management_uuid,
+                settings.line_management_user_key,
+            )
 
         # Fetch the current object and see if we need to update it
         org_unit = await fetch_org_unit(session, uuid)
