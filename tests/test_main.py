@@ -115,7 +115,7 @@ def test_main(
 
     main()
 
-    get_settings.assert_called_once_with()
+    get_settings.assert_called_once()
     start_http_server.assert_called_once_with(8011)
     MOAMQPSystem.assert_called_once_with()
     assert amqp_system.mock_calls == [
