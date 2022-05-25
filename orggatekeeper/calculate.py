@@ -51,7 +51,6 @@ async def fetch_org_unit_hierarchy_uuid(session: AsyncClientSession) -> UUID:
     return UUID(org_unit_hierarchy_uuid)
 
 
-@cache
 async def fetch_org_unit_hierarchy_class_uuid(
     session: AsyncClientSession, org_unit_hierarchy_uuid: UUID, class_user_key: str
 ) -> UUID:
