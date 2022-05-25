@@ -72,8 +72,7 @@ async def test_update_metric(update_line_management: MagicMock) -> None:
     payload = PayloadType(uuid=uuid4(), object_uuid=uuid4(), time=datetime.now())
 
     callback_caller = partial(
-        callback_generator(MagicMock(), MagicMock(), MagicMock()),
-        MagicMock()
+        callback_generator(MagicMock(), MagicMock(), MagicMock()), MagicMock()
     )
 
     clear_metric_value(update_counter)
