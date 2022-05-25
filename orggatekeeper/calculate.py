@@ -3,7 +3,6 @@
 # SPDX-License-Identifier: MPL-2.0
 """Update logic."""
 import re
-from functools import cache
 from operator import itemgetter
 from typing import Optional
 from uuid import UUID

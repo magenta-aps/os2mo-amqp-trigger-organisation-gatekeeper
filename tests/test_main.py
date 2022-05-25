@@ -1,6 +1,7 @@
 # SPDX-FileCopyrightText: 2019-2020 Magenta ApS
 #
 # SPDX-License-Identifier: MPL-2.0
+# pylint: disable=redefined-outer-name
 """Test the fetch_org_unit function."""
 from datetime import datetime
 from functools import partial
@@ -70,7 +71,10 @@ async def test_update_metric(update_line_management: MagicMock) -> None:
     """Test that our update_counter metric is updated as expected."""
     payload = PayloadType(uuid=uuid4(), object_uuid=uuid4(), time=datetime.now())
 
-    callback_caller = partial(callback_generator(None, None, None), None, None, None)
+    callback_caller = partial(
+        callback_generator(MagicMock(), MagicMock(), MagicMock()),
+        MagicMock()
+    )
 
     clear_metric_value(update_counter)
     assert get_metric_labels(update_counter) == set()

@@ -12,6 +12,7 @@ from prometheus_client import start_http_server
 from raclients.graph.client import GraphQLClient
 from raclients.modelclient.mo import ModelClient
 from ramqp.mo_models import MOCallbackType
+from ramqp.mo_models import MORoutingKey
 from ramqp.mo_models import ObjectType
 from ramqp.mo_models import PayloadType
 from ramqp.mo_models import RequestType
@@ -56,17 +57,16 @@ async def organisation_gatekeeper_callback(
     gql_client: GraphQLClient,
     model_client: ModelClient,
     settings: Settings,
-    service_type: ServiceType,
-    object_type: ObjectType,
-    request_type: RequestType,
+    mo_routing_key: MORoutingKey,
     payload: PayloadType,
 ) -> None:
     """Updates line management information.
 
     Args:
-        service_type: The service type to send the message to.
-        object_type: The object type to send the message to.
-        request_type: The request type to send the message to.
+        gql_client: GraphQL client.
+        model_client: MO model client.
+        settings: Integration settings module.
+        mo_routing_key: The message routing key.
         payload: The message payload.
 
     Returns:
@@ -74,9 +74,9 @@ async def organisation_gatekeeper_callback(
     """
     logger.debug(
         "Message received",
-        service_type=service_type,
-        object_type=object_type,
-        request_type=request_type,
+        service_type=mo_routing_key.service_type,
+        object_type=mo_routing_key.object_type,
+        request_type=mo_routing_key.request_type,
         payload=payload,
     )
     changed = await update_line_management(
@@ -104,6 +104,14 @@ def callback_generator(
 
 
 def construct_clients(settings: Settings) -> Tuple[GraphQLClient, ModelClient]:
+    """Construct clients froms settings.
+
+    Args:
+        settings: Integration settings module.
+
+    Returns:
+        Tuple with GraphQLCLient and ModelClient.
+    """
     gql_client = GraphQLClient(
         url=settings.mo_url + "/graphql",
         client_id=settings.client_id,

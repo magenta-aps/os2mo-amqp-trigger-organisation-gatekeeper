@@ -5,7 +5,6 @@
 import pytest
 from pydantic import SecretStr
 from pydantic import ValidationError
-from structlog.testing import LogCapture
 
 from orggatekeeper.config import get_settings
 

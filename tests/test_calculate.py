@@ -8,6 +8,7 @@
 from datetime import datetime
 from functools import partial
 from typing import Any
+from typing import Awaitable
 from typing import Callable
 from typing import Generator
 from unittest.mock import AsyncMock
@@ -146,10 +147,11 @@ async def test_fetch_org_unit_hierarchy_class_uuid() -> None:
     for key, uuid in classes.items():
         session = MagicMock()
         session.execute = execute
-        result = await fetch_org_unit_hierarchy_class_uuid(session, "facet_uuid", key)
+        facet_uuid = uuid4()
+        result = await fetch_org_unit_hierarchy_class_uuid(session, facet_uuid, key)
         assert len(params["args"]) == 2
         assert isinstance(params["args"][0], DocumentNode)
-        assert params["args"][1] == {"uuids": ["facet_uuid"]}
+        assert params["args"][1] == {"uuids": [str(facet_uuid)]}
 
         assert isinstance(result, UUID)
         assert result == UUID(uuid)
@@ -337,6 +339,7 @@ def modelclient_session(model_client: MagicMock) -> Generator[MagicMock, None, N
 @pytest.fixture()
 def set_settings() -> Generator[Callable[..., Settings], None, None]:
     """Fixture to mock get_settings."""
+
     def setup_mock_settings(*args: Any, **kwargs: Any) -> Settings:
         settings = get_settings(client_secret="hunter2", *args, **kwargs)
         return settings
@@ -377,7 +380,7 @@ def hidden_uuid(
 @pytest.fixture()
 def seeded_update_line_management(
     gql_client: MagicMock, model_client: MagicMock, settings: Settings
-) -> Generator[Callable[[UUID], bool], None, None]:
+) -> Generator[Callable[[UUID], Awaitable[bool]], None, None]:
     """Fixture to generate update_line_management function."""
     seeded_update_line_management = partial(
         update_line_management, gql_client, model_client, settings
@@ -394,7 +397,7 @@ async def test_update_line_management_no_change(
     is_line_management: MagicMock,
     graphql_session: MagicMock,
     modelclient_session: MagicMock,
-    seeded_update_line_management: Callable[[UUID], bool],
+    seeded_update_line_management: Callable[[UUID], Awaitable[bool]],
     org_unit: OrganisationUnit,
 ) -> None:
     """Test that update_line_management can do noop."""
@@ -422,7 +425,7 @@ async def test_update_line_management_dry_run(
     graphql_session: MagicMock,
     modelclient_session: MagicMock,
     set_settings: Callable[..., Settings],
-    seeded_update_line_management: Callable[[UUID], bool],
+    seeded_update_line_management: Callable[[UUID], Awaitable[bool]],
     org_unit: OrganisationUnit,
 ) -> None:
     """Test that update_line_management can set hidden_uuid."""
@@ -449,7 +452,7 @@ async def test_update_line_management_hidden(
     modelclient_session: MagicMock,
     settings: Settings,
     hidden_uuid: UUID,
-    seeded_update_line_management: Callable[[UUID], bool],
+    seeded_update_line_management: Callable[[UUID], Awaitable[bool]],
     org_unit: OrganisationUnit,
 ) -> None:
     """Test that update_line_management can set hidden_uuid."""
@@ -478,7 +481,7 @@ async def test_update_line_management_line(
     modelclient_session: MagicMock,
     settings: Settings,
     line_management_uuid: UUID,
-    seeded_update_line_management: Callable[[UUID], bool],
+    seeded_update_line_management: Callable[[UUID], Awaitable[bool]],
     org_unit: OrganisationUnit,
 ) -> None:
     """Test that update_line_management can set line_management_uuid."""
