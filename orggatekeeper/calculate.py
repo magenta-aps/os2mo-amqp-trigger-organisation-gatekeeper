@@ -21,7 +21,6 @@ from .config import Settings
 logger = structlog.get_logger()
 
 
-@cache
 async def fetch_org_unit_hierarchy_uuid(session: AsyncClientSession) -> UUID:
     """Fetch the UUID of the 'org_unit_hierarchy' facet.
 
