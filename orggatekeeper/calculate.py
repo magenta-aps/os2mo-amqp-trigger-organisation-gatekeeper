@@ -91,7 +91,7 @@ ny_regex = re.compile(r"NY\d-niveau")
 
 
 async def is_line_management(session: AsyncClientSession, uuid: UUID) -> bool:
-    """Determine whether the organisation is part of line management.
+    """Determine whether the organisation unit is part of line management.
 
     Args:
         session: The GraphQL session to run our queries on.
@@ -143,10 +143,10 @@ async def fetch_org_unit(session: AsyncClientSession, uuid: UUID) -> Organisatio
 
     Args:
         session: The GraphQL session to run our queries on.
-        uuid: UUID of the organisation to fetch.
+        uuid: UUID of the organisation unit to fetch.
 
     Returns:
-        The organisation object.
+        The organisation unit object.
     """
     query = gql(
         """
@@ -283,13 +283,20 @@ async def get_hidden_uuid(
 async def update_line_management(
     gql_client: GraphQLClient, model_client: ModelClient, settings: Settings, uuid: UUID
 ) -> bool:
-    """Update line management information for the provided organisation.
+    """Update line management information for the provided organisation unit.
+
+    An organisation unit is part of line management iff:
+    * The SD unit-level is NY{x}-niveau or
+    * The SD unit-level is Afdelings-niveau and people are attached to it.
+
+    Additionally this function also hides organisation units iff:
+    * Their user-key is contained within hidden_user_key or a child of it.
 
     Args:
         gql_client: The GraphQL client to run queries on.
         model_client: The MO Model client to modify MO with.
         settings: The integration settings module.
-        uuid: UUID of the organisation to recalculate.
+        uuid: UUID of the organisation unit to recalculate.
 
     Returns:
         Whether an update was made.
