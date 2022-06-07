@@ -1,0 +1,8 @@
+facets:
+  org_unit_hierarchy:
+    linjeorg:
+      title: "Linjeorganisation"
+      scope: "TEXT"
+    hide:
+      title: "Skjult organisation"
+      scope: "TEXT"

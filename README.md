@@ -7,6 +7,13 @@ SPDX-License-Identifier: MPL-2.0
 
 This repository contains an OS2mo AMQP Trigger that updates line management information.
 
+An organisation is part of line management iff:
+* The SD unit-level is NY{x}-niveau or
+* The SD unit-level is Afdelings-niveau and people are attached to it.
+
+Additionally this function also hides organisation units iff:
+* Their user-key is contained within hidden_user_key or a child of it.
+
 ## Usage
 
 Adjust the `AMQP_URL` variable to OS2mo's running message-broker, either;
