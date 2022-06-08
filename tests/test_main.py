@@ -3,26 +3,38 @@
 # SPDX-License-Identifier: MPL-2.0
 # pylint: disable=redefined-outer-name
 """Test the fetch_org_unit function."""
+import asyncio
 from datetime import datetime
 from functools import partial
+from time import monotonic
 from typing import Any
+from typing import Callable
 from typing import cast
+from typing import Generator
 from typing import Set
 from typing import Tuple
 from unittest.mock import AsyncMock
 from unittest.mock import call
 from unittest.mock import MagicMock
 from unittest.mock import patch
+from uuid import UUID
 from uuid import uuid4
 
+import pytest
+from asgi_lifespan import LifespanManager
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
 from ramqp.mo_models import ObjectType
 from ramqp.mo_models import PayloadType
 from ramqp.mo_models import RequestType
 from ramqp.mo_models import ServiceType
+from ramqp.moqp import MOAMQPSystem
 
-from orggatekeeper.config import get_settings as original_get_settings
-from orggatekeeper.main import callback_generator
-from orggatekeeper.main import main
+from orggatekeeper.main import build_information
+from orggatekeeper.main import create_app
+from orggatekeeper.main import gather_with_concurrency
+from orggatekeeper.main import organisation_gatekeeper_callback
+from orggatekeeper.main import update_build_information
 from orggatekeeper.main import update_counter
 
 
@@ -71,9 +83,11 @@ def get_metric_labels(metric: Any) -> Set[Tuple[str]]:
 async def test_update_metric(update_line_management: MagicMock) -> None:
     """Test that our update_counter metric is updated as expected."""
     payload = PayloadType(uuid=uuid4(), object_uuid=uuid4(), time=datetime.now())
-
+    seeded_update_line_management = partial(
+        update_line_management, MagicMock(), MagicMock, MagicMock()
+    )
     callback_caller = partial(
-        callback_generator(MagicMock(), MagicMock(), MagicMock()), MagicMock()
+        organisation_gatekeeper_callback, seeded_update_line_management, MagicMock()
     )
 
     clear_metric_value(update_counter)
@@ -106,55 +120,193 @@ async def test_update_metric(update_line_management: MagicMock) -> None:
     assert get_metric_value(update_counter, ("True",)) == 2.0
 
 
-@patch("orggatekeeper.main.MOAMQPSystem")
-@patch("orggatekeeper.main.callback_generator")
-@patch("orggatekeeper.main.start_http_server")
-@patch("orggatekeeper.main.get_settings")
-@patch("orggatekeeper.main.run_forever")
-def test_main(
-    run_forever: MagicMock,
-    get_settings: MagicMock,
-    start_http_server: MagicMock,
-    callback_generator: MagicMock,
-    MOAMQPSystem: MagicMock,  # pylint: disable=invalid-name
+def test_build_information() -> None:
+    """Test that build metrics are updated as expected."""
+    clear_metric_value(build_information)
+    assert build_information._value == {}  # pylint: disable=protected-access
+    update_build_information("1.0.0", "cafebabe")
+    assert build_information._value == {  # pylint: disable=protected-access
+        "version": "1.0.0",
+        "hash": "cafebabe",
+    }
+
+
+async def test_gather_with_concurrency() -> None:
+    """Test gather with concurrency."""
+    start = monotonic()
+    await asyncio.gather(
+        *[
+            asyncio.sleep(0.1),
+            asyncio.sleep(0.1),
+            asyncio.sleep(0.1),
+        ]
+    )
+    end = monotonic()
+    duration = end - start
+    assert duration < 0.15
+
+    start = monotonic()
+    await gather_with_concurrency(
+        3,
+        *[
+            asyncio.sleep(0.1),
+            asyncio.sleep(0.1),
+            asyncio.sleep(0.1),
+        ]
+    )
+    end = monotonic()
+    duration = end - start
+    assert duration < 0.15
+
+    start = monotonic()
+    await gather_with_concurrency(
+        1,
+        *[
+            asyncio.sleep(0.1),
+            asyncio.sleep(0.1),
+            asyncio.sleep(0.1),
+        ]
+    )
+    end = monotonic()
+    duration = end - start
+    assert duration > 0.3
+
+
+@pytest.fixture
+def fastapi_app_builder() -> Generator[Callable[..., FastAPI], None, None]:
+    """Fixture for the FastAPI app builder."""
+
+    def builder(*args: Any, default_args: bool = True, **kwargs: Any) -> FastAPI:
+        if default_args:
+            kwargs["client_secret"] = "hunter2"
+            kwargs["expose_metrics"] = False
+        return create_app(*args, **kwargs)
+
+    yield builder
+
+
+@pytest.fixture
+def fastapi_app(
+    fastapi_app_builder: Callable[..., FastAPI]
+) -> Generator[FastAPI, None, None]:
+    """Fixture for the FastAPI app."""
+    yield fastapi_app_builder(client_secret="hunter2", expose_metrics=False)
+
+
+@pytest.fixture
+def test_client_builder(
+    fastapi_app_builder: Callable[..., FastAPI]
+) -> Generator[Callable[..., TestClient], None, None]:
+    """Fixture for the FastAPI test client builder."""
+
+    def builder(*args: Any, **kwargs: Any) -> TestClient:
+        return TestClient(fastapi_app_builder(*args, **kwargs))
+
+    yield builder
+
+
+@pytest.fixture
+def test_client(
+    test_client_builder: Callable[..., TestClient]
+) -> Generator[TestClient, None, None]:
+    """Fixture for the FastAPI test client."""
+    yield test_client_builder(client_secret="hunter2", expose_metrics=False)
+
+
+async def test_root_endpoint(test_client: TestClient) -> None:
+    """Test the root endpoint on our app."""
+    response = test_client.get("/")
+    assert response.status_code == 200
+    assert response.json() == {"name": "orggatekeeper"}
+
+
+async def test_metrics_endpoint(test_client_builder: Callable[..., TestClient]) -> None:
+    """Test the metrics endpoint on our app."""
+    test_client = test_client_builder(default_args=False, client_secret="hunter2")
+    response = test_client.get("/metrics")
+    assert response.status_code == 200
+    assert "# TYPE orggatekeeper_changes_created gauge" in response.text
+    assert "# TYPE build_information_info gauge" in response.text
+
+
+@patch("orggatekeeper.main.construct_context")
+async def test_trigger_all_endpoint(
+    construct_context: MagicMock,
+    test_client_builder: Callable[..., TestClient],
 ) -> None:
-    """Test that main behaves as we expect."""
-    run_forever.return_value = None
+    """Test the trigger all endpoint on our app."""
+    gql_client = AsyncMock()
+    gql_client.execute.return_value = {
+        "org_units": [{"uuid": "30206243-d930-4a69-bcfa-62e3292837d3"}]
+    }
+    seeded_update_line_management = AsyncMock()
+    construct_context.return_value = {
+        "gql_client": gql_client,
+        "seeded_update_line_management": seeded_update_line_management,
+    }
+    test_client = test_client_builder()
+    response = test_client.post("/trigger/all")
+    assert response.status_code == 200
+    assert response.json() == {"status": "OK"}
+    assert len(gql_client.execute.mock_calls) == 1
+    assert seeded_update_line_management.mock_calls == [
+        call(UUID("30206243-d930-4a69-bcfa-62e3292837d3"))
+    ]
 
-    settings = original_get_settings(client_secret="hunter2")
-    get_settings.return_value = settings
 
-    amqp_system = AsyncMock()
-    amqp_system.register = MagicMock()
-    MOAMQPSystem.return_value = amqp_system
+@patch("orggatekeeper.main.construct_context")
+async def test_trigger_uuid_endpoint(
+    construct_context: MagicMock,
+    test_client_builder: Callable[..., TestClient],
+) -> None:
+    """Test the trigger uuid endpoint on our app."""
+    seeded_update_line_management = AsyncMock()
+    construct_context.return_value = {
+        "seeded_update_line_management": seeded_update_line_management
+    }
+    test_client = test_client_builder()
+    response = test_client.post("/trigger/0a9d7211-16a1-47e1-82da-7ec8480e7487")
+    assert response.status_code == 200
+    assert response.json() == {"status": "OK"}
+    assert seeded_update_line_management.mock_calls == [
+        call(UUID("0a9d7211-16a1-47e1-82da-7ec8480e7487"))
+    ]
 
-    callback = MagicMock()
-    callback_generator.return_value = callback
 
-    main()
+@patch("orggatekeeper.main.MOAMQPSystem")
+async def test_lifespan(mo_amqpsystem: MOAMQPSystem, fastapi_app: FastAPI) -> None:
+    """Test that our lifespan events are handled as expected."""
+    amqp_system = MagicMock()
+    amqp_system.start = AsyncMock()
+    amqp_system.stop = AsyncMock()
 
-    get_settings.assert_called_once()
-    start_http_server.assert_called_once_with(8011)
-    MOAMQPSystem.assert_called_once()
+    mo_amqpsystem.return_value = amqp_system
 
-    assert len(amqp_system.mock_calls) == 8
+    assert not amqp_system.mock_calls
 
-    assert amqp_system.mock_calls[0] == call.register(
-        ServiceType.ORG_UNIT, ObjectType.ASSOCIATION, RequestType.WILDCARD
-    )
-    assert amqp_system.mock_calls[1] == call.register()(callback)
+    # Fire startup event on entry, and shutdown on exit
+    async with LifespanManager(fastapi_app):
 
-    assert amqp_system.mock_calls[2] == call.register(
-        ServiceType.ORG_UNIT, ObjectType.ENGAGEMENT, RequestType.WILDCARD
-    )
-    assert amqp_system.mock_calls[3] == call.register()(callback)
+        assert len(amqp_system.mock_calls) == 7
+        # Create register calls
+        assert amqp_system.mock_calls[0] == call.register(
+            ServiceType.ORG_UNIT, ObjectType.ASSOCIATION, RequestType.WILDCARD
+        )
+        assert amqp_system.mock_calls[2] == call.register(
+            ServiceType.ORG_UNIT, ObjectType.ENGAGEMENT, RequestType.WILDCARD
+        )
+        assert amqp_system.mock_calls[4] == call.register(
+            ServiceType.ORG_UNIT, ObjectType.ORG_UNIT, RequestType.WILDCARD
+        )
+        # Register calls
+        assert amqp_system.mock_calls[1] == amqp_system.mock_calls[3]
+        assert amqp_system.mock_calls[1] == amqp_system.mock_calls[5]
+        # Start call
+        assert amqp_system.mock_calls[6] == call.start(
+            queue_prefix="os2mo-amqp-trigger-organisation-gatekeeper"
+        )
 
-    assert amqp_system.mock_calls[4] == call.register(
-        ServiceType.ORG_UNIT, ObjectType.ORG_UNIT, RequestType.WILDCARD
-    )
-    assert amqp_system.mock_calls[5] == call.register()(callback)
+        # Clean mock to only capture shutdown changes
+        amqp_system.reset_mock()
 
-    assert amqp_system.mock_calls[6] == call.start(
-        queue_prefix="os2mo-amqp-trigger-organisation-gatekeeper"
-    )
-    assert amqp_system.mock_calls[7] == call.stop()
+    assert amqp_system.mock_calls == [call.stop()]

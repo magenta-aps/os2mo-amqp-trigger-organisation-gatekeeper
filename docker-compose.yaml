@@ -6,6 +6,7 @@ version: "3.9"
 services:
   orggatekeeper:
     build: .
+    command: ["uvicorn", "--factory", "app.main:create_app", "--host", "0.0.0.0", "--reload"]
     environment:
       AMQP_URL: "amqp://guest:guest@msg_broker:5672/"
 
@@ -18,6 +19,8 @@ services:
       - os2mo_default
     ports:
       - "8000:8000"
+    volumes:
+      - ./orggatekeeper:/opt/app/
     healthcheck:
       test: ["CMD", "curl", "-f", "http://amqp_trigger_orggatekeeper:8000/metrics"]
       interval: 15s
