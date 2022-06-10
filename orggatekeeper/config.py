@@ -11,7 +11,6 @@ from uuid import UUID
 import structlog
 from pydantic import AnyHttpUrl
 from pydantic import BaseSettings
-from pydantic import ConstrainedInt
 from pydantic import Field
 from pydantic import parse_obj_as
 from pydantic import SecretStr
@@ -28,15 +27,6 @@ class LogLevel(Enum):
     CRITICAL = logging.CRITICAL
 
 
-class Port(ConstrainedInt):
-    """Port number type."""
-
-    # pylint: disable=too-few-public-methods
-
-    ge = 0
-    le = 65535
-
-
 logger = structlog.get_logger()
 
 
@@ -51,8 +41,6 @@ class Settings(BaseSettings):
 
     commit_tag: str = Field("HEAD", description="Git commit tag.")
     commit_sha: str = Field("HEAD", description="Git commit SHA.")
-
-    metrics_port: Port = Field(8011, description="Port to host Prometheus metrics on.")
 
     mo_url: AnyHttpUrl = Field(
         parse_obj_as(AnyHttpUrl, "http://mo-service:5000"),
@@ -110,6 +98,8 @@ class Settings(BaseSettings):
     )
 
     log_level: LogLevel = LogLevel.DEBUG
+
+    expose_metrics: bool = Field(True, description="Whether to expose metrics.")
 
 
 @cache

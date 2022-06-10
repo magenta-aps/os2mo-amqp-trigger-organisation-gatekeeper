@@ -30,20 +30,3 @@ def test_happy_path(monkeypatch: pytest.MonkeyPatch) -> None:
     settings = get_settings()
     assert isinstance(settings.client_secret, SecretStr)
     assert settings.client_secret.get_secret_value() == "AzureDiamond"
-
-
-def test_bad_port() -> None:
-    """Test that bad port numbers are rejected."""
-    get_settings.cache_clear()
-
-    with pytest.raises(ValidationError) as excinfo:
-        get_settings(client_secret="hunter2", metrics_port=-1)
-    assert "metrics_port\n  ensure this value is greater than or equal to 0" in str(
-        excinfo.value
-    )
-
-    with pytest.raises(ValidationError) as excinfo:
-        get_settings(client_secret="hunter2", metrics_port=70000)
-    assert "metrics_port\n  ensure this value is less than or equal to 65535" in str(
-        excinfo.value
-    )
