@@ -16,7 +16,9 @@ from uuid import UUID
 import structlog
 from fastapi import FastAPI
 from fastapi import Query
+from fastapi import Response
 from gql import gql
+from more_itertools import one
 from prometheus_client import Counter
 from prometheus_client import Info
 from prometheus_fastapi_instrumentator import Instrumentator
@@ -28,6 +30,8 @@ from ramqp.mo_models import PayloadType
 from ramqp.mo_models import RequestType
 from ramqp.mo_models import ServiceType
 from ramqp.moqp import MOAMQPSystem
+from starlette.status import HTTP_204_NO_CONTENT
+from starlette.status import HTTP_503_SERVICE_UNAVAILABLE
 
 from .calculate import update_line_management
 from .config import get_settings
@@ -62,6 +66,52 @@ def update_build_information(version: str, build_hash: str) -> None:
             "hash": build_hash,
         }
     )
+
+
+async def healthcheck_gql(gql_client: PersistentGraphQLClient) -> bool:
+    """Check that our GraphQL connection is healthy.
+
+    Args:
+        gql_client: The GraphQL client to check health of.
+
+    Returns:
+        Whether the client is healthy or not.
+    """
+    query = gql(
+        """
+        query HealthcheckQuery {
+            org {
+                uuid
+            }
+        }
+        """
+    )
+    try:
+        result = await gql_client.execute(query)
+        if result["org"]["uuid"]:
+            return True
+    except Exception:  # pylint: disable=broad-except
+        logger.exception("Exception occured during GraphQL healthcheck")
+    return False
+
+
+async def healthcheck_model_client(model_client: ModelClient) -> bool:
+    """Check that our ModelClient connection is healthy.
+
+    Args:
+        model_client: The MO Model client to check health of.
+
+    Returns:
+        Whether the client is healthy or not.
+    """
+    try:
+        response = await model_client.get("/service/o/")
+        result = response.json()
+        if one(result)["uuid"]:
+            return True
+    except Exception:  # pylint: disable=broad-except
+        logger.exception("Exception occured during GraphQL healthcheck")
+    return False
 
 
 async def organisation_gatekeeper_callback(
@@ -252,5 +302,45 @@ def create_app(*args: Any, **kwargs: Any) -> FastAPI:
         """Call update_line_management on the provided org unit."""
         await context["seeded_update_line_management"](uuid)
         return {"status": "OK"}
+
+    @app.get("/health/live", status_code=HTTP_204_NO_CONTENT)
+    async def liveness() -> None:
+        """Endpoint to be used as a liveness probe for Kubernetes."""
+        return None
+
+    @app.get(
+        "/health/ready",
+        status_code=HTTP_204_NO_CONTENT,
+        responses={
+            "204": {"description": "Ready"},
+            "503": {"description": "Not ready"},
+        },
+    )
+    async def readiness(response: Response) -> Response:
+        """Endpoint to be used as a readiness probe for Kubernetes."""
+        response.status_code = HTTP_204_NO_CONTENT
+
+        healthchecks = {}
+        try:
+            # Check AMQP connection
+            healthchecks["AMQP"] = context["amqp_system"].healthcheck()
+            # Check GraphQL connection (gql_client)
+            healthchecks["GraphQL"] = await healthcheck_gql(context["gql_client"])
+            # Check Service API connection (model_client)
+            healthchecks["Service API"] = await healthcheck_model_client(
+                context["model_client"]
+            )
+        except Exception:  # pylint: disable=broad-except
+            logger.exception("Exception occured during readiness probe")
+            response.status_code = HTTP_503_SERVICE_UNAVAILABLE
+
+        for name, ready in healthchecks.items():
+            if not ready:
+                logger.warn(f"{name} is not ready")
+
+        if not all(healthchecks.values()):
+            response.status_code = HTTP_503_SERVICE_UNAVAILABLE
+
+        return response
 
     return app
