@@ -6,6 +6,11 @@ SPDX-License-Identifier: MPL-2.0
 CHANGELOG
 =========
 
+0.3.0 - 2022-06-22
+------------------
+
+[#46148] Added Kubernetes health endpoints
+
 0.2.0 - 2022-06-10
 ------------------
 
