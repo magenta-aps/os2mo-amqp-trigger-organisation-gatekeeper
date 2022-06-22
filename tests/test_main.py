@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: MPL-2.0
 # pylint: disable=redefined-outer-name
+# pylint: disable=too-many-arguments
 """Test the fetch_org_unit function."""
 import asyncio
 from datetime import datetime
@@ -310,3 +311,128 @@ async def test_lifespan(mo_amqpsystem: MOAMQPSystem, fastapi_app: FastAPI) -> No
         amqp_system.reset_mock()
 
     assert amqp_system.mock_calls == [call.stop()]
+
+
+async def test_liveness_endpoint(test_client: TestClient) -> None:
+    """Test the liveness endpoint on our app."""
+    response = test_client.get("/health/live")
+    assert response.status_code == 204
+
+
+@pytest.mark.parametrize(
+    "amqp_ok,gql_ok,model_ok,expected",
+    [
+        (True, True, True, 204),
+        (False, True, True, 503),
+        (True, False, True, 503),
+        (True, True, False, 503),
+        (True, False, False, 503),
+        (False, True, False, 503),
+        (False, False, True, 503),
+        (False, False, False, 503),
+    ],
+)
+@patch("orggatekeeper.main.construct_context")
+async def test_readiness_endpoint(
+    construct_context: MagicMock,
+    test_client_builder: Callable[..., TestClient],
+    amqp_ok: bool,
+    gql_ok: bool,
+    model_ok: bool,
+    expected: int,
+) -> None:
+    """Test the readiness endpoint handles errors."""
+    gql_client = AsyncMock()
+    if gql_ok:
+        gql_client.execute.return_value = {
+            "org": {"uuid": "35304fa6-ff84-4ea4-aac9-a285995ab45b"}
+        }
+    else:
+        gql_client.execute.return_value = {
+            "errors": [{"message": "Something went wrong"}]
+        }
+
+    model_client_response = MagicMock()
+    if model_ok:
+        model_client_response.json.return_value = [
+            {"uuid": "35304fa6-ff84-4ea4-aac9-a285995ab45b"}
+        ]
+    else:
+        model_client_response.json.return_value = "BOOM"
+    model_client = AsyncMock()
+    model_client.get.return_value = model_client_response
+
+    amqp_system = MagicMock()
+    amqp_system.healthcheck.return_value = amqp_ok
+
+    construct_context.return_value = {
+        "gql_client": gql_client,
+        "model_client": model_client,
+        "amqp_system": amqp_system,
+    }
+    test_client = test_client_builder()
+
+    response = test_client.get("/health/ready")
+    assert response.status_code == expected
+
+    assert len(gql_client.execute.mock_calls) == 1
+    assert model_client.mock_calls == [call.get("/service/o/"), call.get().json()]
+    assert amqp_system.mock_calls == [call.healthcheck()]
+
+
+@pytest.mark.parametrize(
+    "amqp_ok,gql_ok,model_ok,expected",
+    [
+        (True, True, True, 204),
+        (False, True, True, 503),
+        (True, False, True, 503),
+        (True, True, False, 503),
+        (True, False, False, 503),
+        (False, True, False, 503),
+        (False, False, True, 503),
+        (False, False, False, 503),
+    ],
+)
+@patch("orggatekeeper.main.construct_context")
+async def test_readiness_endpoint_exception(
+    construct_context: MagicMock,
+    test_client_builder: Callable[..., TestClient],
+    amqp_ok: bool,
+    gql_ok: bool,
+    model_ok: bool,
+    expected: int,
+) -> None:
+    """Test the readiness endpoint handled exceptions nicely."""
+    gql_client = AsyncMock()
+    if gql_ok:
+        gql_client.execute.return_value = {
+            "org": {"uuid": "35304fa6-ff84-4ea4-aac9-a285995ab45b"}
+        }
+    else:
+        gql_client.execute.side_effect = ValueError("BOOM")
+
+    model_client_response = MagicMock()
+    if model_ok:
+        model_client_response.json.return_value = [
+            {"uuid": "35304fa6-ff84-4ea4-aac9-a285995ab45b"}
+        ]
+    else:
+        model_client_response.json.side_effect = ValueError("BOOM")
+    model_client = AsyncMock()
+    model_client.get.return_value = model_client_response
+
+    amqp_system = MagicMock()
+    if amqp_ok:
+        amqp_system.healthcheck.return_value = True
+    else:
+        amqp_system.healthcheck.side_effect = ValueError("BOOM")
+
+    construct_context.return_value = {
+        "gql_client": gql_client,
+        "model_client": model_client,
+        "amqp_system": amqp_system,
+    }
+    test_client = test_client_builder()
+
+    response = test_client.get("/health/ready")
+    assert response.status_code == expected
