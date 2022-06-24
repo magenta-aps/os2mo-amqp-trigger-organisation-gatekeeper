@@ -21,7 +21,8 @@ from uuid import uuid4
 import pytest
 from graphql import DocumentNode
 from more_itertools import one
-from ramodels.mo import OrganisationUnit, Validity
+from ramodels.mo import OrganisationUnit
+from ramodels.mo import Validity
 
 from orggatekeeper.calculate import fetch_org_unit
 from orggatekeeper.calculate import fetch_org_unit_hierarchy_class_uuid
@@ -457,7 +458,16 @@ async def test_update_line_management_hidden(
     should_hide.assert_called_once_with(gql_client, uuid, [])
     fetch_org_unit.assert_called_once_with(gql_client, uuid)
     assert model_client.mock_calls == [
-        call.edit([org_unit.copy(update={"org_unit_hierarchy_uuid": hidden_uuid, "validity": Validity(from_date=now.date())})])
+        call.edit(
+            [
+                org_unit.copy(
+                    update={
+                        "org_unit_hierarchy_uuid": hidden_uuid,
+                        "validity": Validity(from_date=now.date()),
+                    }
+                )
+            ]
+        )
     ]
 
 
@@ -494,7 +504,14 @@ async def test_update_line_management_line(
     fetch_org_unit.assert_called_once_with(gql_client, uuid)
     assert model_client.mock_calls == [
         call.edit(
-            [org_unit.copy(update={"org_unit_hierarchy_uuid": line_management_uuid, "validity": Validity(from_date=now.date())})]
+            [
+                org_unit.copy(
+                    update={
+                        "org_unit_hierarchy_uuid": line_management_uuid,
+                        "validity": Validity(from_date=now.date()),
+                    }
+                )
+            ]
         )
     ]
 
