@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: MPL-2.0
 """Update logic."""
+import datetime
 import re
 from operator import itemgetter
 from typing import Optional
@@ -12,7 +13,7 @@ from gql import gql
 from more_itertools import one
 from raclients.graph.client import PersistentGraphQLClient
 from raclients.modelclient.mo import ModelClient
-from ramodels.mo import OrganisationUnit
+from ramodels.mo import OrganisationUnit, Validity
 
 from .config import Settings
 
@@ -340,7 +341,12 @@ async def update_line_management(
         return False
 
     # Prepare the updated object for writing
-    org_unit = org_unit.copy(update={"org_unit_hierarchy_uuid": new_org_unit_hierarchy})
+    org_unit = org_unit.copy(
+        update={
+            "org_unit_hierarchy_uuid": new_org_unit_hierarchy,
+            "validity": Validity(from_date=datetime.datetime.now().date())
+        }
+    )
 
     if settings.dry_run:
         logger.info("dry-run: Would have send edit payload", org_unit=org_unit)
