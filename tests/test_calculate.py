@@ -22,6 +22,7 @@ import pytest
 from graphql import DocumentNode
 from more_itertools import one
 from ramodels.mo import OrganisationUnit
+from ramodels.mo import Validity
 
 from orggatekeeper.calculate import fetch_org_unit
 from orggatekeeper.calculate import fetch_org_unit_hierarchy_class_uuid
@@ -429,11 +430,13 @@ async def test_update_line_management_dry_run(
     model_client.edit.assert_not_called()
 
 
+@patch("orggatekeeper.calculate.datetime")
 @patch("orggatekeeper.calculate.should_hide")
 @patch("orggatekeeper.calculate.fetch_org_unit")
 async def test_update_line_management_hidden(
     fetch_org_unit: MagicMock,
     should_hide: MagicMock,
+    mock_datetime: MagicMock,
     gql_client: MagicMock,
     model_client: AsyncMock,
     settings: Settings,
@@ -445,6 +448,9 @@ async def test_update_line_management_hidden(
     should_hide.return_value = True
     fetch_org_unit.return_value = org_unit
 
+    now = datetime.now()
+    mock_datetime.datetime.now.return_value = now
+
     uuid = org_unit.uuid
     result = await seeded_update_line_management(uuid)
     assert result is True
@@ -452,10 +458,20 @@ async def test_update_line_management_hidden(
     should_hide.assert_called_once_with(gql_client, uuid, [])
     fetch_org_unit.assert_called_once_with(gql_client, uuid)
     assert model_client.mock_calls == [
-        call.edit([org_unit.copy(update={"org_unit_hierarchy_uuid": hidden_uuid})])
+        call.edit(
+            [
+                org_unit.copy(
+                    update={
+                        "org_unit_hierarchy_uuid": hidden_uuid,
+                        "validity": Validity(from_date=now.date()),
+                    }
+                )
+            ]
+        )
     ]
 
 
+@patch("orggatekeeper.calculate.datetime")
 @patch("orggatekeeper.calculate.is_line_management")
 @patch("orggatekeeper.calculate.should_hide")
 @patch("orggatekeeper.calculate.fetch_org_unit")
@@ -463,6 +479,7 @@ async def test_update_line_management_line(
     fetch_org_unit: MagicMock,
     should_hide: MagicMock,
     is_line_management: MagicMock,
+    mock_datetime: MagicMock,
     gql_client: MagicMock,
     model_client: AsyncMock,
     settings: Settings,
@@ -475,6 +492,9 @@ async def test_update_line_management_line(
     is_line_management.return_value = True
     fetch_org_unit.return_value = org_unit
 
+    now = datetime.now()
+    mock_datetime.datetime.now.return_value = now
+
     uuid = org_unit.uuid
     result = await seeded_update_line_management(uuid)
     assert result is True
@@ -484,7 +504,14 @@ async def test_update_line_management_line(
     fetch_org_unit.assert_called_once_with(gql_client, uuid)
     assert model_client.mock_calls == [
         call.edit(
-            [org_unit.copy(update={"org_unit_hierarchy_uuid": line_management_uuid})]
+            [
+                org_unit.copy(
+                    update={
+                        "org_unit_hierarchy_uuid": line_management_uuid,
+                        "validity": Validity(from_date=now.date()),
+                    }
+                )
+            ]
         )
     ]
 
