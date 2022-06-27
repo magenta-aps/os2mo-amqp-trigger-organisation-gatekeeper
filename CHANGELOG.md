@@ -6,6 +6,11 @@ SPDX-License-Identifier: MPL-2.0
 CHANGELOG
 =========
 
+1.0.0 - 2022-06-27
+------------------
+
+[#46148] Use current date as from_date validity when modifying org units
+
 0.3.0 - 2022-06-22
 ------------------
 
