@@ -1,3 +1,3 @@
 Release type: patch
 
-[#46148] Increase GrapgQL timeout
+[#46148] Increase GraphQL timeout
