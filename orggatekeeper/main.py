@@ -159,6 +159,7 @@ def construct_clients(
         client_secret=settings.client_secret.get_secret_value(),
         auth_server=settings.auth_server,
         auth_realm=settings.auth_realm,
+        httpx_client_kwargs={"timeout": settings.graphql_timeout}
     )
     model_client = ModelClient(
         base_url=settings.mo_url,

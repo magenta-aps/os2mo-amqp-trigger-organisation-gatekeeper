@@ -30,3 +30,15 @@ def test_happy_path(monkeypatch: pytest.MonkeyPatch) -> None:
     settings = get_settings()
     assert isinstance(settings.client_secret, SecretStr)
     assert settings.client_secret.get_secret_value() == "AzureDiamond"
+
+
+def test_graphql_timeout_default() -> None:
+    get_settings.cache_clear()
+    settings = get_settings(client_secret="not important")
+    assert 120 == settings.graphql_timeout
+
+
+def test_graphql_timeout_non_default() -> None:
+    get_settings.cache_clear()
+    settings = get_settings(client_secret="not important", graphql_timeout=10)
+    assert 10 == settings.graphql_timeout
