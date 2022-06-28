@@ -101,6 +101,8 @@ class Settings(BaseSettings):
 
     expose_metrics: bool = Field(True, description="Whether to expose metrics.")
 
+    graphql_timeout: int = 120
+
 
 @cache
 def get_settings(*args: Any, **kwargs: Any) -> Settings:
