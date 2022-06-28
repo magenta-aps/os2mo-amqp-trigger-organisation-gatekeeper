@@ -31,7 +31,9 @@ from ramqp.mo_models import RequestType
 from ramqp.mo_models import ServiceType
 from ramqp.moqp import MOAMQPSystem
 
+from orggatekeeper.config import get_settings
 from orggatekeeper.main import build_information
+from orggatekeeper.main import construct_clients
 from orggatekeeper.main import create_app
 from orggatekeeper.main import gather_with_concurrency
 from orggatekeeper.main import organisation_gatekeeper_callback
@@ -436,3 +438,17 @@ async def test_readiness_endpoint_exception(
 
     response = test_client.get("/health/ready")
     assert response.status_code == expected
+
+
+@patch("orggatekeeper.main.PersistentGraphQLClient")
+def test_gql_client_created_with_timeout(mock_gql_client: MagicMock) -> None:
+    """Test that PersistentGraphQLClient is called with timeout setting"""
+
+    # Arrange
+    settings = get_settings(client_secret="not used", graphql_timeout=15)
+
+    # Act
+    construct_clients(settings)
+
+    # Assert
+    assert 15 == mock_gql_client.call_args.kwargs["httpx_client_kwargs"]["timeout"]
