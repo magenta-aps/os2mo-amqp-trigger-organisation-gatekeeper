@@ -6,6 +6,11 @@ SPDX-License-Identifier: MPL-2.0
 CHANGELOG
 =========
 
+1.0.2 - 2022-06-28
+------------------
+
+[#46148] Set execution timeout for asyncio.wait_for
+
 1.0.1 - 2022-06-28
 ------------------
 
