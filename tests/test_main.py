@@ -452,3 +452,4 @@ def test_gql_client_created_with_timeout(mock_gql_client: MagicMock) -> None:
 
     # Assert
     assert 15 == mock_gql_client.call_args.kwargs["httpx_client_kwargs"]["timeout"]
+    assert 15 == mock_gql_client.call_args.kwargs["execute_timeout"]
