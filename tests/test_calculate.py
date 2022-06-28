@@ -6,7 +6,6 @@
 # pylint: disable=unused-argument
 # pylint: disable=too-many-arguments
 from datetime import datetime
-from functools import partial
 from typing import Any
 from typing import Awaitable
 from typing import Callable
@@ -30,9 +29,9 @@ from orggatekeeper.calculate import get_hidden_uuid
 from orggatekeeper.calculate import get_line_management_uuid
 from orggatekeeper.calculate import is_line_management
 from orggatekeeper.calculate import should_hide
-from orggatekeeper.calculate import update_line_management
 from orggatekeeper.config import get_settings
 from orggatekeeper.config import Settings
+from orggatekeeper.main import gen_update_line_management
 from orggatekeeper.mo import fetch_org_unit_hierarchy_class_uuid
 from orggatekeeper.mo import fetch_org_unit_hierarchy_facet_uuid
 
@@ -306,14 +305,14 @@ def org_unit() -> Generator[OrganisationUnit, None, None]:
         name="Test",
         org_unit_type_uuid=uuid4(),
         org_unit_level_uuid=uuid4(),
-        from_date=datetime.now(),
+        from_date=datetime.now().isoformat(),
     )
 
 
 @pytest.fixture()
-def gql_client() -> Generator[MagicMock, None, None]:
+def gql_session() -> Generator[AsyncMock, None, None]:
     """Fixture to mock GraphQLClient."""
-    yield MagicMock()
+    yield AsyncMock()
 
 
 @pytest.fixture()
@@ -323,26 +322,7 @@ def model_client() -> Generator[AsyncMock, None, None]:
 
 
 @pytest.fixture()
-def set_settings() -> Generator[Callable[..., Settings], None, None]:
-    """Fixture to mock get_settings."""
-
-    def setup_mock_settings(*args: Any, **kwargs: Any) -> Settings:
-        settings = get_settings(client_secret="hunter2", *args, **kwargs)
-        return settings
-
-    yield setup_mock_settings
-
-
-@pytest.fixture()
-def settings(set_settings: Callable[..., Settings]) -> Generator[Settings, None, None]:
-    """Fixture to mock get_settings."""
-    yield set_settings()
-
-
-@pytest.fixture()
-def line_management_uuid(
-    gql_client: MagicMock, settings: Settings
-) -> Generator[UUID, None, None]:
+def line_management_uuid(gql_session: AsyncMock) -> Generator[UUID, None, None]:
     """Fixture to mock get_line_management_uuid."""
     with patch(
         "orggatekeeper.calculate.get_line_management_uuid"
@@ -353,9 +333,7 @@ def line_management_uuid(
 
 
 @pytest.fixture()
-def hidden_uuid(
-    gql_client: MagicMock, settings: Settings
-) -> Generator[UUID, None, None]:
+def hidden_uuid(gql_session: AsyncMock) -> Generator[UUID, None, None]:
     """Fixture to mock get_hidden_uuid."""
     with patch("orggatekeeper.calculate.get_hidden_uuid") as get_hidden_uuid:
         hidden_uuid = uuid4()
@@ -365,13 +343,17 @@ def hidden_uuid(
 
 @pytest.fixture()
 def seeded_update_line_management(
-    gql_client: MagicMock, model_client: AsyncMock, settings: Settings
+    gql_session: AsyncMock, model_client: AsyncMock
 ) -> Generator[Callable[[UUID], Awaitable[bool]], None, None]:
     """Fixture to generate update_line_management function."""
-    seeded_update_line_management = partial(
-        update_line_management, gql_client, model_client, settings
+    settings = get_settings()
+    yield gen_update_line_management(
+        {
+            "graphql_session": gql_session,
+            "model_client": model_client,
+            "user_context": {"settings": settings},
+        }
     )
-    yield seeded_update_line_management
 
 
 @patch("orggatekeeper.calculate.is_line_management")
@@ -381,7 +363,7 @@ async def test_update_line_management_no_change(
     fetch_org_unit: MagicMock,
     should_hide: MagicMock,
     is_line_management: MagicMock,
-    gql_client: MagicMock,
+    gql_session: AsyncMock,
     model_client: AsyncMock,
     seeded_update_line_management: Callable[[UUID], Awaitable[bool]],
     org_unit: OrganisationUnit,
@@ -395,9 +377,9 @@ async def test_update_line_management_no_change(
     result = await seeded_update_line_management(uuid)
     assert result is False
 
-    should_hide.assert_called_once_with(gql_client, uuid, [])
-    is_line_management.assert_called_once_with(gql_client, uuid)
-    fetch_org_unit.assert_called_once_with(gql_client, uuid)
+    should_hide.assert_called_once_with(gql_session, uuid, [])
+    is_line_management.assert_called_once_with(gql_session, uuid)
+    fetch_org_unit.assert_called_once_with(gql_session, uuid)
     model_client.assert_not_called()
 
 
@@ -406,16 +388,21 @@ async def test_update_line_management_no_change(
 async def test_update_line_management_dry_run(
     fetch_org_unit: MagicMock,
     should_hide: MagicMock,
-    gql_client: MagicMock,
+    gql_session: AsyncMock,
     model_client: AsyncMock,
     set_settings: Callable[..., Settings],
     hidden_uuid: MagicMock,
     org_unit: OrganisationUnit,
 ) -> None:
     """Test that update_line_management can set hidden_uuid."""
-    settings = set_settings(dry_run=True)
-    seeded_update_line_management = partial(
-        update_line_management, gql_client, model_client, settings
+    set_settings(dry_run=True)
+    settings = get_settings()
+    seeded_update_line_management = gen_update_line_management(
+        {
+            "graphql_session": gql_session,
+            "model_client": model_client,
+            "user_context": {"settings": settings},
+        }
     )
 
     should_hide.return_value = True
@@ -425,8 +412,8 @@ async def test_update_line_management_dry_run(
     result = await seeded_update_line_management(uuid)
     assert result is True
 
-    should_hide.assert_called_once_with(gql_client, uuid, [])
-    fetch_org_unit.assert_called_once_with(gql_client, uuid)
+    should_hide.assert_called_once_with(gql_session, uuid, [])
+    fetch_org_unit.assert_called_once_with(gql_session, uuid)
     model_client.edit.assert_not_called()
 
 
@@ -437,9 +424,8 @@ async def test_update_line_management_hidden(
     fetch_org_unit: MagicMock,
     should_hide: MagicMock,
     mock_datetime: MagicMock,
-    gql_client: MagicMock,
+    gql_session: AsyncMock,
     model_client: AsyncMock,
-    settings: Settings,
     hidden_uuid: UUID,
     seeded_update_line_management: Callable[[UUID], Awaitable[bool]],
     org_unit: OrganisationUnit,
@@ -455,8 +441,8 @@ async def test_update_line_management_hidden(
     result = await seeded_update_line_management(uuid)
     assert result is True
 
-    should_hide.assert_called_once_with(gql_client, uuid, [])
-    fetch_org_unit.assert_called_once_with(gql_client, uuid)
+    should_hide.assert_called_once_with(gql_session, uuid, [])
+    fetch_org_unit.assert_called_once_with(gql_session, uuid)
     assert model_client.mock_calls == [
         call.edit(
             [
@@ -480,9 +466,8 @@ async def test_update_line_management_line(
     should_hide: MagicMock,
     is_line_management: MagicMock,
     mock_datetime: MagicMock,
-    gql_client: MagicMock,
+    gql_session: AsyncMock,
     model_client: AsyncMock,
-    settings: Settings,
     line_management_uuid: UUID,
     seeded_update_line_management: Callable[[UUID], Awaitable[bool]],
     org_unit: OrganisationUnit,
@@ -499,9 +484,9 @@ async def test_update_line_management_line(
     result = await seeded_update_line_management(uuid)
     assert result is True
 
-    should_hide.assert_called_once_with(gql_client, uuid, [])
-    is_line_management.assert_called_once_with(gql_client, uuid)
-    fetch_org_unit.assert_called_once_with(gql_client, uuid)
+    should_hide.assert_called_once_with(gql_session, uuid, [])
+    is_line_management.assert_called_once_with(gql_session, uuid)
+    fetch_org_unit.assert_called_once_with(gql_session, uuid)
     assert model_client.mock_calls == [
         call.edit(
             [
@@ -523,7 +508,6 @@ async def test_get_line_management_uuid_preseed() -> None:
     uuid = uuid4()
     session = MagicMock()
     settings = get_settings(
-        client_secret="hunter2",
         line_management_uuid=uuid,
     )
     line_management_uuid = await get_line_management_uuid(
@@ -540,8 +524,8 @@ async def test_get_line_management_uuid_preseed() -> None:
     new_callable=AsyncMock,
 )
 async def test_get_line_management_uuid(
-    fetch_org_unit_hierarchy_class_uuid: MagicMock,
-    fetch_org_unit_hierarchy_facet_uuid: MagicMock,
+    fetch_org_unit_hierarchy_class_uuid: AsyncMock,
+    fetch_org_unit_hierarchy_facet_uuid: AsyncMock,
 ) -> None:
     """Test get_line_management_uuid with pre-seeded uuid."""
     facet_uuid = uuid4()
@@ -549,7 +533,7 @@ async def test_get_line_management_uuid(
     fetch_org_unit_hierarchy_facet_uuid.return_value = facet_uuid
     fetch_org_unit_hierarchy_class_uuid.return_value = uuid
 
-    settings = get_settings(client_secret="hunter2")
+    settings = get_settings()
     session = MagicMock()
     line_management_uuid = await get_line_management_uuid(
         session,
@@ -568,7 +552,6 @@ async def test_get_hidden_uuid_preseed() -> None:
     """Test get_hidden_uuid with pre-seeded uuid."""
     uuid = uuid4()
     settings = get_settings(
-        client_secret="hunter2",
         hidden_uuid=uuid,
     )
     session = MagicMock()
@@ -586,8 +569,8 @@ async def test_get_hidden_uuid_preseed() -> None:
     new_callable=AsyncMock,
 )
 async def test_get_hidden_uuid(
-    fetch_org_unit_hierarchy_class_uuid: MagicMock,
-    fetch_org_unit_hierarchy_facet_uuid: MagicMock,
+    fetch_org_unit_hierarchy_class_uuid: AsyncMock,
+    fetch_org_unit_hierarchy_facet_uuid: AsyncMock,
 ) -> None:
     """Test get_hidden_uuid with pre-seeded uuid."""
     facet_uuid = uuid4()
@@ -595,7 +578,7 @@ async def test_get_hidden_uuid(
     fetch_org_unit_hierarchy_facet_uuid.return_value = facet_uuid
     fetch_org_unit_hierarchy_class_uuid.return_value = uuid
 
-    settings = get_settings(client_secret="hunter2")
+    settings = get_settings()
     session = MagicMock()
     hidden_uuid = await get_hidden_uuid(
         session,

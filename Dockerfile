@@ -16,6 +16,7 @@ RUN poetry install --no-dev
 
 WORKDIR /opt/app
 COPY orggatekeeper .
+COPY fastramqpi .
 WORKDIR /opt/
 CMD [ "uvicorn", "--factory", "app.main:create_app", "--host", "0.0.0.0" ]
 

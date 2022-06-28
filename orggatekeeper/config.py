@@ -2,57 +2,33 @@
 #
 # SPDX-License-Identifier: MPL-2.0
 """Settings handling."""
-import logging
-from enum import Enum
 from functools import cache
 from typing import Any
 from uuid import UUID
 
 import structlog
-from pydantic import AnyHttpUrl
 from pydantic import BaseSettings
 from pydantic import Field
-from pydantic import parse_obj_as
-from pydantic import SecretStr
 
-
-class LogLevel(Enum):
-    """Log levels."""
-
-    NOTSET = logging.NOTSET
-    DEBUG = logging.DEBUG
-    INFO = logging.INFO
-    WARNING = logging.WARNING
-    ERROR = logging.ERROR
-    CRITICAL = logging.CRITICAL
+from fastramqpi.config import Settings as FastRAMQPISettings
 
 
 logger = structlog.get_logger()
 
 
+# pylint: disable=too-few-public-methods
 class Settings(BaseSettings):
-    """Settings for organisation gatekeeper.
+    """Settings for organisation gatekeeper."""
 
-    Note that AMQP related settings are taken directly by RAMQP:
-    * https://git.magenta.dk/rammearkitektur/ramqp/-/blob/master/ramqp/config.py
-    """
+    class Config:
+        """Settings are frozen."""
 
-    # pylint: disable=too-few-public-methods
+        frozen = True
+        env_nested_delimiter = "__"
 
-    commit_tag: str = Field("HEAD", description="Git commit tag.")
-    commit_sha: str = Field("HEAD", description="Git commit SHA.")
-
-    mo_url: AnyHttpUrl = Field(
-        parse_obj_as(AnyHttpUrl, "http://mo-service:5000"),
-        description="Base URL for OS2mo.",
+    fastramqpi: FastRAMQPISettings = Field(
+        default_factory=FastRAMQPISettings, description="FastRAMQPI settings"
     )
-    client_id: str = Field("orggatekeeper", description="Client ID for OIDC client.")
-    client_secret: SecretStr = Field(..., description="Client Secret for OIDC client.")
-    auth_server: AnyHttpUrl = Field(
-        parse_obj_as(AnyHttpUrl, "http://keycloak-service:8080/auth"),
-        description="Base URL for OIDC server (Keycloak).",
-    )
-    auth_realm: str = Field("mo", description="Realm to authenticate against")
 
     enable_hide_logic = Field(True, description="Whether or not to enable hide logic.")
     hidden: list[str] = Field(
@@ -92,29 +68,18 @@ class Settings(BaseSettings):
     dry_run: bool = Field(
         False, description="Run in dry-run mode, only printing what would have changed."
     )
-    queue_prefix: str = Field(
-        "os2mo-amqp-trigger-organisation-gatekeeper",
-        description="The prefix to attach to queues for this program.",
-    )
-
-    log_level: LogLevel = LogLevel.DEBUG
-
-    expose_metrics: bool = Field(True, description="Whether to expose metrics.")
-
-    graphql_timeout: int = 120
 
 
 @cache
-def get_settings(*args: Any, **kwargs: Any) -> Settings:
+def get_settings(**kwargs: Any) -> Settings:
     """Fetch settings object.
 
     Args:
-        args: overrides
         kwargs: overrides
 
     Return:
         Cached settings object.
     """
-    settings = Settings(*args, **kwargs)
-    logger.debug("Settings fetched", settings=settings, args=args, kwargs=kwargs)
+    settings = Settings(**kwargs)
+    logger.debug("Settings fetched", settings=settings, kwargs=kwargs)
     return settings

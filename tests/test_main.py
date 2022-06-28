@@ -3,15 +3,17 @@
 # SPDX-License-Identifier: MPL-2.0
 # pylint: disable=redefined-outer-name
 # pylint: disable=too-many-arguments
+# pylint: disable=protected-access
+# pylint: disable=unused-argument
 """Test the fetch_org_unit function."""
 import asyncio
+import random
 from datetime import datetime
 from functools import partial
 from time import monotonic
 from typing import Any
 from typing import Callable
 from typing import cast
-from typing import Generator
 from typing import Set
 from typing import Tuple
 from unittest.mock import AsyncMock
@@ -22,22 +24,18 @@ from uuid import UUID
 from uuid import uuid4
 
 import pytest
-from asgi_lifespan import LifespanManager
-from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from ramqp.mo_models import ObjectType
-from ramqp.mo_models import PayloadType
-from ramqp.mo_models import RequestType
-from ramqp.mo_models import ServiceType
-from ramqp.moqp import MOAMQPSystem
+from more_itertools import one
+from ramqp.mo.models import PayloadType
 
-from orggatekeeper.config import get_settings
-from orggatekeeper.main import build_information
-from orggatekeeper.main import construct_clients
-from orggatekeeper.main import create_app
+from fastramqpi.config import Settings
+from fastramqpi.main import build_information
+from fastramqpi.main import construct_clients
+from fastramqpi.main import update_build_information
+from orggatekeeper.main import amqp_router
+from orggatekeeper.main import create_fastramqpi
 from orggatekeeper.main import gather_with_concurrency
 from orggatekeeper.main import organisation_gatekeeper_callback
-from orggatekeeper.main import update_build_information
 from orggatekeeper.main import update_counter
 
 
@@ -51,7 +49,6 @@ def get_metric_value(metric: Any, labels: Tuple[str]) -> float:
     Returns:
         The metric value.
     """
-    # pylint: disable=protected-access
     metric = metric.labels(*labels)._value
     return cast(float, metric.get())
 
@@ -61,7 +58,6 @@ def clear_metric_value(metric: Any) -> None:
 
     Args:
         metric: The metric to query.
-        labels: The label-set to query with.
 
     Returns:
         The metric value.
@@ -78,7 +74,6 @@ def get_metric_labels(metric: Any) -> Set[Tuple[str]]:
     Returns:
         The label-set.
     """
-    # pylint: disable=protected-access
     return set(metric._metrics.keys())
 
 
@@ -86,12 +81,12 @@ def get_metric_labels(metric: Any) -> Set[Tuple[str]]:
 async def test_update_metric(update_line_management: MagicMock) -> None:
     """Test that our update_counter metric is updated as expected."""
     payload = PayloadType(uuid=uuid4(), object_uuid=uuid4(), time=datetime.now())
-    seeded_update_line_management = partial(
-        update_line_management, MagicMock(), MagicMock, MagicMock()
-    )
-    callback_caller = partial(
-        organisation_gatekeeper_callback, seeded_update_line_management, MagicMock()
-    )
+    context = {
+        "graphql_session": MagicMock(),
+        "model_client": MagicMock(),
+        "user_context": {"settings": MagicMock()},
+    }
+    callback_caller = partial(organisation_gatekeeper_callback, context)
 
     clear_metric_value(update_counter)
     assert get_metric_labels(update_counter) == set()
@@ -126,9 +121,9 @@ async def test_update_metric(update_line_management: MagicMock) -> None:
 def test_build_information() -> None:
     """Test that build metrics are updated as expected."""
     clear_metric_value(build_information)
-    assert build_information._value == {}  # pylint: disable=protected-access
+    assert build_information._value == {}
     update_build_information("1.0.0", "cafebabe")
-    assert build_information._value == {  # pylint: disable=protected-access
+    assert build_information._value == {
         "version": "1.0.0",
         "hash": "cafebabe",
     }
@@ -175,47 +170,6 @@ async def test_gather_with_concurrency() -> None:
     assert duration > 0.3
 
 
-@pytest.fixture
-def fastapi_app_builder() -> Generator[Callable[..., FastAPI], None, None]:
-    """Fixture for the FastAPI app builder."""
-
-    def builder(*args: Any, default_args: bool = True, **kwargs: Any) -> FastAPI:
-        if default_args:
-            kwargs["client_secret"] = "hunter2"
-            kwargs["expose_metrics"] = False
-        return create_app(*args, **kwargs)
-
-    yield builder
-
-
-@pytest.fixture
-def fastapi_app(
-    fastapi_app_builder: Callable[..., FastAPI]
-) -> Generator[FastAPI, None, None]:
-    """Fixture for the FastAPI app."""
-    yield fastapi_app_builder(client_secret="hunter2", expose_metrics=False)
-
-
-@pytest.fixture
-def test_client_builder(
-    fastapi_app_builder: Callable[..., FastAPI]
-) -> Generator[Callable[..., TestClient], None, None]:
-    """Fixture for the FastAPI test client builder."""
-
-    def builder(*args: Any, **kwargs: Any) -> TestClient:
-        return TestClient(fastapi_app_builder(*args, **kwargs))
-
-    yield builder
-
-
-@pytest.fixture
-def test_client(
-    test_client_builder: Callable[..., TestClient]
-) -> Generator[TestClient, None, None]:
-    """Fixture for the FastAPI test client."""
-    yield test_client_builder(client_secret="hunter2", expose_metrics=False)
-
-
 async def test_root_endpoint(test_client: TestClient) -> None:
     """Test the root endpoint on our app."""
     response = test_client.get("/")
@@ -223,96 +177,97 @@ async def test_root_endpoint(test_client: TestClient) -> None:
     assert response.json() == {"name": "orggatekeeper"}
 
 
-async def test_metrics_endpoint(test_client_builder: Callable[..., TestClient]) -> None:
+async def test_metrics_endpoint(
+    enable_metrics: None, test_client_builder: Callable[[], TestClient]
+) -> None:
     """Test the metrics endpoint on our app."""
-    test_client = test_client_builder(default_args=False, client_secret="hunter2")
+    test_client = test_client_builder()
     response = test_client.get("/metrics")
     assert response.status_code == 200
     assert "# TYPE orggatekeeper_changes_created gauge" in response.text
     assert "# TYPE build_information_info gauge" in response.text
 
 
-@patch("orggatekeeper.main.construct_context")
+@patch("orggatekeeper.main.create_app")
+@patch("orggatekeeper.main.update_line_management", new_callable=AsyncMock)
 async def test_trigger_all_endpoint(
-    construct_context: MagicMock,
+    update_line_management: AsyncMock,
+    create_app: MagicMock,
     test_client_builder: Callable[..., TestClient],
 ) -> None:
     """Test the trigger all endpoint on our app."""
-    gql_client = AsyncMock()
-    gql_client.execute.return_value = {
-        "org_units": [{"uuid": "30206243-d930-4a69-bcfa-62e3292837d3"}]
+    uuids = [uuid4() for _ in range(random.randint(1, 10))]
+
+    gql_session = AsyncMock()
+    gql_session.execute.return_value = {
+        "org_units": [{"uuid": str(uuid)} for uuid in uuids]
     }
-    seeded_update_line_management = AsyncMock()
-    construct_context.return_value = {
-        "gql_client": gql_client,
-        "seeded_update_line_management": seeded_update_line_management,
-    }
+    fastramqpi = create_fastramqpi()
+    create_app.return_value = fastramqpi.get_app()
+    fastramqpi._context["graphql_session"] = gql_session
+    model_client = MagicMock()
+    fastramqpi._context["model_client"] = model_client
+    settings = MagicMock()
+    fastramqpi._context["user_context"]["settings"] = settings
+
     test_client = test_client_builder()
     response = test_client.post("/trigger/all")
     assert response.status_code == 200
     assert response.json() == {"status": "OK"}
-    assert len(gql_client.execute.mock_calls) == 1
-    assert seeded_update_line_management.mock_calls == [
-        call(UUID("30206243-d930-4a69-bcfa-62e3292837d3"))
+    assert len(gql_session.execute.mock_calls) == 1
+    assert update_line_management.mock_calls == [
+        call(
+            gql_session=gql_session,
+            model_client=model_client,
+            settings=settings,
+            uuid=uuid,
+        )
+        for uuid in uuids
     ]
 
 
-@patch("orggatekeeper.main.construct_context")
+@patch("orggatekeeper.main.create_app")
+@patch("orggatekeeper.main.update_line_management", new_callable=AsyncMock)
 async def test_trigger_uuid_endpoint(
-    construct_context: MagicMock,
+    update_line_management: AsyncMock,
+    create_app: MagicMock,
     test_client_builder: Callable[..., TestClient],
 ) -> None:
     """Test the trigger uuid endpoint on our app."""
-    seeded_update_line_management = AsyncMock()
-    construct_context.return_value = {
-        "seeded_update_line_management": seeded_update_line_management
-    }
+
+    fastramqpi = create_fastramqpi()
+    create_app.return_value = fastramqpi.get_app()
+    gql_session = MagicMock()
+    fastramqpi._context["graphql_session"] = gql_session
+    model_client = MagicMock()
+    fastramqpi._context["model_client"] = model_client
+    settings = MagicMock()
+    fastramqpi._context["user_context"]["settings"] = settings
+
     test_client = test_client_builder()
     response = test_client.post("/trigger/0a9d7211-16a1-47e1-82da-7ec8480e7487")
     assert response.status_code == 200
     assert response.json() == {"status": "OK"}
-    assert seeded_update_line_management.mock_calls == [
-        call(UUID("0a9d7211-16a1-47e1-82da-7ec8480e7487"))
+    assert update_line_management.mock_calls == [
+        call(
+            gql_session=gql_session,
+            model_client=model_client,
+            settings=settings,
+            uuid=UUID("0a9d7211-16a1-47e1-82da-7ec8480e7487"),
+        )
     ]
 
 
-@patch("orggatekeeper.main.MOAMQPSystem")
-async def test_lifespan(mo_amqpsystem: MOAMQPSystem, fastapi_app: FastAPI) -> None:
-    """Test that our lifespan events are handled as expected."""
-    amqp_system = MagicMock()
-    amqp_system.start = AsyncMock()
-    amqp_system.stop = AsyncMock()
-
-    mo_amqpsystem.return_value = amqp_system
-
-    assert not amqp_system.mock_calls
-
-    # Fire startup event on entry, and shutdown on exit
-    async with LifespanManager(fastapi_app):
-
-        assert len(amqp_system.mock_calls) == 7
-        # Create register calls
-        assert amqp_system.mock_calls[0] == call.register(
-            ServiceType.ORG_UNIT, ObjectType.ASSOCIATION, RequestType.WILDCARD
-        )
-        assert amqp_system.mock_calls[2] == call.register(
-            ServiceType.ORG_UNIT, ObjectType.ENGAGEMENT, RequestType.WILDCARD
-        )
-        assert amqp_system.mock_calls[4] == call.register(
-            ServiceType.ORG_UNIT, ObjectType.ORG_UNIT, RequestType.WILDCARD
-        )
-        # Register calls
-        assert amqp_system.mock_calls[1] == amqp_system.mock_calls[3]
-        assert amqp_system.mock_calls[1] == amqp_system.mock_calls[5]
-        # Start call
-        assert amqp_system.mock_calls[6] == call.start(
-            queue_prefix="os2mo-amqp-trigger-organisation-gatekeeper"
-        )
-
-        # Clean mock to only capture shutdown changes
-        amqp_system.reset_mock()
-
-    assert amqp_system.mock_calls == [call.stop()]
+async def test_register() -> None:
+    """Test that our router registered the right events."""
+    # Assert that only one function is registered on the router
+    route_function = one(amqp_router.registry)
+    routing_keys = amqp_router.registry[route_function]
+    assert routing_keys == {
+        "org_unit.engagement.*",
+        "org_unit.org_unit.*",
+        "org_unit.association.*",
+    }
 
 
 async def test_liveness_endpoint(test_client: TestClient) -> None:
@@ -334,9 +289,9 @@ async def test_liveness_endpoint(test_client: TestClient) -> None:
         (False, False, False, 503),
     ],
 )
-@patch("orggatekeeper.main.construct_context")
+@patch("orggatekeeper.main.create_app")
 async def test_readiness_endpoint(
-    construct_context: MagicMock,
+    create_app: MagicMock,
     test_client_builder: Callable[..., TestClient],
     amqp_ok: bool,
     gql_ok: bool,
@@ -367,11 +322,12 @@ async def test_readiness_endpoint(
     amqp_system = MagicMock()
     amqp_system.healthcheck.return_value = amqp_ok
 
-    construct_context.return_value = {
-        "gql_client": gql_client,
-        "model_client": model_client,
-        "amqp_system": amqp_system,
-    }
+    fastramqpi = create_fastramqpi()
+    create_app.return_value = fastramqpi.get_app()
+    fastramqpi._context["user_context"]["gql_client"] = gql_client
+    fastramqpi._context["user_context"]["model_client"] = model_client
+    fastramqpi._context["amqpsystem"] = amqp_system
+
     test_client = test_client_builder()
 
     response = test_client.get("/health/ready")
@@ -395,9 +351,9 @@ async def test_readiness_endpoint(
         (False, False, False, 503),
     ],
 )
-@patch("orggatekeeper.main.construct_context")
+@patch("orggatekeeper.main.create_app")
 async def test_readiness_endpoint_exception(
-    construct_context: MagicMock,
+    create_app: MagicMock,
     test_client_builder: Callable[..., TestClient],
     amqp_ok: bool,
     gql_ok: bool,
@@ -429,23 +385,24 @@ async def test_readiness_endpoint_exception(
     else:
         amqp_system.healthcheck.side_effect = ValueError("BOOM")
 
-    construct_context.return_value = {
-        "gql_client": gql_client,
-        "model_client": model_client,
-        "amqp_system": amqp_system,
-    }
+    fastramqpi = create_fastramqpi()
+    create_app.return_value = fastramqpi.get_app()
+    fastramqpi._context["user_context"]["gql_client"] = gql_client
+    fastramqpi._context["user_context"]["model_client"] = model_client
+    fastramqpi._context["amqpsystem"] = amqp_system
+
     test_client = test_client_builder()
 
     response = test_client.get("/health/ready")
     assert response.status_code == expected
 
 
-@patch("orggatekeeper.main.PersistentGraphQLClient")
+@patch("fastramqpi.main.GraphQLClient")
 def test_gql_client_created_with_timeout(mock_gql_client: MagicMock) -> None:
-    """Test that PersistentGraphQLClient is called with timeout setting"""
+    """Test that GraphQLClient is called with timeout setting"""
 
     # Arrange
-    settings = get_settings(client_secret="not used", graphql_timeout=15)
+    settings = Settings(graphql_timeout=15)
 
     # Act
     construct_clients(settings)

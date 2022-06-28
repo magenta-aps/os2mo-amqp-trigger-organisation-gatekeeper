@@ -8,8 +8,8 @@ from uuid import UUID
 
 import structlog
 from gql import gql
+from gql.client import AsyncClientSession
 from more_itertools import one
-from raclients.graph.client import PersistentGraphQLClient
 from raclients.modelclient.mo import ModelClient
 from ramodels.mo import Validity
 from ramodels.mo._shared import OrgUnitHierarchy
@@ -23,11 +23,11 @@ logger = structlog.get_logger()
 ny_regex = re.compile(r"NY\d-niveau")
 
 
-async def is_line_management(gql_client: PersistentGraphQLClient, uuid: UUID) -> bool:
+async def is_line_management(gql_session: AsyncClientSession, uuid: UUID) -> bool:
     """Determine whether the organisation unit is part of line management.
 
     Args:
-        gql_client: The GraphQL client to run our queries on.
+        gql_session: The GraphQL session to run our queries on.
         uuid: UUID of the organisation unit.
 
     Returns:
@@ -52,7 +52,7 @@ async def is_line_management(gql_client: PersistentGraphQLClient, uuid: UUID) ->
         }
         """
     )
-    result = await gql_client.execute(query, {"uuids": [str(uuid)]})
+    result = await gql_session.execute(query, {"uuids": [str(uuid)]})
     obj = one(one(result["org_units"])["objects"])
     logger.debug("GraphQL obj", obj=obj)
 
@@ -72,13 +72,13 @@ async def is_line_management(gql_client: PersistentGraphQLClient, uuid: UUID) ->
 
 
 async def should_hide(
-    gql_client: PersistentGraphQLClient, uuid: UUID, hidden: list[str]
+    gql_session: AsyncClientSession, uuid: UUID, hidden: list[str]
 ) -> bool:
     """Determine whether the organisation unit should be hidden.
 
     Args:
-        gql_client: The GraphQL client to run our queries on.
-        org_unit: The organisation unit object.
+        gql_session: The GraphQL session to run our queries on.
+        uuid: The UUID of the org unit.
         hidden: User-keys of organisation units to hide (all children included).
 
     Returns:
@@ -103,19 +103,19 @@ async def should_hide(
         }
         """
     )
-    result = await gql_client.execute(query, {"uuids": [str(uuid)]})
+    result = await gql_session.execute(query, {"uuids": [str(uuid)]})
     obj = one(one(result["org_units"])["objects"])
     logger.debug("GraphQL obj", obj=obj)
 
     if obj["user_key"] in hidden:
         return True
     if obj["parent_uuid"] is not None:
-        return await should_hide(gql_client, obj["parent_uuid"], hidden)
+        return await should_hide(gql_session, obj["parent_uuid"], hidden)
     return False
 
 
 async def update_line_management(
-    gql_client: PersistentGraphQLClient,
+    gql_session: AsyncClientSession,
     model_client: ModelClient,
     settings: Settings,
     uuid: UUID,
@@ -130,7 +130,7 @@ async def update_line_management(
     * Their user-key is contained within hidden_user_key or a child of it.
 
     Args:
-        gql_client: The GraphQL client to run queries on.
+        gql_session: The GraphQL session to run queries on.
         model_client: The MO Model client to modify MO with.
         settings: The integration settings module.
         uuid: UUID of the organisation unit to recalculate.
@@ -141,26 +141,26 @@ async def update_line_management(
     # Determine the desired org_unit_hierarchy class uuid
     new_org_unit_hierarchy: OrgUnitHierarchy | None = None
     if settings.enable_hide_logic and await should_hide(
-        gql_client, uuid, settings.hidden
+        gql_session, uuid, settings.hidden
     ):
         logger.debug("Organisation Unit needs to be hidden", uuid=uuid)
         hidden_uuid = await get_hidden_uuid(
-            gql_client,
+            gql_session,
             settings.hidden_uuid,
             settings.hidden_user_key,
         )
         new_org_unit_hierarchy = OrgUnitHierarchy(uuid=hidden_uuid)
-    elif await is_line_management(gql_client, uuid):
+    elif await is_line_management(gql_session, uuid):
         logger.debug("Organisation Unit needs to be in line management", uuid=uuid)
         line_management_uuid = await get_line_management_uuid(
-            gql_client,
+            gql_session,
             settings.line_management_uuid,
             settings.line_management_user_key,
         )
         new_org_unit_hierarchy = OrgUnitHierarchy(uuid=line_management_uuid)
 
     # Fetch the current object and see if we need to update it
-    org_unit = await fetch_org_unit(gql_client, uuid)
+    org_unit = await fetch_org_unit(gql_session, uuid)
     if org_unit.org_unit_hierarchy == new_org_unit_hierarchy:
         logger.debug("Not updating org_unit_hierarchy, already good", uuid=uuid)
         return False

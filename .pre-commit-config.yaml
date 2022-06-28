@@ -29,8 +29,10 @@ repos:
           - '--load-plugins=pylint_pydantic'
           # Ignore 'import-error' and 'no-name-in-module'
           # As we do not want to install all dependencies under pre-commit
-          - '--disable=E0401'
-          - '--disable=E0611'
+          - '--disable=import-error'
+          - '--disable=no-name-in-module'
+          # Ignore redundant keyword arg, as we like keyword args
+          - '--disable=redundant-keyword-arg'
           # Ignore 'wrong-import-order'
           # reorder-python-imports decides the order, if pylint disagrees ¯\_(ツ)_/¯
           - '--disable=C0411'
