@@ -14,9 +14,9 @@ from raclients.modelclient.mo import ModelClient
 from ramodels.mo import Validity
 
 from .config import Settings
-from .ra_uuid import fetch_org_unit
-from .ra_uuid import get_hidden_uuid
-from .ra_uuid import get_line_management_uuid
+from .mo_uuid import fetch_org_unit
+from .mo_uuid import get_hidden_uuid
+from .mo_uuid import get_line_management_uuid
 
 logger = structlog.get_logger()
 ny_regex = re.compile(r"NY\d-niveau")

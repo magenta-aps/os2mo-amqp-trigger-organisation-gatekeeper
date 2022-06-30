@@ -32,8 +32,8 @@ from orggatekeeper.calculate import should_hide
 from orggatekeeper.calculate import update_line_management
 from orggatekeeper.config import get_settings
 from orggatekeeper.config import Settings
-from orggatekeeper.ra_uuid import fetch_org_unit_hierarchy_class_uuid
-from orggatekeeper.ra_uuid import fetch_org_unit_hierarchy_facet_uuid
+from orggatekeeper.mo_uuid import fetch_org_unit_hierarchy_class_uuid
+from orggatekeeper.mo_uuid import fetch_org_unit_hierarchy_facet_uuid
 
 
 async def test_fetch_org_unit() -> None:
@@ -533,10 +533,10 @@ async def test_get_line_management_uuid_preseed() -> None:
 
 
 @patch(
-    "orggatekeeper.ra_uuid.fetch_org_unit_hierarchy_facet_uuid", new_callable=AsyncMock
+    "orggatekeeper.mo_uuid.fetch_org_unit_hierarchy_facet_uuid", new_callable=AsyncMock
 )
 @patch(
-    "orggatekeeper.ra_uuid.fetch_org_unit_hierarchy_class_uuid",
+    "orggatekeeper.mo_uuid.fetch_org_unit_hierarchy_class_uuid",
     new_callable=AsyncMock,
 )
 async def test_get_line_management_uuid(
@@ -581,10 +581,10 @@ async def test_get_hidden_uuid_preseed() -> None:
 
 
 @patch(
-    "orggatekeeper.ra_uuid.fetch_org_unit_hierarchy_facet_uuid", new_callable=AsyncMock
+    "orggatekeeper.mo_uuid.fetch_org_unit_hierarchy_facet_uuid", new_callable=AsyncMock
 )
 @patch(
-    "orggatekeeper.ra_uuid.fetch_org_unit_hierarchy_class_uuid",
+    "orggatekeeper.mo_uuid.fetch_org_unit_hierarchy_class_uuid",
     new_callable=AsyncMock,
 )
 async def test_get_hidden_uuid(
