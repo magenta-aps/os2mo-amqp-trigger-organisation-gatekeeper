@@ -1,6 +1,7 @@
 # SPDX-FileCopyrightText: 2019-2020 Magenta ApS
 #
 # SPDX-License-Identifier: MPL-2.0
+"""Module for fetching facet and class UUID from MO"""
 from operator import itemgetter
 from typing import Optional
 from uuid import UUID
@@ -14,7 +15,9 @@ from ramodels.mo import OrganisationUnit
 logger = structlog.get_logger()
 
 
-async def fetch_org_unit_hierarchy_facet_uuid(gql_client: PersistentGraphQLClient) -> UUID:
+async def fetch_org_unit_hierarchy_facet_uuid(
+    gql_client: PersistentGraphQLClient,
+) -> UUID:
     """Fetch the UUID of the 'org_unit_hierarchy' facet.
 
     Args:
