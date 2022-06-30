@@ -17,6 +17,8 @@ from ramodels.mo import Validity
 
 from .config import Settings
 
+logger = structlog.get_logger()
+
 
 async def fetch_org_unit_hierarchy_facet_uuid(gql_client: PersistentGraphQLClient) -> UUID:
     """Fetch the UUID of the 'org_unit_hierarchy' facet.
@@ -85,3 +87,55 @@ async def fetch_org_unit_hierarchy_class_uuid(
     )
     class_uuid = class_map[class_user_key]
     return UUID(class_uuid)
+
+
+async def fetch_org_unit(
+    gql_client: PersistentGraphQLClient, uuid: UUID
+) -> OrganisationUnit:
+    """Fetch an organisation unit from MO using GraphQL.
+
+    Args:
+        gql_client: The GraphQL client to run our queries on.
+        uuid: UUID of the organisation unit to fetch.
+
+    Returns:
+        The organisation unit object.
+    """
+    query = gql(
+        """
+        query OrgUnitQuery($uuids: [UUID!]) {
+            org_units(uuids: $uuids) {
+                objects {
+                    uuid
+                    user_key
+                    validity {
+                        from
+                        to
+                    }
+                    name
+                    parent_uuid
+                    org_unit_hierarchy_uuid: org_unit_hierarchy
+                    org_unit_type_uuid: unit_type_uuid
+                    org_unit_level_uuid
+                }
+            }
+        }
+        """
+    )
+    logger.debug("Fetching org-unit via GraphQL", uuid=uuid)
+    result = await gql_client.execute(query, {"uuids": [str(uuid)]})
+    obj = one(one(result["org_units"])["objects"])
+    logger.debug("GraphQL obj", obj=obj)
+    org_unit = OrganisationUnit.from_simplified_fields(
+        uuid=obj["uuid"],
+        user_key=obj["user_key"],
+        name=obj["name"],
+        parent_uuid=obj["parent_uuid"],
+        org_unit_hierarchy_uuid=obj["org_unit_hierarchy_uuid"],
+        org_unit_type_uuid=obj["org_unit_type_uuid"],
+        org_unit_level_uuid=obj["org_unit_level_uuid"],
+        from_date=obj["validity"]["from"],
+        to_date=obj["validity"]["to"],
+    )
+    logger.debug("Organisation Unit", org_unit=org_unit)
+    return org_unit
