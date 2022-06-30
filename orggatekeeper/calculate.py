@@ -18,49 +18,9 @@ from ramodels.mo import Validity
 
 from .config import Settings
 from .ra_uuid import fetch_org_unit_hierarchy_facet_uuid
+from .ra_uuid import fetch_org_unit_hierarchy_class_uuid
 
 logger = structlog.get_logger()
-
-
-async def fetch_org_unit_hierarchy_class_uuid(
-    gql_client: PersistentGraphQLClient,
-    org_unit_hierarchy_uuid: UUID,
-    class_user_key: str,
-) -> UUID:
-    """Fetch the UUID of the given class within the 'org_unit_hierarchy' facet.
-
-    Args:
-        gql_client: The GraphQL client to run our queries on.
-        class_user_key: User-key of the class to find UUID for.
-
-    Returns:
-        The UUID of class.
-    """
-    # TODO: Optimize with better filters in MO
-    # Having user-key filters would help a lot, so would facet filter on classes.
-
-    # Fetch all classes under org_unit_hierarchy to find the class's UUID
-    query = gql(
-        """
-        query ClassQuery($uuids: [UUID!]) {
-            facets(uuids: $uuids) {
-                classes {
-                    uuid
-                    user_key
-                }
-            }
-        }
-        """
-    )
-    result = await gql_client.execute(query, {"uuids": [str(org_unit_hierarchy_uuid)]})
-    # Construct a user-key to uuid map of all classes
-    class_map = dict(
-        map(itemgetter("user_key", "uuid"), one(result["facets"])["classes"])
-    )
-    class_uuid = class_map[class_user_key]
-    return UUID(class_uuid)
-
-
 ny_regex = re.compile(r"NY\d-niveau")
 
 
