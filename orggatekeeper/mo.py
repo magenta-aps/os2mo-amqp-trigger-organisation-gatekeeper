@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: 2019-2020 Magenta ApS
 #
 # SPDX-License-Identifier: MPL-2.0
-"""Module for fetching facet and class UUID from MO"""
+"""Module for fetching information (e.g. facet and class UUIDs) from MO"""
 from operator import itemgetter
 from typing import Optional
 from uuid import UUID

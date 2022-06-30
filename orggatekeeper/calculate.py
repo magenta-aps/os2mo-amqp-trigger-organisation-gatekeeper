@@ -14,9 +14,9 @@ from raclients.modelclient.mo import ModelClient
 from ramodels.mo import Validity
 
 from .config import Settings
-from .mo_uuid import fetch_org_unit
-from .mo_uuid import get_hidden_uuid
-from .mo_uuid import get_line_management_uuid
+from .mo import fetch_org_unit
+from .mo import get_hidden_uuid
+from .mo import get_line_management_uuid
 
 logger = structlog.get_logger()
 ny_regex = re.compile(r"NY\d-niveau")
@@ -84,6 +84,7 @@ async def should_hide(
         Whether the organisation unit should be hidden.
     """
     # TODO: Should we really just be updating the top-most parent itself?
+    # TODO answer: probably not as this leads(?) to HTTP status 500 errors (see Redmine 46148 #82)
     if not hidden:
         logger.debug("should_hide called with empty hidden list")
         return False
