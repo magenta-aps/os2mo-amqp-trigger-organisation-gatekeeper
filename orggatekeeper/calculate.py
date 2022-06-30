@@ -21,7 +21,7 @@ from .config import Settings
 logger = structlog.get_logger()
 
 
-async def fetch_org_unit_hierarchy_uuid(gql_client: PersistentGraphQLClient) -> UUID:
+async def fetch_org_unit_hierarchy_facet_uuid(gql_client: PersistentGraphQLClient) -> UUID:
     """Fetch the UUID of the 'org_unit_hierarchy' facet.
 
     Args:
@@ -251,7 +251,7 @@ async def get_line_management_uuid(
     """
     if line_management_uuid:
         return line_management_uuid
-    org_unit_hierarchy_uuid = await fetch_org_unit_hierarchy_uuid(gql_client)
+    org_unit_hierarchy_uuid = await fetch_org_unit_hierarchy_facet_uuid(gql_client)
     line_management_uuid = await fetch_org_unit_hierarchy_class_uuid(
         gql_client, org_unit_hierarchy_uuid, line_management_user_key
     )
@@ -280,7 +280,7 @@ async def get_hidden_uuid(
     """
     if hidden_uuid:
         return hidden_uuid
-    org_unit_hierarchy_uuid = await fetch_org_unit_hierarchy_uuid(gql_client)
+    org_unit_hierarchy_uuid = await fetch_org_unit_hierarchy_facet_uuid(gql_client)
     hidden_uuid = await fetch_org_unit_hierarchy_class_uuid(
         gql_client, org_unit_hierarchy_uuid, hidden_user_key
     )
@@ -304,7 +304,7 @@ async def update_line_management(
     * The SD unit-level is NY{x}-niveau or
     * The SD unit-level is Afdelings-niveau and people are attached to it.
 
-    Additionally this function also hides organisation units iff:
+    Additionally, this function also hides organisation units iff:
     * Their user-key is contained within hidden_user_key or a child of it.
 
     Args:

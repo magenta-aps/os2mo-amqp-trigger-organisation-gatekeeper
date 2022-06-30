@@ -26,7 +26,7 @@ from ramodels.mo import Validity
 
 from orggatekeeper.calculate import fetch_org_unit
 from orggatekeeper.calculate import fetch_org_unit_hierarchy_class_uuid
-from orggatekeeper.calculate import fetch_org_unit_hierarchy_uuid
+from orggatekeeper.calculate import fetch_org_unit_hierarchy_facet_uuid
 from orggatekeeper.calculate import get_hidden_uuid
 from orggatekeeper.calculate import get_line_management_uuid
 from orggatekeeper.calculate import is_line_management
@@ -82,7 +82,7 @@ async def test_fetch_org_unit() -> None:
     assert result.uuid == uuid
 
 
-async def test_fetch_org_unit_hierarchy_uuid() -> None:
+async def test_fetch_org_unit_hierarchy_facet_uuid() -> None:
     """Test that fetch_org_unit_hierarchy can find our facet uuid."""
     params: dict[str, Any] = {}
     org_unit_hierarchy_uuid: UUID = UUID("fc3c8bde-51fc-4975-876a-c14165416d12")
@@ -107,7 +107,7 @@ async def test_fetch_org_unit_hierarchy_uuid() -> None:
 
     session = MagicMock()
     session.execute = execute
-    result = await fetch_org_unit_hierarchy_uuid(session)
+    result = await fetch_org_unit_hierarchy_facet_uuid(session)
     assert isinstance(one(params["args"]), DocumentNode)
 
     assert isinstance(result, UUID)
@@ -532,19 +532,19 @@ async def test_get_line_management_uuid_preseed() -> None:
     assert line_management_uuid == uuid
 
 
-@patch("orggatekeeper.calculate.fetch_org_unit_hierarchy_uuid", new_callable=AsyncMock)
+@patch("orggatekeeper.calculate.fetch_org_unit_hierarchy_facet_uuid", new_callable=AsyncMock)
 @patch(
     "orggatekeeper.calculate.fetch_org_unit_hierarchy_class_uuid",
     new_callable=AsyncMock,
 )
 async def test_get_line_management_uuid(
     fetch_org_unit_hierarchy_class_uuid: MagicMock,
-    fetch_org_unit_hierarchy_uuid: MagicMock,
+    fetch_org_unit_hierarchy_facet_uuid: MagicMock,
 ) -> None:
     """Test get_line_management_uuid with pre-seeded uuid."""
     facet_uuid = uuid4()
     uuid = uuid4()
-    fetch_org_unit_hierarchy_uuid.return_value = facet_uuid
+    fetch_org_unit_hierarchy_facet_uuid.return_value = facet_uuid
     fetch_org_unit_hierarchy_class_uuid.return_value = uuid
 
     settings = get_settings(client_secret="hunter2")
@@ -559,7 +559,7 @@ async def test_get_line_management_uuid(
     fetch_org_unit_hierarchy_class_uuid.assert_called_once_with(
         session, facet_uuid, "linjeorg"
     )
-    fetch_org_unit_hierarchy_uuid.assert_called_once_with(session)
+    fetch_org_unit_hierarchy_facet_uuid.assert_called_once_with(session)
 
 
 async def test_get_hidden_uuid_preseed() -> None:
@@ -578,19 +578,19 @@ async def test_get_hidden_uuid_preseed() -> None:
     assert hidden_uuid == uuid
 
 
-@patch("orggatekeeper.calculate.fetch_org_unit_hierarchy_uuid", new_callable=AsyncMock)
+@patch("orggatekeeper.calculate.fetch_org_unit_hierarchy_facet_uuid", new_callable=AsyncMock)
 @patch(
     "orggatekeeper.calculate.fetch_org_unit_hierarchy_class_uuid",
     new_callable=AsyncMock,
 )
 async def test_get_hidden_uuid(
     fetch_org_unit_hierarchy_class_uuid: MagicMock,
-    fetch_org_unit_hierarchy_uuid: MagicMock,
+    fetch_org_unit_hierarchy_facet_uuid: MagicMock,
 ) -> None:
     """Test get_hidden_uuid with pre-seeded uuid."""
     facet_uuid = uuid4()
     uuid = uuid4()
-    fetch_org_unit_hierarchy_uuid.return_value = facet_uuid
+    fetch_org_unit_hierarchy_facet_uuid.return_value = facet_uuid
     fetch_org_unit_hierarchy_class_uuid.return_value = uuid
 
     settings = get_settings(client_secret="hunter2")
@@ -605,4 +605,4 @@ async def test_get_hidden_uuid(
     fetch_org_unit_hierarchy_class_uuid.assert_called_once_with(
         session, facet_uuid, "hide"
     )
-    fetch_org_unit_hierarchy_uuid.assert_called_once_with(session)
+    fetch_org_unit_hierarchy_facet_uuid.assert_called_once_with(session)
