@@ -26,7 +26,7 @@ from ramodels.mo import Validity
 
 from orggatekeeper.calculate import fetch_org_unit
 from orggatekeeper.calculate import fetch_org_unit_hierarchy_class_uuid
-from orggatekeeper.calculate import fetch_org_unit_hierarchy_facet_uuid
+from orggatekeeper.ra_uuid import fetch_org_unit_hierarchy_facet_uuid
 from orggatekeeper.calculate import get_hidden_uuid
 from orggatekeeper.calculate import get_line_management_uuid
 from orggatekeeper.calculate import is_line_management
