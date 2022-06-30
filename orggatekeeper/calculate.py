@@ -4,8 +4,6 @@
 """Update logic."""
 import datetime
 import re
-from operator import itemgetter
-from typing import Optional
 from uuid import UUID
 
 import structlog
@@ -13,12 +11,9 @@ from gql import gql
 from more_itertools import one
 from raclients.graph.client import PersistentGraphQLClient
 from raclients.modelclient.mo import ModelClient
-from ramodels.mo import OrganisationUnit
 from ramodels.mo import Validity
 
 from .config import Settings
-from .ra_uuid import fetch_org_unit_hierarchy_facet_uuid
-from .ra_uuid import fetch_org_unit_hierarchy_class_uuid
 from .ra_uuid import fetch_org_unit
 from .ra_uuid import get_line_management_uuid
 from .ra_uuid import get_hidden_uuid
