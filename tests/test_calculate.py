@@ -532,9 +532,7 @@ async def test_get_line_management_uuid_preseed() -> None:
     assert line_management_uuid == uuid
 
 
-@patch(
-    "orggatekeeper.mo.fetch_org_unit_hierarchy_facet_uuid", new_callable=AsyncMock
-)
+@patch("orggatekeeper.mo.fetch_org_unit_hierarchy_facet_uuid", new_callable=AsyncMock)
 @patch(
     "orggatekeeper.mo.fetch_org_unit_hierarchy_class_uuid",
     new_callable=AsyncMock,
@@ -580,9 +578,7 @@ async def test_get_hidden_uuid_preseed() -> None:
     assert hidden_uuid == uuid
 
 
-@patch(
-    "orggatekeeper.mo.fetch_org_unit_hierarchy_facet_uuid", new_callable=AsyncMock
-)
+@patch("orggatekeeper.mo.fetch_org_unit_hierarchy_facet_uuid", new_callable=AsyncMock)
 @patch(
     "orggatekeeper.mo.fetch_org_unit_hierarchy_class_uuid",
     new_callable=AsyncMock,

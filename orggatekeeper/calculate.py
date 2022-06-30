@@ -84,7 +84,8 @@ async def should_hide(
         Whether the organisation unit should be hidden.
     """
     # TODO: Should we really just be updating the top-most parent itself?
-    # TODO answer: probably not as this leads(?) to HTTP status 500 errors (see Redmine 46148 #82)
+    # TODO answer: probably not as this leads(?) to HTTP status 500 errors
+    # (see Redmine 46148 #82)
     if not hidden:
         logger.debug("should_hide called with empty hidden list")
         return False
