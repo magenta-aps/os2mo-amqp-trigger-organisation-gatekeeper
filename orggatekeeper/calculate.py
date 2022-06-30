@@ -20,6 +20,8 @@ from .config import Settings
 from .ra_uuid import fetch_org_unit_hierarchy_facet_uuid
 from .ra_uuid import fetch_org_unit_hierarchy_class_uuid
 from .ra_uuid import fetch_org_unit
+from .ra_uuid import get_line_management_uuid
+from .ra_uuid import get_hidden_uuid
 
 logger = structlog.get_logger()
 ny_regex = re.compile(r"NY\d-niveau")
@@ -112,64 +114,6 @@ async def should_hide(
     if obj["parent_uuid"] is not None:
         return await should_hide(gql_client, obj["parent_uuid"], hidden)
     return False
-
-
-async def get_line_management_uuid(
-    gql_client: PersistentGraphQLClient,
-    line_management_uuid: Optional[UUID],
-    line_management_user_key: str,
-) -> UUID:
-    """Get the UUID of the line_management class.
-
-    Args:
-        gql_client: The GraphQL client to run our queries on (if required).
-        line_management_uuid: The UUID (if provided) of the class.
-        line_management_user_key: The user-key of the class.
-
-    Returns:
-        The UUID of class.
-    """
-    if line_management_uuid:
-        return line_management_uuid
-    org_unit_hierarchy_uuid = await fetch_org_unit_hierarchy_facet_uuid(gql_client)
-    line_management_uuid = await fetch_org_unit_hierarchy_class_uuid(
-        gql_client, org_unit_hierarchy_uuid, line_management_user_key
-    )
-    logger.debug(
-        "Line management uuid not set, fetched",
-        user_key=line_management_user_key,
-        uuid=line_management_uuid,
-    )
-    return line_management_uuid
-
-
-async def get_hidden_uuid(
-    gql_client: PersistentGraphQLClient,
-    hidden_uuid: Optional[UUID],
-    hidden_user_key: str,
-) -> UUID:
-    """Get the UUID of the hidden class.
-
-    Args:
-        gql_client: The GraphQL client to run our queries on (if required).
-        hidden_uuid: The UUID (if provided) of the class.
-        hidden_user_key: The user-key of the class.
-
-    Returns:
-        The UUID of class.
-    """
-    if hidden_uuid:
-        return hidden_uuid
-    org_unit_hierarchy_uuid = await fetch_org_unit_hierarchy_facet_uuid(gql_client)
-    hidden_uuid = await fetch_org_unit_hierarchy_class_uuid(
-        gql_client, org_unit_hierarchy_uuid, hidden_user_key
-    )
-    logger.debug(
-        "Hidden uuid not set, fetched",
-        user_key=hidden_user_key,
-        uuid=hidden_uuid,
-    )
-    return hidden_uuid
 
 
 async def update_line_management(

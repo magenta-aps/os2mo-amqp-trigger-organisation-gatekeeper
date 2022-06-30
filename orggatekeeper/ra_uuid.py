@@ -139,3 +139,61 @@ async def fetch_org_unit(
     )
     logger.debug("Organisation Unit", org_unit=org_unit)
     return org_unit
+
+
+async def get_line_management_uuid(
+    gql_client: PersistentGraphQLClient,
+    line_management_uuid: Optional[UUID],
+    line_management_user_key: str,
+) -> UUID:
+    """Get the UUID of the line_management class.
+
+    Args:
+        gql_client: The GraphQL client to run our queries on (if required).
+        line_management_uuid: The UUID (if provided) of the class.
+        line_management_user_key: The user-key of the class.
+
+    Returns:
+        The UUID of class.
+    """
+    if line_management_uuid:
+        return line_management_uuid
+    org_unit_hierarchy_uuid = await fetch_org_unit_hierarchy_facet_uuid(gql_client)
+    line_management_uuid = await fetch_org_unit_hierarchy_class_uuid(
+        gql_client, org_unit_hierarchy_uuid, line_management_user_key
+    )
+    logger.debug(
+        "Line management uuid not set, fetched",
+        user_key=line_management_user_key,
+        uuid=line_management_uuid,
+    )
+    return line_management_uuid
+
+
+async def get_hidden_uuid(
+    gql_client: PersistentGraphQLClient,
+    hidden_uuid: Optional[UUID],
+    hidden_user_key: str,
+) -> UUID:
+    """Get the UUID of the hidden class.
+
+    Args:
+        gql_client: The GraphQL client to run our queries on (if required).
+        hidden_uuid: The UUID (if provided) of the class.
+        hidden_user_key: The user-key of the class.
+
+    Returns:
+        The UUID of class.
+    """
+    if hidden_uuid:
+        return hidden_uuid
+    org_unit_hierarchy_uuid = await fetch_org_unit_hierarchy_facet_uuid(gql_client)
+    hidden_uuid = await fetch_org_unit_hierarchy_class_uuid(
+        gql_client, org_unit_hierarchy_uuid, hidden_user_key
+    )
+    logger.debug(
+        "Hidden uuid not set, fetched",
+        user_key=hidden_user_key,
+        uuid=hidden_uuid,
+    )
+    return hidden_uuid
