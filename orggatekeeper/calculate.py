@@ -12,6 +12,7 @@ from more_itertools import one
 from raclients.graph.client import PersistentGraphQLClient
 from raclients.modelclient.mo import ModelClient
 from ramodels.mo import Validity
+from ramodels.mo._shared import OrgUnitHierarchy
 
 from .config import Settings
 from .mo import fetch_org_unit
@@ -138,23 +139,25 @@ async def update_line_management(
         Whether an update was made.
     """
     # Determine the desired org_unit_hierarchy class uuid
-    new_org_unit_hierarchy: UUID | None = None
+    new_org_unit_hierarchy: OrgUnitHierarchy | None = None
     if settings.enable_hide_logic and await should_hide(
         gql_client, uuid, settings.hidden
     ):
         logger.debug("Organisation Unit needs to be hidden", uuid=uuid)
-        new_org_unit_hierarchy = await get_hidden_uuid(
+        hidden_uuid = await get_hidden_uuid(
             gql_client,
             settings.hidden_uuid,
             settings.hidden_user_key,
         )
+        new_org_unit_hierarchy = OrgUnitHierarchy(uuid=hidden_uuid)
     elif await is_line_management(gql_client, uuid):
         logger.debug("Organisation Unit needs to be in line management", uuid=uuid)
-        new_org_unit_hierarchy = await get_line_management_uuid(
+        line_management_uuid = await get_line_management_uuid(
             gql_client,
             settings.line_management_uuid,
             settings.line_management_user_key,
         )
+        new_org_unit_hierarchy = OrgUnitHierarchy(uuid=line_management_uuid)
 
     # Fetch the current object and see if we need to update it
     org_unit = await fetch_org_unit(gql_client, uuid)
@@ -163,9 +166,10 @@ async def update_line_management(
         return False
 
     # Prepare the updated object for writing
+    # TODO: we will have a problem, if new_org_unit_hierarchy is None
     org_unit = org_unit.copy(
         update={
-            "org_unit_hierarchy_uuid": new_org_unit_hierarchy,
+            "org_unit_hierarchy": new_org_unit_hierarchy,
             "validity": Validity(from_date=datetime.datetime.now().date()),
         }
     )
