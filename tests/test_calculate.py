@@ -23,6 +23,7 @@ from graphql import DocumentNode
 from more_itertools import one
 from ramodels.mo import OrganisationUnit
 from ramodels.mo import Validity
+from ramodels.mo._shared import OrgUnitHierarchy
 
 from orggatekeeper.calculate import fetch_org_unit
 from orggatekeeper.calculate import get_hidden_uuid
@@ -402,14 +403,13 @@ async def test_update_line_management_no_change(
 
 @patch("orggatekeeper.calculate.should_hide")
 @patch("orggatekeeper.calculate.fetch_org_unit")
-@patch("orggatekeeper.calculate.get_hidden_uuid")
 async def test_update_line_management_dry_run(
-    get_hidden_uuid: MagicMock,
     fetch_org_unit: MagicMock,
     should_hide: MagicMock,
     gql_client: MagicMock,
     model_client: AsyncMock,
     set_settings: Callable[..., Settings],
+    hidden_uuid: MagicMock,
     org_unit: OrganisationUnit,
 ) -> None:
     """Test that update_line_management can set hidden_uuid."""
@@ -462,7 +462,7 @@ async def test_update_line_management_hidden(
             [
                 org_unit.copy(
                     update={
-                        "org_unit_hierarchy_uuid": hidden_uuid,
+                        "org_unit_hierarchy": OrgUnitHierarchy(uuid=hidden_uuid),
                         "validity": Validity(from_date=now.date()),
                     }
                 )
@@ -507,7 +507,9 @@ async def test_update_line_management_line(
             [
                 org_unit.copy(
                     update={
-                        "org_unit_hierarchy_uuid": line_management_uuid,
+                        "org_unit_hierarchy": OrgUnitHierarchy(
+                            uuid=line_management_uuid
+                        ),
                         "validity": Validity(from_date=now.date()),
                     }
                 )
