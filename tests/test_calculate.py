@@ -36,6 +36,8 @@ from orggatekeeper.config import Settings
 from orggatekeeper.mo import fetch_org_unit_hierarchy_class_uuid
 from orggatekeeper.mo import fetch_org_unit_hierarchy_facet_uuid
 
+from tests import ORG_UUID
+
 
 async def test_fetch_org_unit() -> None:
     """Test that fetch_org_unit can build an OrganisationUnit."""
@@ -306,6 +308,7 @@ def org_unit() -> Generator[OrganisationUnit, None, None]:
         name="Test",
         org_unit_type_uuid=uuid4(),
         org_unit_level_uuid=uuid4(),
+        parent_uuid=uuid4(),
         from_date=datetime.now(),
     )
 
@@ -369,7 +372,7 @@ def seeded_update_line_management(
 ) -> Generator[Callable[[UUID], Awaitable[bool]], None, None]:
     """Fixture to generate update_line_management function."""
     seeded_update_line_management = partial(
-        update_line_management, gql_client, model_client, settings
+        update_line_management, gql_client, model_client, settings, ORG_UUID
     )
     yield seeded_update_line_management
 
@@ -415,7 +418,7 @@ async def test_update_line_management_dry_run(
     """Test that update_line_management can set hidden_uuid."""
     settings = set_settings(dry_run=True)
     seeded_update_line_management = partial(
-        update_line_management, gql_client, model_client, settings
+        update_line_management, gql_client, model_client, settings, ORG_UUID
     )
 
     should_hide.return_value = True

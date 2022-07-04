@@ -240,7 +240,7 @@ def create_app(*args: Any, **kwargs: Any) -> FastAPI:
         context["model_client"] = model_client
 
         # Get organisation UUID
-        org_uuid = await fetch_org_uuid()
+        org_uuid = await fetch_org_uuid(gql_client)
 
         logger.info("Seeding line management function")
         seeded_update_line_management = partial(
