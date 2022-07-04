@@ -118,6 +118,7 @@ async def update_line_management(
     gql_client: PersistentGraphQLClient,
     model_client: ModelClient,
     settings: Settings,
+    org_uuid: UUID,
     uuid: UUID,
 ) -> bool:
     """Update line management information for the provided organisation unit.
@@ -133,6 +134,7 @@ async def update_line_management(
         gql_client: The GraphQL client to run queries on.
         model_client: The MO Model client to modify MO with.
         settings: The integration settings module.
+        org_uuid: The UUID of the LoRa organisation
         uuid: UUID of the organisation unit to recalculate.
 
     Returns:
@@ -170,6 +172,11 @@ async def update_line_management(
     org_unit = org_unit.copy(
         update={
             "org_unit_hierarchy": new_org_unit_hierarchy,
+            # When parent is set, MO will try to move the org unit which is
+            # not allowed by MO for a root org unit. Therefor we set the parent
+            # to None in the update operation if the parent of the org unit is
+            # the LoRa organisation
+            "parent": org_unit.parent if org_unit.parent.uuid != org_uuid else None,
             "validity": Validity(from_date=datetime.datetime.now().date()),
         }
     )

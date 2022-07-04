@@ -36,7 +36,7 @@ from starlette.status import HTTP_503_SERVICE_UNAVAILABLE
 from .calculate import update_line_management
 from .config import get_settings
 from .config import Settings
-
+from .mo import fetch_org_uuid
 
 logger = structlog.get_logger()
 T = TypeVar("T")
@@ -210,7 +210,9 @@ def construct_context() -> dict[str, Any]:
     return {}
 
 
-def create_app(*args: Any, **kwargs: Any) -> FastAPI:
+def create_app(  # pylint: disable=too-many-statements
+    *args: Any, **kwargs: Any
+) -> FastAPI:
     """FastAPI application factory.
 
     Starts the metrics server, then listens to AMQP messages forever.
@@ -239,9 +241,12 @@ def create_app(*args: Any, **kwargs: Any) -> FastAPI:
         context["gql_client"] = gql_client
         context["model_client"] = model_client
 
+        # Get organisation UUID
+        org_uuid = await fetch_org_uuid(gql_client)
+
         logger.info("Seeding line management function")
         seeded_update_line_management = partial(
-            update_line_management, gql_client, model_client, settings
+            update_line_management, gql_client, model_client, settings, org_uuid
         )
         context["seeded_update_line_management"] = seeded_update_line_management
 

@@ -35,6 +35,7 @@ from orggatekeeper.config import get_settings
 from orggatekeeper.config import Settings
 from orggatekeeper.mo import fetch_org_unit_hierarchy_class_uuid
 from orggatekeeper.mo import fetch_org_unit_hierarchy_facet_uuid
+from tests import ORG_UUID
 
 
 async def test_fetch_org_unit() -> None:
@@ -306,6 +307,7 @@ def org_unit() -> Generator[OrganisationUnit, None, None]:
         name="Test",
         org_unit_type_uuid=uuid4(),
         org_unit_level_uuid=uuid4(),
+        parent_uuid=uuid4(),
         from_date=datetime.now(),
     )
 
@@ -369,7 +371,7 @@ def seeded_update_line_management(
 ) -> Generator[Callable[[UUID], Awaitable[bool]], None, None]:
     """Fixture to generate update_line_management function."""
     seeded_update_line_management = partial(
-        update_line_management, gql_client, model_client, settings
+        update_line_management, gql_client, model_client, settings, ORG_UUID
     )
     yield seeded_update_line_management
 
@@ -415,7 +417,7 @@ async def test_update_line_management_dry_run(
     """Test that update_line_management can set hidden_uuid."""
     settings = set_settings(dry_run=True)
     seeded_update_line_management = partial(
-        update_line_management, gql_client, model_client, settings
+        update_line_management, gql_client, model_client, settings, ORG_UUID
     )
 
     should_hide.return_value = True
@@ -510,6 +512,64 @@ async def test_update_line_management_line(
                         "org_unit_hierarchy": OrgUnitHierarchy(
                             uuid=line_management_uuid
                         ),
+                        "validity": Validity(from_date=now.date()),
+                    }
+                )
+            ]
+        )
+    ]
+
+
+@patch("orggatekeeper.calculate.datetime")
+@patch("orggatekeeper.calculate.is_line_management")
+@patch("orggatekeeper.calculate.should_hide")
+@patch("orggatekeeper.calculate.fetch_org_unit")
+async def test_update_line_management_line_for_root_org_unit(
+    fetch_org_unit: MagicMock,
+    should_hide: MagicMock,
+    is_line_management: MagicMock,
+    mock_datetime: MagicMock,
+    gql_client: MagicMock,
+    model_client: AsyncMock,
+    settings: Settings,
+    line_management_uuid: UUID,
+    seeded_update_line_management: Callable[[UUID], Awaitable[bool]],
+) -> None:
+    """
+    Test that update_line_management can set line_management_uuid for
+    for an root org unit.
+    """
+    should_hide.return_value = False
+    is_line_management.return_value = True
+    org_unit = OrganisationUnit.from_simplified_fields(
+        user_key="AAAA",
+        name="Test",
+        org_unit_type_uuid=uuid4(),
+        org_unit_level_uuid=uuid4(),
+        parent_uuid=ORG_UUID,  # I.e. a root unit
+        from_date=datetime.now(),
+    )
+    fetch_org_unit.return_value = org_unit
+
+    now = datetime.now()
+    mock_datetime.datetime.now.return_value = now
+
+    uuid = org_unit.uuid
+    result = await seeded_update_line_management(uuid)
+    assert result is True
+
+    should_hide.assert_called_once_with(gql_client, uuid, [])
+    is_line_management.assert_called_once_with(gql_client, uuid)
+    fetch_org_unit.assert_called_once_with(gql_client, uuid)
+    assert model_client.mock_calls == [
+        call.edit(
+            [
+                org_unit.copy(
+                    update={
+                        "org_unit_hierarchy": OrgUnitHierarchy(
+                            uuid=line_management_uuid
+                        ),
+                        "parent": None,  # Since the unit is a root org unit
                         "validity": Validity(from_date=now.date()),
                     }
                 )
