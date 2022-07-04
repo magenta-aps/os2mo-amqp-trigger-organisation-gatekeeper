@@ -521,6 +521,64 @@ async def test_update_line_management_line(
     ]
 
 
+@patch("orggatekeeper.calculate.datetime")
+@patch("orggatekeeper.calculate.is_line_management")
+@patch("orggatekeeper.calculate.should_hide")
+@patch("orggatekeeper.calculate.fetch_org_unit")
+async def test_update_line_management_line_for_root_org_unit(
+    fetch_org_unit: MagicMock,
+    should_hide: MagicMock,
+    is_line_management: MagicMock,
+    mock_datetime: MagicMock,
+    gql_client: MagicMock,
+    model_client: AsyncMock,
+    settings: Settings,
+    line_management_uuid: UUID,
+    seeded_update_line_management: Callable[[UUID], Awaitable[bool]],
+) -> None:
+    """
+    Test that update_line_management can set line_management_uuid for
+    for an root org unit.
+    """
+    should_hide.return_value = False
+    is_line_management.return_value = True
+    org_unit = OrganisationUnit.from_simplified_fields(
+        user_key="AAAA",
+        name="Test",
+        org_unit_type_uuid=uuid4(),
+        org_unit_level_uuid=uuid4(),
+        parent_uuid=ORG_UUID,  # I.e. a root unit
+        from_date=datetime.now(),
+    )
+    fetch_org_unit.return_value = org_unit
+
+    now = datetime.now()
+    mock_datetime.datetime.now.return_value = now
+
+    uuid = org_unit.uuid
+    result = await seeded_update_line_management(uuid)
+    assert result is True
+
+    should_hide.assert_called_once_with(gql_client, uuid, [])
+    is_line_management.assert_called_once_with(gql_client, uuid)
+    fetch_org_unit.assert_called_once_with(gql_client, uuid)
+    assert model_client.mock_calls == [
+        call.edit(
+            [
+                org_unit.copy(
+                    update={
+                        "org_unit_hierarchy": OrgUnitHierarchy(
+                            uuid=line_management_uuid
+                        ),
+                        "parent": None,  # Since the unit is a root org unit
+                        "validity": Validity(from_date=now.date()),
+                    }
+                )
+            ]
+        )
+    ]
+
+
 async def test_get_line_management_uuid_preseed() -> None:
     """Test get_line_management_uuid with pre-seeded uuid."""
     uuid = uuid4()

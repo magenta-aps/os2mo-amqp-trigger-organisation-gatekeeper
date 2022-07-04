@@ -22,3 +22,7 @@ async def test_fetch_org_uuid() -> None:
 
     # Assert
     assert ORG_UUID == uuid
+
+
+# TODO: move the rest of the "fetch" tests from test_calculate.py to this module
+# (will be done shortly in a separate MR)
