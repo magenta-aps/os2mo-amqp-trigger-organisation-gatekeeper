@@ -41,8 +41,6 @@ repos:
           - '--disable=W0511'
           # With 5 or more lines of duplicate code, we should refactor it
           - '--min-similarity-lines=5'
-          # Disable too-many-statements
-          - '--disable=R0915'
 
   - repo: https://github.com/pycqa/flake8
     rev: 3.9.1

@@ -210,7 +210,9 @@ def construct_context() -> dict[str, Any]:
     return {}
 
 
-def create_app(*args: Any, **kwargs: Any) -> FastAPI:
+def create_app(  # pylint: disable=too-many-statements
+    *args: Any, **kwargs: Any
+) -> FastAPI:
     """FastAPI application factory.
 
     Starts the metrics server, then listens to AMQP messages forever.
