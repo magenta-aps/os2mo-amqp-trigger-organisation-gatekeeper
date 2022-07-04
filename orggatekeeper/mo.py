@@ -86,6 +86,20 @@ async def fetch_org_unit_hierarchy_class_uuid(
     return UUID(class_uuid)
 
 
+async def fetch_org_uuid(gql_client: PersistentGraphQLClient) -> UUID:
+    query = gql(
+        """
+        query OrganisationUuidQuery {
+            org {
+                uuid
+            }
+        }
+        """
+    )
+    result = await gql_client.execute(query)
+    return UUID(result["org"]["uuid"])
+
+
 async def fetch_org_unit(
     gql_client: PersistentGraphQLClient, uuid: UUID
 ) -> OrganisationUnit:
