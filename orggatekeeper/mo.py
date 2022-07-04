@@ -87,6 +87,15 @@ async def fetch_org_unit_hierarchy_class_uuid(
 
 
 async def fetch_org_uuid(gql_client: PersistentGraphQLClient) -> UUID:
+    """
+    Fetch the UUID of the LoRa organisation.
+
+    Args:
+        gql_client: The GraphQL client to run our queries on.
+
+    Returns:
+        The UUID of the LoRa organisation.
+    """
     query = gql(
         """
         query OrganisationUuidQuery {
