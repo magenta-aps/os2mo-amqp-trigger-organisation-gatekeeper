@@ -10,8 +10,9 @@ from tests import ORG_UUID
 
 
 async def test_fetch_org_uuid() -> None:
+    """Test the fetch_org_uuid coroutine"""
     # Arrange
-    async def execute(*args: Any, **kwargs: Any) -> dict[str, Any]:
+    async def execute() -> dict[str, Any]:
         return {"org": {"uuid": str(ORG_UUID)}}
 
     mock_gql_client = MagicMock()

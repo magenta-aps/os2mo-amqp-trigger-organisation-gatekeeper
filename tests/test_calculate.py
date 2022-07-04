@@ -35,7 +35,6 @@ from orggatekeeper.config import get_settings
 from orggatekeeper.config import Settings
 from orggatekeeper.mo import fetch_org_unit_hierarchy_class_uuid
 from orggatekeeper.mo import fetch_org_unit_hierarchy_facet_uuid
-
 from tests import ORG_UUID
 
 

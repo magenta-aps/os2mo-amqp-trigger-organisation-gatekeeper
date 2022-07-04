@@ -39,7 +39,6 @@ from orggatekeeper.main import gather_with_concurrency
 from orggatekeeper.main import organisation_gatekeeper_callback
 from orggatekeeper.main import update_build_information
 from orggatekeeper.main import update_counter
-
 from tests import ORG_UUID
 
 
@@ -281,9 +280,7 @@ async def test_trigger_uuid_endpoint(
 @patch("orggatekeeper.main.fetch_org_uuid")
 @patch("orggatekeeper.main.MOAMQPSystem")
 async def test_lifespan(
-    mo_amqpsystem: MOAMQPSystem,
-    mock_fetch_org_uuid: MagicMock,
-    fastapi_app: FastAPI
+    mo_amqpsystem: MOAMQPSystem, mock_fetch_org_uuid: MagicMock, fastapi_app: FastAPI
 ) -> None:
     """Test that our lifespan events are handled as expected."""
     amqp_system = MagicMock()
