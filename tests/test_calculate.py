@@ -490,6 +490,10 @@ async def test_update_line_management_line(
     org_unit: OrganisationUnit,
 ) -> None:
     """Test that update_line_management can set line_management_uuid."""
+
+    print(30*"#")
+    print(line_management_uuid)
+
     should_hide.return_value = False
     is_line_management.return_value = True
     fetch_org_unit.return_value = org_unit
@@ -509,9 +513,7 @@ async def test_update_line_management_line(
             [
                 org_unit.copy(
                     update={
-                        "org_unit_hierarchy": OrgUnitHierarchy(
-                            uuid=line_management_uuid
-                        ),
+                        "org_unit_hierarchy": OrgUnitHierarchy(uuid=line_management_uuid),
                         "validity": Validity(from_date=now.date()),
                     }
                 )
