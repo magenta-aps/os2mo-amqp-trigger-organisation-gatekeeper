@@ -259,6 +259,7 @@ def create_app(  # pylint: disable=too-many-statements
             ObjectType.ASSOCIATION,
             ObjectType.ENGAGEMENT,
             ObjectType.ORG_UNIT,
+            ObjectType.IT,
         ]
         amqp_system = MOAMQPSystem()
         for object_type in object_types:

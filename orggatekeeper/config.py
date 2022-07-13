@@ -88,6 +88,25 @@ class Settings(BaseSettings):
             " line management, only used if line_management_uuid is not set."
         ),
     )
+    self_owned_uuid: UUID | None = Field(
+        None,
+        description=(
+            "UUID of the class within the org_unit_hierarchy facet that indicates self-"
+            " owned organisation"
+        ),
+    )
+    self_owned_user_key: str = Field(
+        "selvejet",
+        description=(
+            "User-key of the class within the org_unit_hierarchy facet that indicates"
+            " self-owned organisation units, only used if self_owned_uuid is not set."
+        ),
+    )
+    self_owned_it_system_check: str | None = Field(
+        description=(
+            "Title of the it-system used to check whether to mark the unit as self-owned."
+        )
+    )
 
     dry_run: bool = Field(
         False, description="Run in dry-run mode, only printing what would have changed."

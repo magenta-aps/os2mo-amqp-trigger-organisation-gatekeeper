@@ -15,6 +15,7 @@ services:
       MO_URL: "http://mo"
       CLIENT_ID: "dipex"
       CLIENT_SECRET: "603f1c82-d012-4d04-9382-dbe659c533fb"
+      SELF_OWNED_IT_SYSTEM_CHECK: "SD UUID"
     networks:
       - os2mo_default
     ports:

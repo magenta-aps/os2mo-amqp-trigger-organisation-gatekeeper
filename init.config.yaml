@@ -3,6 +3,11 @@ facets:
     linjeorg:
       title: "Linjeorganisation"
       scope: "TEXT"
+    selvejet:
+      title: "Selvejet institution"
+      scope: "TEXT"
     hide:
       title: "Skjult organisation"
       scope: "TEXT"
+it_systems:
+  SD_uuid: "SD UUID"
