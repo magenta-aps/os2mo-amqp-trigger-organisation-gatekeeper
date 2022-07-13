@@ -3,8 +3,8 @@
 # SPDX-License-Identifier: MPL-2.0
 """Update logic."""
 import datetime
-from functools import lru_cache
 import re
+from functools import lru_cache
 from uuid import UUID
 
 import structlog
@@ -74,8 +74,18 @@ async def is_line_management(gql_client: PersistentGraphQLClient, uuid: UUID) ->
             return True
     return False
 
+
 @lru_cache
-async def lookup_it_system(gql_client: PersistentGraphQLClient, check_it_system_name: str) -> UUID:
+async def lookup_it_system(gql_client: PersistentGraphQLClient, user_key: str) -> UUID:
+    """Find the uuid of an it-system from its user_key
+
+    Args:
+        gql_client: The GraphQL client to run our queries on.
+        user_key: user_key of the it-system to look up.
+
+    Returns:
+        UUID of the it-system
+    """
     query = gql(
         """
         query OrgUnitQuery($user_key: [String!]) {
@@ -85,14 +95,20 @@ async def lookup_it_system(gql_client: PersistentGraphQLClient, check_it_system_
         }
         """
     )
-    
-    result = await gql_client.execute(query, {"user_key": [check_it_system_name]})
+
+    result = await gql_client.execute(query, {"user_key": [user_key]})
     it_system = one(result["itsystems"])
-    logger.debug(f"Looked up it_system with user_key={check_it_system_name}, found", it_system=it_system)
+    logger.debug(
+        f"Looked up it_system with user_key={user_key}, found",
+        it_system=it_system,
+    )
 
     return UUID(it_system["uuid"])
 
-async def is_self_owned(gql_client: PersistentGraphQLClient, uuid: UUID, check_it_system_name: str | None) -> bool:
+
+async def is_self_owned(
+    gql_client: PersistentGraphQLClient, uuid: UUID, check_it_system_name: str | None
+) -> bool:
     """Determine whether the organisation unit should be marked as self-owned.
 
     Args:
@@ -105,7 +121,9 @@ async def is_self_owned(gql_client: PersistentGraphQLClient, uuid: UUID, check_i
     if check_it_system_name is None:
         return False
 
-    check_it_system_uuid = lookup_it_system(gql_client=gql_client, check_it_system_name=check_it_system_name)
+    check_it_system_uuid = lookup_it_system(
+        gql_client=gql_client, user_key=check_it_system_name
+    )
 
     query = gql(
         """
@@ -123,9 +141,9 @@ async def is_self_owned(gql_client: PersistentGraphQLClient, uuid: UUID, check_i
     result = await gql_client.execute(query, {"uuids": [str(uuid)]})
     obj = one(one(result["org_units"])["objects"])
     logger.debug("GraphQL obj", obj=obj)
-    return any(UUID(it.get("itsystem_uuid")) == check_it_system_uuid for it in obj["itusers"])
-
-    
+    return any(
+        UUID(it.get("itsystem_uuid")) == check_it_system_uuid for it in obj["itusers"]
+    )
 
 
 async def should_hide(
@@ -225,7 +243,6 @@ async def update_line_management(
             settings.self_owned_user_key,
         )
         new_org_unit_hierarchy = OrgUnitHierarchy(uuid=self_owned_uuid)
-
 
     # Fetch the current object and see if we need to update it
     org_unit = await fetch_org_unit(gql_client, uuid)

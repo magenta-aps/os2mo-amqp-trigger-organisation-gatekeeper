@@ -360,7 +360,7 @@ async def test_update_line_management_dry_run(
     class_uuid: MagicMock,
     org_unit: OrganisationUnit,
 ) -> None:
-    """Test that update_line_management can set hidden_uuid."""
+    """Test that update_line_management can set class_uuid."""
     settings = set_settings(dry_run=True)
     seeded_update_line_management = partial(
         update_line_management, gql_client, model_client, settings, ORG_UUID
@@ -392,7 +392,7 @@ async def test_update_line_management_hidden(
     seeded_update_line_management: Callable[[UUID], Awaitable[bool]],
     org_unit: OrganisationUnit,
 ) -> None:
-    """Test that update_line_management can set hidden_uuid."""
+    """Test that update_line_management can set class_uuid."""
     should_hide.return_value = True
     fetch_org_unit.return_value = org_unit
 
@@ -528,12 +528,12 @@ async def test_get_class_uuid_preseed() -> None:
         hidden_uuid=uuid,
     )
     session = MagicMock()
-    hidden_uuid = await get_class_uuid(
+    class_uuid = await get_class_uuid(
         session,
         class_uuid=settings.hidden_uuid,
         class_user_key=settings.hidden_user_key,
     )
-    assert hidden_uuid == uuid
+    assert class_uuid == uuid
 
 
 @patch(
@@ -549,11 +549,11 @@ async def test_get_class_uuid(
 
     settings = get_settings(client_secret="hunter2")
     session = MagicMock()
-    hidden_uuid = await get_class_uuid(
+    class_uuid = await get_class_uuid(
         session,
         class_uuid=settings.hidden_uuid,
         class_user_key=settings.hidden_user_key,
     )
-    assert hidden_uuid == uuid
+    assert class_uuid == uuid
 
     fetch_class_uuid.assert_called_once_with(session, "hide")
