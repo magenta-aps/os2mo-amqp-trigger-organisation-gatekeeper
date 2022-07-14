@@ -159,7 +159,7 @@ async def get_it_system_uuid(
     """
     query = gql(
         """
-        query OrgUnitQuery($user_keys: [String!]) {
+        query ITSystemQuery($user_keys: [String!]) {
           itsystems(user_keys: $user_keys) {
             uuid
             }

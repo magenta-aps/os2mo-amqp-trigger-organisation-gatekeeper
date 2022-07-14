@@ -90,7 +90,7 @@ async def is_self_owned(
     if check_it_system_name is None:
         return False
 
-    check_it_system_uuid = get_it_system_uuid(
+    check_it_system_uuid = await get_it_system_uuid(
         gql_client=gql_client, user_key=check_it_system_name
     )
 
