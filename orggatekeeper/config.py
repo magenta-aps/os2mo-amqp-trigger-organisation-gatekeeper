@@ -104,7 +104,7 @@ class Settings(BaseSettings):
     )
     self_owned_it_system_check: str | None = Field(
         description=(
-            "Title of the it-system used to check whether to mark the unit as"
+            "User_key of the it-system used to check whether to mark the unit as"
             " self-owned."
         )
     )

@@ -88,15 +88,15 @@ async def lookup_it_system(gql_client: PersistentGraphQLClient, user_key: str) -
     """
     query = gql(
         """
-        query OrgUnitQuery($user_key: [String!]) {
-          itsystems(user_keys: $user_key) {
+        query OrgUnitQuery($user_keys: [String!]) {
+          itsystems(user_keys: $user_keys) {
             uuid
             }
         }
         """
     )
 
-    result = await gql_client.execute(query, {"user_key": [user_key]})
+    result = await gql_client.execute(query, {"user_keys": [user_key]})
     it_system = one(result["itsystems"])
     logger.debug(
         f"Looked up it_system with user_key={user_key}, found",
