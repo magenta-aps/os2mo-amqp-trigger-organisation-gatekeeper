@@ -16,8 +16,7 @@ from ramodels.mo._shared import OrgUnitHierarchy
 
 from .config import Settings
 from .mo import fetch_org_unit
-from .mo import get_hidden_uuid
-from .mo import get_line_management_uuid
+from .mo import get_class_uuid
 
 logger = structlog.get_logger()
 ny_regex = re.compile(r"NY\d-niveau")
@@ -146,7 +145,7 @@ async def update_line_management(
         gql_client, uuid, settings.hidden
     ):
         logger.debug("Organisation Unit needs to be hidden", uuid=uuid)
-        hidden_uuid = await get_hidden_uuid(
+        hidden_uuid = await get_class_uuid(
             gql_client,
             settings.hidden_uuid,
             settings.hidden_user_key,
@@ -154,7 +153,7 @@ async def update_line_management(
         new_org_unit_hierarchy = OrgUnitHierarchy(uuid=hidden_uuid)
     elif await is_line_management(gql_client, uuid):
         logger.debug("Organisation Unit needs to be in line management", uuid=uuid)
-        line_management_uuid = await get_line_management_uuid(
+        line_management_uuid = await get_class_uuid(
             gql_client,
             settings.line_management_uuid,
             settings.line_management_user_key,

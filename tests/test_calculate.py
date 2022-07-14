@@ -26,8 +26,7 @@ from ramodels.mo import Validity
 from ramodels.mo._shared import OrgUnitHierarchy
 
 from orggatekeeper.calculate import fetch_org_unit
-from orggatekeeper.calculate import get_hidden_uuid
-from orggatekeeper.calculate import get_line_management_uuid
+from orggatekeeper.calculate import get_class_uuid
 from orggatekeeper.calculate import is_line_management
 from orggatekeeper.calculate import should_hide
 from orggatekeeper.calculate import update_line_management
@@ -342,26 +341,13 @@ def settings(set_settings: Callable[..., Settings]) -> Generator[Settings, None,
 
 
 @pytest.fixture()
-def line_management_uuid(
+def class_uuid(
     gql_client: MagicMock, settings: Settings
 ) -> Generator[UUID, None, None]:
-    """Fixture to mock get_line_management_uuid."""
-    with patch(
-        "orggatekeeper.calculate.get_line_management_uuid"
-    ) as get_line_management_uuid:
-        line_management_uuid = uuid4()
-        get_line_management_uuid.return_value = line_management_uuid
-        yield line_management_uuid
-
-
-@pytest.fixture()
-def hidden_uuid(
-    gql_client: MagicMock, settings: Settings
-) -> Generator[UUID, None, None]:
-    """Fixture to mock get_hidden_uuid."""
-    with patch("orggatekeeper.calculate.get_hidden_uuid") as get_hidden_uuid:
+    """Fixture to mock get_class_uuid."""
+    with patch("orggatekeeper.calculate.get_class_uuid") as get_class_uuid:
         hidden_uuid = uuid4()
-        get_hidden_uuid.return_value = hidden_uuid
+        get_class_uuid.return_value = hidden_uuid
         yield hidden_uuid
 
 
@@ -411,7 +397,7 @@ async def test_update_line_management_dry_run(
     gql_client: MagicMock,
     model_client: AsyncMock,
     set_settings: Callable[..., Settings],
-    hidden_uuid: MagicMock,
+    class_uuid: MagicMock,
     org_unit: OrganisationUnit,
 ) -> None:
     """Test that update_line_management can set hidden_uuid."""
@@ -442,7 +428,7 @@ async def test_update_line_management_hidden(
     gql_client: MagicMock,
     model_client: AsyncMock,
     settings: Settings,
-    hidden_uuid: UUID,
+    class_uuid: UUID,
     seeded_update_line_management: Callable[[UUID], Awaitable[bool]],
     org_unit: OrganisationUnit,
 ) -> None:
@@ -464,7 +450,7 @@ async def test_update_line_management_hidden(
             [
                 org_unit.copy(
                     update={
-                        "org_unit_hierarchy": OrgUnitHierarchy(uuid=hidden_uuid),
+                        "org_unit_hierarchy": OrgUnitHierarchy(uuid=class_uuid),
                         "validity": Validity(from_date=now.date()),
                     }
                 )
@@ -485,7 +471,7 @@ async def test_update_line_management_line(
     gql_client: MagicMock,
     model_client: AsyncMock,
     settings: Settings,
-    line_management_uuid: UUID,
+    class_uuid: UUID,
     seeded_update_line_management: Callable[[UUID], Awaitable[bool]],
     org_unit: OrganisationUnit,
 ) -> None:
@@ -509,9 +495,7 @@ async def test_update_line_management_line(
             [
                 org_unit.copy(
                     update={
-                        "org_unit_hierarchy": OrgUnitHierarchy(
-                            uuid=line_management_uuid
-                        ),
+                        "org_unit_hierarchy": OrgUnitHierarchy(uuid=class_uuid),
                         "validity": Validity(from_date=now.date()),
                     }
                 )
@@ -532,7 +516,7 @@ async def test_update_line_management_line_for_root_org_unit(
     gql_client: MagicMock,
     model_client: AsyncMock,
     settings: Settings,
-    line_management_uuid: UUID,
+    class_uuid: UUID,
     seeded_update_line_management: Callable[[UUID], Awaitable[bool]],
 ) -> None:
     """
@@ -566,9 +550,7 @@ async def test_update_line_management_line_for_root_org_unit(
             [
                 org_unit.copy(
                     update={
-                        "org_unit_hierarchy": OrgUnitHierarchy(
-                            uuid=line_management_uuid
-                        ),
+                        "org_unit_hierarchy": OrgUnitHierarchy(uuid=class_uuid),
                         "parent": None,  # Since the unit is a root org unit
                         "validity": Validity(from_date=now.date()),
                     }
@@ -578,64 +560,18 @@ async def test_update_line_management_line_for_root_org_unit(
     ]
 
 
-async def test_get_line_management_uuid_preseed() -> None:
-    """Test get_line_management_uuid with pre-seeded uuid."""
-    uuid = uuid4()
-    session = MagicMock()
-    settings = get_settings(
-        client_secret="hunter2",
-        line_management_uuid=uuid,
-    )
-    line_management_uuid = await get_line_management_uuid(
-        session,
-        line_management_uuid=settings.line_management_uuid,
-        line_management_user_key=settings.line_management_user_key,
-    )
-    assert line_management_uuid == uuid
-
-
-@patch("orggatekeeper.mo.fetch_org_unit_hierarchy_facet_uuid", new_callable=AsyncMock)
-@patch(
-    "orggatekeeper.mo.fetch_org_unit_hierarchy_class_uuid",
-    new_callable=AsyncMock,
-)
-async def test_get_line_management_uuid(
-    fetch_org_unit_hierarchy_class_uuid: MagicMock,
-    fetch_org_unit_hierarchy_facet_uuid: MagicMock,
-) -> None:
-    """Test get_line_management_uuid with pre-seeded uuid."""
-    facet_uuid = uuid4()
-    uuid = uuid4()
-    fetch_org_unit_hierarchy_facet_uuid.return_value = facet_uuid
-    fetch_org_unit_hierarchy_class_uuid.return_value = uuid
-
-    settings = get_settings(client_secret="hunter2")
-    session = MagicMock()
-    line_management_uuid = await get_line_management_uuid(
-        session,
-        line_management_uuid=settings.line_management_uuid,
-        line_management_user_key=settings.line_management_user_key,
-    )
-    assert line_management_uuid == uuid
-
-    fetch_org_unit_hierarchy_class_uuid.assert_called_once_with(
-        session, facet_uuid, "linjeorg"
-    )
-    fetch_org_unit_hierarchy_facet_uuid.assert_called_once_with(session)
-
-
-async def test_get_hidden_uuid_preseed() -> None:
-    """Test get_hidden_uuid with pre-seeded uuid."""
+async def test_get_class_uuid_preseed() -> None:
+    """Test get_class_uuid with pre-seeded uuid."""
     uuid = uuid4()
     settings = get_settings(
         client_secret="hunter2",
         hidden_uuid=uuid,
     )
     session = MagicMock()
-    hidden_uuid = await get_hidden_uuid(
+    hidden_uuid = await get_class_uuid(
         session,
-        hidden_uuid=settings.hidden_uuid,
-        hidden_user_key=settings.hidden_user_key,
+        class_uuid=settings.hidden_uuid,
+        class_user_key=settings.hidden_user_key,
     )
     assert hidden_uuid == uuid
 
@@ -645,11 +581,11 @@ async def test_get_hidden_uuid_preseed() -> None:
     "orggatekeeper.mo.fetch_org_unit_hierarchy_class_uuid",
     new_callable=AsyncMock,
 )
-async def test_get_hidden_uuid(
+async def test_get_class_uuid(
     fetch_org_unit_hierarchy_class_uuid: MagicMock,
     fetch_org_unit_hierarchy_facet_uuid: MagicMock,
 ) -> None:
-    """Test get_hidden_uuid with pre-seeded uuid."""
+    """Test get_class_uuid with pre-seeded uuid."""
     facet_uuid = uuid4()
     uuid = uuid4()
     fetch_org_unit_hierarchy_facet_uuid.return_value = facet_uuid
@@ -657,10 +593,10 @@ async def test_get_hidden_uuid(
 
     settings = get_settings(client_secret="hunter2")
     session = MagicMock()
-    hidden_uuid = await get_hidden_uuid(
+    hidden_uuid = await get_class_uuid(
         session,
-        hidden_uuid=settings.hidden_uuid,
-        hidden_user_key=settings.hidden_user_key,
+        class_uuid=settings.hidden_uuid,
+        class_user_key=settings.hidden_user_key,
     )
     assert hidden_uuid == uuid
 
