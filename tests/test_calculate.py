@@ -32,8 +32,7 @@ from orggatekeeper.calculate import should_hide
 from orggatekeeper.calculate import update_line_management
 from orggatekeeper.config import get_settings
 from orggatekeeper.config import Settings
-from orggatekeeper.mo import fetch_org_unit_hierarchy_class_uuid
-from orggatekeeper.mo import fetch_org_unit_hierarchy_facet_uuid
+from orggatekeeper.mo import fetch_class_uuid
 from tests import ORG_UUID
 
 
@@ -83,49 +82,15 @@ async def test_fetch_org_unit() -> None:
     assert result.uuid == uuid
 
 
-async def test_fetch_org_unit_hierarchy_facet_uuid() -> None:
-    """Test that fetch_org_unit_hierarchy can find our facet uuid."""
-    params: dict[str, Any] = {}
-    org_unit_hierarchy_uuid: UUID = UUID("fc3c8bde-51fc-4975-876a-c14165416d12")
-
-    async def execute(*args: Any, **kwargs: Any) -> dict[str, Any]:
-        params["args"] = args
-        params["kwargs"] = kwargs
-
-        return {
-            "facets": [
-                {"uuid": "7384589a-4bc0-467d-a3dd-92c9b51854ec", "user_key": "morass"},
-                {
-                    "uuid": str(org_unit_hierarchy_uuid),
-                    "user_key": "org_unit_hierarchy",
-                },
-                {
-                    "uuid": "ff3be635-d1b2-4995-bb9f-3cab9fbc5dee",
-                    "user_key": "mismatch",
-                },
-            ]
-        }
-
-    session = MagicMock()
-    session.execute = execute
-    result = await fetch_org_unit_hierarchy_facet_uuid(session)
-    assert isinstance(one(params["args"]), DocumentNode)
-
-    assert isinstance(result, UUID)
-    assert result == org_unit_hierarchy_uuid
-
-
 # TODO: Test Cache of cached async methods
 
 
-async def test_fetch_org_unit_hierarchy_class_uuid() -> None:
+async def test_fetch_class_uuid() -> None:
     """Test that fetch_org_unit_hierarchy_class can find our class uuid."""
     params: dict[str, Any] = {}
 
     classes = {
         "key1": "24029af8-8289-4f37-9a03-efb4a06e7a29",
-        "key2": "e75f5433-da24-479d-a2c8-fa19e98846f0",
-        "key3": "b40876ea-7453-4c4c-944b-b349719d08b1",
     }
 
     async def execute(*args: Any, **kwargs: Any) -> dict[str, Any]:
@@ -133,27 +98,22 @@ async def test_fetch_org_unit_hierarchy_class_uuid() -> None:
         params["kwargs"] = kwargs
 
         return {
-            "facets": [
+            "classes": [
                 {
-                    "classes": [
-                        {
-                            "uuid": value,
-                            "user_key": key,
-                        }
-                        for key, value in classes.items()
-                    ]
+                    "uuid": value,
+                    "user_key": key,
                 }
+                for key, value in classes.items()
             ]
         }
 
     for key, uuid in classes.items():
         session = MagicMock()
         session.execute = execute
-        facet_uuid = uuid4()
-        result = await fetch_org_unit_hierarchy_class_uuid(session, facet_uuid, key)
+        result = await fetch_class_uuid(session, key)
         assert len(params["args"]) == 2
         assert isinstance(params["args"][0], DocumentNode)
-        assert params["args"][1] == {"uuids": [str(facet_uuid)]}
+        assert params["args"][1] == {"user_key": [key]}
 
         assert isinstance(result, UUID)
         assert result == UUID(uuid)
@@ -576,20 +536,16 @@ async def test_get_class_uuid_preseed() -> None:
     assert hidden_uuid == uuid
 
 
-@patch("orggatekeeper.mo.fetch_org_unit_hierarchy_facet_uuid", new_callable=AsyncMock)
 @patch(
-    "orggatekeeper.mo.fetch_org_unit_hierarchy_class_uuid",
+    "orggatekeeper.mo.fetch_class_uuid",
     new_callable=AsyncMock,
 )
 async def test_get_class_uuid(
-    fetch_org_unit_hierarchy_class_uuid: MagicMock,
-    fetch_org_unit_hierarchy_facet_uuid: MagicMock,
+    fetch_class_uuid: MagicMock,
 ) -> None:
     """Test get_class_uuid with pre-seeded uuid."""
-    facet_uuid = uuid4()
     uuid = uuid4()
-    fetch_org_unit_hierarchy_facet_uuid.return_value = facet_uuid
-    fetch_org_unit_hierarchy_class_uuid.return_value = uuid
+    fetch_class_uuid.return_value = uuid
 
     settings = get_settings(client_secret="hunter2")
     session = MagicMock()
@@ -600,7 +556,4 @@ async def test_get_class_uuid(
     )
     assert hidden_uuid == uuid
 
-    fetch_org_unit_hierarchy_class_uuid.assert_called_once_with(
-        session, facet_uuid, "hide"
-    )
-    fetch_org_unit_hierarchy_facet_uuid.assert_called_once_with(session)
+    fetch_class_uuid.assert_called_once_with(session, "hide")
