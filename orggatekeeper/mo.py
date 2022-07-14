@@ -2,7 +2,6 @@
 #
 # SPDX-License-Identifier: MPL-2.0
 """Module for fetching information (e.g. facet and class UUIDs) from MO"""
-from operator import itemgetter
 from typing import Optional
 from uuid import UUID
 
@@ -15,44 +14,11 @@ from ramodels.mo import OrganisationUnit
 logger = structlog.get_logger()
 
 
-async def fetch_org_unit_hierarchy_facet_uuid(
+async def fetch_class_uuid(
     gql_client: PersistentGraphQLClient,
-) -> UUID:
-    """Fetch the UUID of the 'org_unit_hierarchy' facet.
-
-    Args:
-        gql_client: The GraphQL client to run our queries on.
-
-    Returns:
-        The UUID of 'org_unit_hierarchy'.
-    """
-    # TODO: Optimize with better filters in MO
-    # Having user-key filters would help a lot
-
-    # Fetch all facets to find org_unit_hierarchy's UUID
-    query = gql(
-        """
-        query FacetQuery {
-            facets {
-                uuid
-                user_key
-            }
-        }
-        """
-    )
-    result = await gql_client.execute(query)
-    # Construct a user-key to uuid map of all facets
-    facet_map = dict(map(itemgetter("user_key", "uuid"), result["facets"]))
-    org_unit_hierarchy_uuid = facet_map["org_unit_hierarchy"]
-    return UUID(org_unit_hierarchy_uuid)
-
-
-async def fetch_org_unit_hierarchy_class_uuid(
-    gql_client: PersistentGraphQLClient,
-    org_unit_hierarchy_uuid: UUID,
     class_user_key: str,
 ) -> UUID:
-    """Fetch the UUID of the given class within the 'org_unit_hierarchy' facet.
+    """Fetch the UUID of the given class.
 
     Args:
         gql_client: The GraphQL client to run our queries on.
@@ -61,28 +27,18 @@ async def fetch_org_unit_hierarchy_class_uuid(
     Returns:
         The UUID of class.
     """
-    # TODO: Optimize with better filters in MO
-    # Having user-key filters would help a lot, so would facet filter on classes.
 
-    # Fetch all classes under org_unit_hierarchy to find the class's UUID
     query = gql(
         """
-        query ClassQuery($uuids: [UUID!]) {
-            facets(uuids: $uuids) {
-                classes {
-                    uuid
-                    user_key
-                }
+        query ClassQuery($user_keys: [String!]) {
+            classes(user_keys: $user_keys) {
+                uuid
             }
         }
         """
     )
-    result = await gql_client.execute(query, {"uuids": [str(org_unit_hierarchy_uuid)]})
-    # Construct a user-key to uuid map of all classes
-    class_map = dict(
-        map(itemgetter("user_key", "uuid"), one(result["facets"])["classes"])
-    )
-    class_uuid = class_map[class_user_key]
+    result = await gql_client.execute(query, {"user_keys": [class_user_key]})
+    class_uuid = one(result["classes"])["uuid"]
     return UUID(class_uuid)
 
 
@@ -178,10 +134,7 @@ async def get_class_uuid(
     """
     if class_uuid:
         return class_uuid
-    org_unit_hierarchy_uuid = await fetch_org_unit_hierarchy_facet_uuid(gql_client)
-    class_uuid = await fetch_org_unit_hierarchy_class_uuid(
-        gql_client, org_unit_hierarchy_uuid, class_user_key
-    )
+    class_uuid = await fetch_class_uuid(gql_client, class_user_key)
     logger.debug(
         "org_unit_hierarchy class uuid not set, fetched",
         user_key=class_user_key,
