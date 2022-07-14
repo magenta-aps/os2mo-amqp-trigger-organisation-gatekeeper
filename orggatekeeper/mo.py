@@ -2,7 +2,6 @@
 #
 # SPDX-License-Identifier: MPL-2.0
 """Module for fetching information (e.g. facet and class UUIDs) from MO"""
-from functools import lru_cache
 from typing import Optional
 from uuid import UUID
 
@@ -144,7 +143,6 @@ async def get_class_uuid(
     return class_uuid
 
 
-@lru_cache
 async def get_it_system_uuid(
     gql_client: PersistentGraphQLClient, user_key: str
 ) -> UUID:
