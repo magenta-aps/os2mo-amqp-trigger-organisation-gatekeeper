@@ -4,7 +4,6 @@
 """Update logic."""
 import datetime
 import re
-from functools import lru_cache
 from uuid import UUID
 
 import structlog
@@ -18,6 +17,7 @@ from ramodels.mo._shared import OrgUnitHierarchy
 from .config import Settings
 from .mo import fetch_org_unit
 from .mo import get_class_uuid
+from .mo import get_it_system_uuid
 
 logger = structlog.get_logger()
 ny_regex = re.compile(r"NY\d-niveau")
@@ -75,37 +75,6 @@ async def is_line_management(gql_client: PersistentGraphQLClient, uuid: UUID) ->
     return False
 
 
-@lru_cache
-async def lookup_it_system(gql_client: PersistentGraphQLClient, user_key: str) -> UUID:
-    """Find the uuid of an it-system from its user_key
-
-    Args:
-        gql_client: The GraphQL client to run our queries on.
-        user_key: user_key of the it-system to look up.
-
-    Returns:
-        UUID of the it-system
-    """
-    query = gql(
-        """
-        query OrgUnitQuery($user_keys: [String!]) {
-          itsystems(user_keys: $user_keys) {
-            uuid
-            }
-        }
-        """
-    )
-
-    result = await gql_client.execute(query, {"user_keys": [user_key]})
-    it_system = one(result["itsystems"])
-    logger.debug(
-        f"Looked up it_system with user_key={user_key}, found",
-        it_system=it_system,
-    )
-
-    return UUID(it_system["uuid"])
-
-
 async def is_self_owned(
     gql_client: PersistentGraphQLClient, uuid: UUID, check_it_system_name: str | None
 ) -> bool:
@@ -121,7 +90,7 @@ async def is_self_owned(
     if check_it_system_name is None:
         return False
 
-    check_it_system_uuid = lookup_it_system(
+    check_it_system_uuid = get_it_system_uuid(
         gql_client=gql_client, user_key=check_it_system_name
     )
 
