@@ -30,14 +30,14 @@ async def fetch_class_uuid(
 
     query = gql(
         """
-        query ClassQuery($user_key: [String!]) {
-            classes(user_key: $user_key) {
+        query ClassQuery($user_keys: [String!]) {
+            classes(user_keys: $user_keys) {
                 uuid
             }
         }
         """
     )
-    result = await gql_client.execute(query, {"user_key": [class_user_key]})
+    result = await gql_client.execute(query, {"user_keys": [class_user_key]})
     class_uuid = one(result["classes"])["uuid"]
     return UUID(class_uuid)
 

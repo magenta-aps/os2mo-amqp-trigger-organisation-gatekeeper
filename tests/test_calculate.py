@@ -113,7 +113,7 @@ async def test_fetch_class_uuid() -> None:
         result = await fetch_class_uuid(session, key)
         assert len(params["args"]) == 2
         assert isinstance(params["args"][0], DocumentNode)
-        assert params["args"][1] == {"user_key": [key]}
+        assert params["args"][1] == {"user_keys": [key]}
 
         assert isinstance(result, UUID)
         assert result == UUID(uuid)
