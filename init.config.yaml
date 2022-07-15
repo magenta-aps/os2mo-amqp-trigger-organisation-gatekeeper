@@ -9,5 +9,8 @@ facets:
     hide:
       title: "Skjult organisation"
       scope: "TEXT"
+    NA:
+      title: "Udenfor organisation"
+      scope: "TEXT"
 it_systems:
   SD_uuid: "SD UUID"

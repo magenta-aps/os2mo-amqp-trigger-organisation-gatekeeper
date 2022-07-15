@@ -212,6 +212,13 @@ async def update_line_management(
             settings.self_owned_user_key,
         )
         new_org_unit_hierarchy = OrgUnitHierarchy(uuid=self_owned_uuid)
+    else:
+        na_uuid = await get_class_uuid(
+            gql_client,
+            None,
+            "NA",
+        )
+        new_org_unit_hierarchy = OrgUnitHierarchy(uuid=na_uuid)
 
     # Fetch the current object and see if we need to update it
     org_unit = await fetch_org_unit(gql_client, uuid)
