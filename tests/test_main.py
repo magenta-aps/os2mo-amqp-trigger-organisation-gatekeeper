@@ -295,7 +295,7 @@ async def test_lifespan(
     # Fire startup event on entry, and shutdown on exit
     async with LifespanManager(fastapi_app):
 
-        assert len(amqp_system.mock_calls) == 7
+        assert len(amqp_system.mock_calls) == 9
         # Create register calls
         assert amqp_system.mock_calls[0] == call.register(
             ServiceType.ORG_UNIT, ObjectType.ASSOCIATION, RequestType.WILDCARD
@@ -306,11 +306,14 @@ async def test_lifespan(
         assert amqp_system.mock_calls[4] == call.register(
             ServiceType.ORG_UNIT, ObjectType.ORG_UNIT, RequestType.WILDCARD
         )
+        assert amqp_system.mock_calls[6] == call.register(
+            ServiceType.ORG_UNIT, ObjectType.IT, RequestType.WILDCARD
+        )
         # Register calls
         assert amqp_system.mock_calls[1] == amqp_system.mock_calls[3]
         assert amqp_system.mock_calls[1] == amqp_system.mock_calls[5]
         # Start call
-        assert amqp_system.mock_calls[6] == call.start(
+        assert amqp_system.mock_calls[8] == call.start(
             queue_prefix="os2mo-amqp-trigger-organisation-gatekeeper"
         )
 
