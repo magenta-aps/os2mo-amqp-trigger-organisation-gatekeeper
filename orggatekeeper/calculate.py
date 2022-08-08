@@ -85,7 +85,7 @@ async def is_self_owned(
         uuid: UUID of the organisation unit.
 
     Returns:
-        Whether the organisation unit should be marked as self owned
+        Whether the organisation unit should be marked as self-owned
     """
     if check_it_system_name is None:
         return False

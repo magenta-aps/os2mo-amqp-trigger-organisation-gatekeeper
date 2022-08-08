@@ -160,7 +160,7 @@ async def get_it_system_uuid(
         query ITSystemQuery($user_keys: [String!]) {
           itsystems(user_keys: $user_keys) {
             uuid
-            }
+          }
         }
         """
     )
@@ -171,5 +171,4 @@ async def get_it_system_uuid(
         f"Looked up it_system with user_key={user_key}, found",
         it_system=it_system,
     )
-
     return UUID(it_system["uuid"])
