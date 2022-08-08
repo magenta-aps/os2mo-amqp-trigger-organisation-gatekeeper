@@ -76,20 +76,20 @@ async def is_line_management(gql_client: PersistentGraphQLClient, uuid: UUID) ->
 
 
 async def is_self_owned(
-    gql_client: PersistentGraphQLClient, uuid: UUID, check_it_system_name: str | None
+    gql_client: PersistentGraphQLClient, uuid: UUID, check_it_system_name: str
 ) -> bool:
     """Determine whether the organisation unit should be marked as self-owned.
+    A unit is marked as self-owned if it is not in line-management but has an it-account
+    in the it-system with user_key set in check_it_system_name
 
     Args:
         gql_client: The GraphQL client to run our queries on.
         uuid: UUID of the organisation unit.
+        check_it_system_name: user_key of the it-system to check
 
     Returns:
         Whether the organisation unit should be marked as self-owned
     """
-    if check_it_system_name is None:
-        return False
-
     check_it_system_uuid = await get_it_system_uuid(
         gql_client=gql_client, user_key=check_it_system_name
     )
@@ -204,7 +204,9 @@ async def update_line_management(
             settings.line_management_user_key,
         )
         new_org_unit_hierarchy = OrgUnitHierarchy(uuid=line_management_uuid)
-    elif await is_self_owned(gql_client, uuid, settings.self_owned_it_system_check):
+    elif settings.self_owned_it_system_check and await is_self_owned(
+        gql_client, uuid, settings.self_owned_it_system_check
+    ):
         logger.debug("Organisation Unit needs to marked as self-owned", uuid=uuid)
         self_owned_uuid = await get_class_uuid(
             gql_client,
