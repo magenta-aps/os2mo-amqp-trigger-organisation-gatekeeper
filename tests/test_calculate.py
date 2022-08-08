@@ -306,9 +306,9 @@ def class_uuid(
 ) -> Generator[UUID, None, None]:
     """Fixture to mock get_class_uuid."""
     with patch("orggatekeeper.calculate.get_class_uuid") as get_class_uuid:
-        hidden_uuid = uuid4()
-        get_class_uuid.return_value = hidden_uuid
-        yield hidden_uuid
+        class_uuid = uuid4()
+        get_class_uuid.return_value = class_uuid
+        yield class_uuid
 
 
 @pytest.fixture()
@@ -332,16 +332,17 @@ async def test_update_line_management_no_change(
     gql_client: MagicMock,
     model_client: AsyncMock,
     seeded_update_line_management: Callable[[UUID], Awaitable[bool]],
+    class_uuid: MagicMock,
     org_unit: OrganisationUnit,
 ) -> None:
-    """Test that update_line_management can do noop."""
+    """Test that update_line_management can't do noop."""
     should_hide.return_value = False
     is_line_management.return_value = False
     fetch_org_unit.return_value = org_unit
 
     uuid = org_unit.uuid
     result = await seeded_update_line_management(uuid)
-    assert result is False
+    assert result is True
 
     should_hide.assert_called_once_with(gql_client, uuid, [])
     is_line_management.assert_called_once_with(gql_client, uuid)
