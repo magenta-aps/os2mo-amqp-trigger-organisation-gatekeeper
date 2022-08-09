@@ -56,7 +56,7 @@ async def is_line_management(gql_client: PersistentGraphQLClient, uuid: UUID) ->
     obj = one(one(result["org_units"])["objects"])
     logger.debug("GraphQL obj", obj=obj)
 
-    if not obj["org_unit_level"]:
+    if not obj.get("org_unit_level"):
         logger.debug(f"Found no org_unit_level on {uuid=}, assuming not in line-org")
         return False
 

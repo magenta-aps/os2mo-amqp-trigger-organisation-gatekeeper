@@ -28,6 +28,7 @@ from ramodels.mo._shared import OrgUnitHierarchy
 from orggatekeeper.calculate import fetch_org_unit
 from orggatekeeper.calculate import get_class_uuid
 from orggatekeeper.calculate import is_line_management
+from orggatekeeper.calculate import is_self_owned
 from orggatekeeper.calculate import should_hide
 from orggatekeeper.calculate import update_line_management
 from orggatekeeper.config import get_settings
@@ -122,6 +123,7 @@ async def test_fetch_class_uuid() -> None:
 @pytest.mark.parametrize(
     "org_unit_level_user_key,num_engagements,num_assocations,expected",
     [
+        (None, 0, 0, False),
         # Engagements and associations do not matter with NY
         ("NY0-niveau", 0, 0, True),
         ("NY0-niveau", 42, 0, True),
@@ -142,7 +144,7 @@ async def test_fetch_class_uuid() -> None:
     ],
 )
 async def test_is_line_management(
-    org_unit_level_user_key: str,
+    org_unit_level_user_key: str | None,
     num_engagements: int,
     num_assocations: int,
     expected: bool,
@@ -153,8 +155,7 @@ async def test_is_line_management(
     async def execute(*args: Any, **kwargs: Any) -> dict[str, Any]:
         params["args"] = args
         params["kwargs"] = kwargs
-
-        return {
+        return_value = {
             "org_units": [
                 {
                     "objects": [
@@ -171,6 +172,9 @@ async def test_is_line_management(
                 }
             ]
         }
+        if org_unit_level_user_key is None:
+            del return_value["org_units"][0]["objects"][0]["org_unit_level"]
+        return return_value
 
     uuid = uuid4()
     session = MagicMock()
@@ -179,6 +183,43 @@ async def test_is_line_management(
     assert len(params["args"]) == 2
     assert isinstance(params["args"][0], DocumentNode)
     assert params["args"][1] == {"uuids": [str(uuid)]}
+    assert result == expected
+
+
+@pytest.mark.parametrize("expected", [True, False])
+async def test_is_self_owned(expected: bool) -> None:
+    """Test check for self-owned"""
+    params: dict[str, Any] = {}
+    it_system_uuid = uuid4()
+
+    async def execute(*args: Any, **kwargs: Any) -> dict[str, Any]:
+        params["args"] = args
+        params["kwargs"] = kwargs
+        return {
+            "org_units": [
+                {
+                    "objects": [
+                        {
+                            "itusers": [
+                                {
+                                    "itsystem_uuid": str(it_system_uuid)
+                                    if expected
+                                    else str(uuid4())
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ]
+        }
+
+    uuid = uuid4()
+    session = MagicMock()
+    session.execute = execute
+    with patch(
+        "orggatekeeper.calculate.get_it_system_uuid", return_value=it_system_uuid
+    ):
+        result = await is_self_owned(session, uuid=uuid, check_it_system_name="test")
     assert result == expected
 
 
@@ -420,15 +461,22 @@ async def test_update_line_management_hidden(
     ]
 
 
+# pylint: disable=R0914
+@pytest.mark.parametrize("should_hide_return", [True, False])
+@pytest.mark.parametrize("is_line_management_return", [True, False])
+@pytest.mark.parametrize("is_self_owned_return", [True, False])
+@pytest.mark.parametrize("changes", [True, False])
 @patch("orggatekeeper.calculate.datetime")
-@patch("orggatekeeper.calculate.is_line_management")
-@patch("orggatekeeper.calculate.should_hide")
 @patch("orggatekeeper.calculate.fetch_org_unit")
+@patch("orggatekeeper.calculate.OrgUnitHierarchy")
 async def test_update_line_management_line(
+    org_unit_hierarchy_mock: MagicMock,
     fetch_org_unit: MagicMock,
-    should_hide: MagicMock,
-    is_line_management: MagicMock,
     mock_datetime: MagicMock,
+    changes: bool,
+    should_hide_return: MagicMock,
+    is_line_management_return: MagicMock,
+    is_self_owned_return: MagicMock,
     gql_client: MagicMock,
     model_client: AsyncMock,
     settings: Settings,
@@ -437,32 +485,59 @@ async def test_update_line_management_line(
     org_unit: OrganisationUnit,
 ) -> None:
     """Test that update_line_management can set line_management_uuid."""
-    should_hide.return_value = False
-    is_line_management.return_value = True
     fetch_org_unit.return_value = org_unit
+    org_unit_hierarchy_mock.return_value = (
+        OrgUnitHierarchy(uuid=class_uuid) if changes else org_unit.org_unit_hierarchy
+    )
+    self_owned_it_system_check = "IT-system"
 
     now = datetime.now()
     mock_datetime.datetime.now.return_value = now
-
     uuid = org_unit.uuid
-    result = await seeded_update_line_management(uuid)
-    assert result is True
+    settings.self_owned_it_system_check = self_owned_it_system_check
 
-    should_hide.assert_called_once_with(gql_client, uuid, [])
-    is_line_management.assert_called_once_with(gql_client, uuid)
-    fetch_org_unit.assert_called_once_with(gql_client, uuid)
-    assert model_client.mock_calls == [
-        call.edit(
-            [
-                org_unit.copy(
-                    update={
-                        "org_unit_hierarchy": OrgUnitHierarchy(uuid=class_uuid),
-                        "validity": Validity(from_date=now.date()),
-                    }
-                )
-            ]
+    with patch(
+        "orggatekeeper.calculate.is_line_management",
+        return_value=is_line_management_return,
+    ) as is_line_management_mock:
+        with patch(
+            "orggatekeeper.calculate.is_self_owned", return_value=is_self_owned_return
+        ) as is_self_owned_mock:
+            with patch(
+                "orggatekeeper.calculate.should_hide", return_value=should_hide_return
+            ) as should_hide_mock:
+                result = await seeded_update_line_management(uuid)
+
+    assert result == changes
+
+    # Always check if hidden
+    should_hide_mock.assert_called_once_with(gql_client, uuid, [])
+    # Then check if line management if it isn't hidden
+    if not should_hide_return:
+        is_line_management_mock.assert_called_once_with(gql_client, uuid)
+
+    # Then check for self-owned
+    if not (should_hide_return or is_line_management_return):
+        is_self_owned_mock.assert_called_once_with(
+            gql_client, uuid, self_owned_it_system_check
         )
-    ]
+
+    fetch_org_unit.assert_called_once_with(gql_client, uuid)
+    if not changes:
+        assert model_client.mock_calls == []
+    else:
+        assert model_client.mock_calls == [
+            call.edit(
+                [
+                    org_unit.copy(
+                        update={
+                            "org_unit_hierarchy": OrgUnitHierarchy(uuid=class_uuid),
+                            "validity": Validity(from_date=now.date()),
+                        }
+                    )
+                ]
+            )
+        ]
 
 
 @patch("orggatekeeper.calculate.datetime")
