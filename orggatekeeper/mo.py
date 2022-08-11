@@ -141,3 +141,34 @@ async def get_class_uuid(
         uuid=class_uuid,
     )
     return class_uuid
+
+
+async def get_it_system_uuid(
+    gql_client: PersistentGraphQLClient, user_key: str
+) -> UUID:
+    """Find the uuid of an it-system from its user_key
+
+    Args:
+        gql_client: The GraphQL client to run our queries on.
+        user_key: user_key of the it-system to look up.
+
+    Returns:
+        UUID of the it-system
+    """
+    query = gql(
+        """
+        query ITSystemQuery($user_keys: [String!]) {
+          itsystems(user_keys: $user_keys) {
+            uuid
+          }
+        }
+        """
+    )
+
+    result = await gql_client.execute(query, {"user_keys": [user_key]})
+    it_system = one(result["itsystems"])
+    logger.debug(
+        f"Looked up it_system with user_key={user_key}, found",
+        it_system=it_system,
+    )
+    return UUID(it_system["uuid"])

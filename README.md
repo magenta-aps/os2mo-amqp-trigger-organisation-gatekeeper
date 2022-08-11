@@ -14,6 +14,7 @@ An organisation is part of line management iff:
 Additionally this function also hides organisation units iff:
 * Their user-key is contained within hidden_user_key or a child of it.
 
+If an organisation unit is not part of line management but has an it-account in a chosen it-system it is marked as self-owned. The it-system uuid should be set in the variable `SELF_OWNED_IT_SYSTEM_CHECK`
 ## Usage
 
 Adjust the `AMQP_URL` variable to OS2mo's running message-broker, either;
