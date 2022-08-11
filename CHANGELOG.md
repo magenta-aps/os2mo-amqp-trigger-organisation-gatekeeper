@@ -6,6 +6,11 @@ SPDX-License-Identifier: MPL-2.0
 CHANGELOG
 =========
 
+1.1.0 - 2022-08-11
+------------------
+
+[#51474] Adds support for self-owned organisations and organisations without hierarchies.
+
 1.0.4 - 2022-07-04
 ------------------
 
