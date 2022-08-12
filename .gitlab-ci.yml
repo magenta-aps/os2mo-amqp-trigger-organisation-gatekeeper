@@ -7,6 +7,7 @@ stages:
   - test
   - coverage
   - release
+  - deploy
 
 
 variables:
