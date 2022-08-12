@@ -6,6 +6,11 @@ SPDX-License-Identifier: MPL-2.0
 CHANGELOG
 =========
 
+1.1.1 - 2022-08-12
+------------------
+
+[#51474] Adds automatic relases with config updater
+
 1.1.0 - 2022-08-11
 ------------------
 

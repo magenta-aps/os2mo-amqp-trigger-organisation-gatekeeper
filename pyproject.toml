@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MPL-2.0
 [tool.poetry]
 name = "orggatekeeper"
-version = "1.1.0"
+version = "1.1.1"
 description = "OS2mo AMQP Trigger receiver that updates line management information"
 authors = ["Magenta ApS <info@magenta.dk>"]
 license = "MPL-2.0"
