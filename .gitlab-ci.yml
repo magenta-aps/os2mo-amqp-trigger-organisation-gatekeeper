@@ -79,17 +79,17 @@ Deploy to Flux Dev:
   needs:
     - Release version
   variables:
-    ENDPOINT: os2mo/flux/orgviewer/update-dev
+    ENDPOINT: os2mo/flux/orggatekeeper/update-dev
 
 Deploy to Flux Test:
   extends: .release-to-test
   needs: []
   variables:
-    ENDPOINT: os2mo/flux/orgviewer/update-test
+    ENDPOINT: os2mo/flux/orggatekeeper/update-test
 
 Deploy to Flux Prod:
   extends: .release-to-prod
   needs: []
   variables:
-    ENDPOINT: os2mo/flux/orgviewer/update-prod
+    ENDPOINT: os2mo/flux/orggatekeeper/update-prod
 
