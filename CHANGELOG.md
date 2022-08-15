@@ -6,6 +6,11 @@ SPDX-License-Identifier: MPL-2.0
 CHANGELOG
 =========
 
+1.1.2 - 2022-08-15
+------------------
+
+[#51474] Fix deploy with configupdater to update orggatekeeper and not orgviewer
+
 1.1.1 - 2022-08-12
 ------------------
 
