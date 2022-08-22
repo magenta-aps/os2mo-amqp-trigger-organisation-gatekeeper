@@ -1,6 +1,7 @@
 # SPDX-FileCopyrightText: 2019-2020 Magenta ApS
 #
 # SPDX-License-Identifier: MPL-2.0
+# pylint: disable=too-few-public-methods,missing-class-docstring
 """Settings handling."""
 import logging
 from enum import Enum
@@ -14,6 +15,7 @@ from pydantic import BaseSettings
 from pydantic import Field
 from pydantic import parse_obj_as
 from pydantic import SecretStr
+from ramqp.config import ConnectionSettings
 
 
 class LogLevel(Enum):
@@ -30,6 +32,15 @@ class LogLevel(Enum):
 logger = structlog.get_logger()
 
 
+class OrgGatekeeperConnectionSettings(ConnectionSettings):
+    """Organisation Gatekeeper-specific connection settings."""
+
+    queue_prefix = "os2mo-amqp-trigger-organisation-gatekeeper"
+
+    # TODO: Ensure we don't crash MO when running somewhat concurrently
+    prefetch_count = 1
+
+
 class Settings(BaseSettings):
     """Settings for organisation gatekeeper.
 
@@ -37,7 +48,9 @@ class Settings(BaseSettings):
     * https://git.magenta.dk/rammearkitektur/ramqp/-/blob/master/ramqp/config.py
     """
 
-    # pylint: disable=too-few-public-methods
+    amqp: OrgGatekeeperConnectionSettings = Field(
+        default_factory=OrgGatekeeperConnectionSettings
+    )
 
     commit_tag: str = Field("HEAD", description="Git commit tag.")
     commit_sha: str = Field("HEAD", description="Git commit SHA.")
@@ -112,16 +125,15 @@ class Settings(BaseSettings):
     dry_run: bool = Field(
         False, description="Run in dry-run mode, only printing what would have changed."
     )
-    queue_prefix: str = Field(
-        "os2mo-amqp-trigger-organisation-gatekeeper",
-        description="The prefix to attach to queues for this program.",
-    )
 
     log_level: LogLevel = LogLevel.DEBUG
 
     expose_metrics: bool = Field(True, description="Whether to expose metrics.")
 
     graphql_timeout: int = 120
+
+    class Config:
+        env_nested_delimiter = "__"  # allows setting e.g. AMQP__QUEUE_PREFIX=foo
 
 
 @cache

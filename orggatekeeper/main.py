@@ -4,9 +4,12 @@
 """Event handling."""
 from asyncio import gather
 from asyncio import Semaphore
+from contextlib import asynccontextmanager
+from contextlib import AsyncExitStack
 from functools import partial
 from operator import itemgetter
 from typing import Any
+from typing import AsyncGenerator
 from typing import Awaitable
 from typing import Callable
 from typing import Tuple
@@ -24,12 +27,13 @@ from prometheus_client import Info
 from prometheus_fastapi_instrumentator import Instrumentator
 from raclients.graph.client import PersistentGraphQLClient
 from raclients.modelclient.mo import ModelClient
-from ramqp.mo_models import MORoutingKey
-from ramqp.mo_models import ObjectType
-from ramqp.mo_models import PayloadType
-from ramqp.mo_models import RequestType
-from ramqp.mo_models import ServiceType
-from ramqp.moqp import MOAMQPSystem
+from ramqp.mo import MOAMQPSystem
+from ramqp.mo import MORouter
+from ramqp.mo.models import MORoutingKey
+from ramqp.mo.models import ObjectType
+from ramqp.mo.models import PayloadType
+from ramqp.mo.models import RequestType
+from ramqp.mo.models import ServiceType
 from starlette.status import HTTP_204_NO_CONTENT
 from starlette.status import HTTP_503_SERVICE_UNAVAILABLE
 
@@ -118,6 +122,7 @@ async def organisation_gatekeeper_callback(
     seeded_update_line_management: Callable[[UUID], Awaitable[bool]],
     mo_routing_key: MORoutingKey,
     payload: PayloadType,
+    **_: Any,
 ) -> None:
     """Updates line management information.
 
@@ -127,6 +132,7 @@ async def organisation_gatekeeper_callback(
         settings: Integration settings module.
         mo_routing_key: The message routing key.
         payload: The message payload.
+        _: Additional RAMQP kwargs required for forwards-compatibility.
 
     Returns:
         None
@@ -234,53 +240,57 @@ def create_app(  # pylint: disable=too-many-statements
 
     context = construct_context()
 
-    @app.on_event("startup")
-    async def startup_amqp_consumer() -> None:
-        logger.info("Settings up clients")
-        gql_client, model_client = construct_clients(settings)
-        context["gql_client"] = gql_client
-        context["model_client"] = model_client
+    # pylint: disable=unused-argument
+    @asynccontextmanager
+    async def lifespan(app: FastAPI) -> AsyncGenerator:
+        async with AsyncExitStack() as stack:
+            logger.info("Settings up clients")
+            gql_client, model_client = construct_clients(settings)
 
-        # Get organisation UUID
-        org_uuid = await fetch_org_uuid(gql_client)
+            model_client = context["model_client"] = await stack.enter_async_context(
+                model_client
+            )
+            gql_client = context["gql_client"] = await stack.enter_async_context(
+                gql_client
+            )
 
-        logger.info("Seeding line management function")
-        seeded_update_line_management = partial(
-            update_line_management, gql_client, model_client, settings, org_uuid
-        )
-        context["seeded_update_line_management"] = seeded_update_line_management
+            # Get organisation UUID
+            org_uuid = await fetch_org_uuid(gql_client)
 
-        logger.info("Settings up AMQP system")
-        callback = partial(
-            organisation_gatekeeper_callback, seeded_update_line_management
-        )
+            logger.info("Seeding line management function")
+            seeded_update_line_management = partial(
+                update_line_management, gql_client, model_client, settings, org_uuid
+            )
+            context["seeded_update_line_management"] = seeded_update_line_management
 
-        object_types = [
-            ObjectType.ASSOCIATION,
-            ObjectType.ENGAGEMENT,
-            ObjectType.ORG_UNIT,
-            ObjectType.IT,
-        ]
-        amqp_system = MOAMQPSystem()
-        for object_type in object_types:
-            amqp_system.register(
-                ServiceType.ORG_UNIT, object_type, RequestType.WILDCARD
-            )(callback)
-        context["amqp_system"] = amqp_system
+            logger.info("Settings up AMQP system")
+            callback = partial(
+                organisation_gatekeeper_callback, seeded_update_line_management
+            )
 
-        logger.info("Starting AMQP system")
-        await amqp_system.start(queue_prefix=settings.queue_prefix)
+            object_types = [
+                ObjectType.ASSOCIATION,
+                ObjectType.ENGAGEMENT,
+                ObjectType.ORG_UNIT,
+                ObjectType.IT,
+            ]
 
-    @app.on_event("shutdown")
-    async def stop_amqp_consumer() -> None:
-        amqp_system = context["amqp_system"]
-        await amqp_system.stop()
+            router = MORouter()
+            amqp_system = MOAMQPSystem(settings=settings.amqp, router=router)
+            for object_type in object_types:
+                router.register(
+                    ServiceType.ORG_UNIT, object_type, RequestType.WILDCARD
+                )(callback)
+            context["amqp_system"] = amqp_system
 
-        gql_client = context["gql_client"]
-        await gql_client.aclose()
+            logger.info("Starting AMQP system")
+            await stack.enter_async_context(amqp_system)
 
-        model_client = context["model_client"]
-        await model_client.aclose()
+            # Yield to keep the AMQP system open until the ASGI application is closed.
+            # Control will be returned to here when the ASGI application is shut down.
+            yield
+
+    app.router.lifespan_context = lifespan
 
     @app.get("/")
     async def index() -> dict[str, str]:
