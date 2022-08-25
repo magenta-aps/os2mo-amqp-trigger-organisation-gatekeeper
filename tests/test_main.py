@@ -25,11 +25,12 @@ import pytest
 from asgi_lifespan import LifespanManager
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from ramqp.mo_models import ObjectType
-from ramqp.mo_models import PayloadType
-from ramqp.mo_models import RequestType
-from ramqp.mo_models import ServiceType
-from ramqp.moqp import MOAMQPSystem
+from ramqp.mo import MOAMQPSystem
+from ramqp.mo import MORouter
+from ramqp.mo.models import ObjectType
+from ramqp.mo.models import PayloadType
+from ramqp.mo.models import RequestType
+from ramqp.mo.models import ServiceType
 
 from orggatekeeper.config import get_settings
 from orggatekeeper.main import build_information
@@ -279,8 +280,12 @@ async def test_trigger_uuid_endpoint(
 
 @patch("orggatekeeper.main.fetch_org_uuid")
 @patch("orggatekeeper.main.MOAMQPSystem")
+@patch("orggatekeeper.main.MORouter")
 async def test_lifespan(
-    mo_amqpsystem: MOAMQPSystem, mock_fetch_org_uuid: MagicMock, fastapi_app: FastAPI
+    mo_router: MORouter,
+    mo_amqpsystem: MOAMQPSystem,
+    mock_fetch_org_uuid: MagicMock,
+    fastapi_app: FastAPI,
 ) -> None:
     """Test that our lifespan events are handled as expected."""
     amqp_system = MagicMock()
@@ -290,37 +295,34 @@ async def test_lifespan(
     mo_amqpsystem.return_value = amqp_system
     mock_fetch_org_uuid.return_value = ORG_UUID
 
+    router = MagicMock()
+    mo_router.return_value = router
+
     assert not amqp_system.mock_calls
 
     # Fire startup event on entry, and shutdown on exit
     async with LifespanManager(fastapi_app):
 
-        assert len(amqp_system.mock_calls) == 9
+        assert len(router.mock_calls) == 8
         # Create register calls
-        assert amqp_system.mock_calls[0] == call.register(
+        assert router.mock_calls[0] == call.register(
             ServiceType.ORG_UNIT, ObjectType.ASSOCIATION, RequestType.WILDCARD
         )
-        assert amqp_system.mock_calls[2] == call.register(
+        assert router.mock_calls[2] == call.register(
             ServiceType.ORG_UNIT, ObjectType.ENGAGEMENT, RequestType.WILDCARD
         )
-        assert amqp_system.mock_calls[4] == call.register(
+        assert router.mock_calls[4] == call.register(
             ServiceType.ORG_UNIT, ObjectType.ORG_UNIT, RequestType.WILDCARD
         )
-        assert amqp_system.mock_calls[6] == call.register(
+        assert router.mock_calls[6] == call.register(
             ServiceType.ORG_UNIT, ObjectType.IT, RequestType.WILDCARD
         )
         # Register calls
-        assert amqp_system.mock_calls[1] == amqp_system.mock_calls[3]
-        assert amqp_system.mock_calls[1] == amqp_system.mock_calls[5]
-        # Start call
-        assert amqp_system.mock_calls[8] == call.start(
-            queue_prefix="os2mo-amqp-trigger-organisation-gatekeeper"
-        )
+        assert router.mock_calls[1] == router.mock_calls[3]
+        assert router.mock_calls[1] == router.mock_calls[5]
 
         # Clean mock to only capture shutdown changes
         amqp_system.reset_mock()
-
-    assert amqp_system.mock_calls == [call.stop()]
 
 
 async def test_liveness_endpoint(test_client: TestClient) -> None:

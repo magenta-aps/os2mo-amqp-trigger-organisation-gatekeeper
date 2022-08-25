@@ -17,7 +17,7 @@ Additionally this function also hides organisation units iff:
 If an organisation unit is not part of line management but has an it-account in a chosen it-system it is marked as self-owned. The it-system uuid should be set in the variable `SELF_OWNED_IT_SYSTEM_CHECK`
 ## Usage
 
-Adjust the `AMQP_URL` variable to OS2mo's running message-broker, either;
+Adjust the `AMQP__URL` variable to OS2mo's running message-broker, either;
 * directly in `docker-compose.yml` or
 * by creating a `docker-compose.override.yaml` file.
 
@@ -89,7 +89,7 @@ You can use the flags `-vx` where `v` prints the test & `x` makes the test stop 
 
 To run the integration tests, an AMQP instance must be available.
 
-If an instance is already available, it can be used by configuring the `AMQP_URL`
+If an instance is already available, it can be used by configuring the `AMQP__URL`
 environmental variable. Alternatively a RabbitMQ can be started in docker, using:
 ```
 docker run -d -p 5672:5672 -p 15672:15672 rabbitmq:3-management

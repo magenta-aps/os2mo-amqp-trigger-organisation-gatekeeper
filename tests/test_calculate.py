@@ -308,7 +308,7 @@ def org_unit() -> Generator[OrganisationUnit, None, None]:
         org_unit_type_uuid=uuid4(),
         org_unit_level_uuid=uuid4(),
         parent_uuid=uuid4(),
-        from_date=datetime.now(),
+        from_date=datetime.now().isoformat(),
     )
 
 
@@ -567,7 +567,7 @@ async def test_update_line_management_line_for_root_org_unit(
         org_unit_type_uuid=uuid4(),
         org_unit_level_uuid=uuid4(),
         parent_uuid=ORG_UUID,  # I.e. a root unit
-        from_date=datetime.now(),
+        from_date=datetime.now().isoformat(),
     )
     fetch_org_unit.return_value = org_unit
 

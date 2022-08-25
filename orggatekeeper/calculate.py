@@ -230,6 +230,7 @@ async def update_line_management(
 
     # Prepare the updated object for writing
     # TODO: we will have a problem, if new_org_unit_hierarchy is None
+    assert org_unit.parent is not None
     org_unit = org_unit.copy(
         update={
             "org_unit_hierarchy": new_org_unit_hierarchy,
