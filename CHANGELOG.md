@@ -6,6 +6,11 @@ SPDX-License-Identifier: MPL-2.0
 CHANGELOG
 =========
 
+2.0.0 - 2022-08-25
+------------------
+
+[#51926] Bump RAMQP version; reduce prefetch_count from (default) 10 to 1
+
 1.1.2 - 2022-08-15
 ------------------
 
