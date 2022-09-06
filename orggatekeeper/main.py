@@ -35,6 +35,7 @@ from ramqp.mo.models import ObjectType
 from ramqp.mo.models import PayloadType
 from ramqp.mo.models import RequestType
 from ramqp.mo.models import ServiceType
+from ramqp.utils import RejectMessage
 from starlette.status import HTTP_204_NO_CONTENT
 from starlette.status import HTTP_503_SERVICE_UNAVAILABLE
 
@@ -145,8 +146,12 @@ async def organisation_gatekeeper_callback(
         request_type=mo_routing_key.request_type,
         payload=payload,
     )
-    changed = await seeded_update_line_management(payload.uuid)
-    update_counter.labels(updated=changed).inc()
+    try:
+        changed = await seeded_update_line_management(payload.uuid)
+        update_counter.labels(updated=changed).inc()
+    except Exception as exception:
+        log.exception("Exception during organisation_gatekeeper_callback()")
+        raise RejectMessage()
 
 
 def construct_clients(

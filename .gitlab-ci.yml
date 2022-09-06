@@ -21,6 +21,9 @@ variables:
 
   PRECOMMIT_USE_POETRY: "true"
 
+  POETRY_VIRTUALENVS_CREATE: "true"
+  POETRY_VIRTUALENVS_IN_PROJECT: "true"
+
 
 # Conditions
 #############
@@ -32,6 +35,7 @@ variables:
 
 .if-merge-request: &if-merge-request
   if: '$CI_MERGE_REQUEST_IID'
+
 
 # Workflow
 ###########
@@ -50,7 +54,7 @@ include:
     ref: master
     file: gitlab-ci-templates/python/pytest.v1.yml
   - project: labs/salt-automation
-    ref: master
+    ref: feature/52332_fix_python_ci_templates
     file: /gitlab-ci-templates/common/docker-release.v1.yml
   - project: labs/salt-automation
     ref: master
@@ -58,10 +62,9 @@ include:
   - project: labs/salt-automation
     ref: master
     file: /gitlab-ci-templates/common/pre-commit.v1.yml
-  - project: 'labs/salt-automation'
-    ref: 'master'
-    file: '/gitlab-ci-templates/common/config-updater-meta.v1.yml'
-
+  - project: labs/salt-automation
+    ref: master
+    file: /gitlab-ci-templates/common/config-updater-meta.v1.yml
 
 
 # Build
@@ -70,6 +73,7 @@ Build:
   extends: .build-docker
   variables:
     BUILD_DOCKER_EXTRA_FLAGS: "--build-arg=COMMIT_SHA=${CI_COMMIT_SHA} --build-arg=COMMIT_TAG=${CI_COMMIT_TAG}"
+
 
 # Deploy
 #########
@@ -92,4 +96,3 @@ Deploy to Flux Prod:
   needs: []
   variables:
     ENDPOINT: os2mo/flux/orggatekeeper/update-prod
-
