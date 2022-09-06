@@ -126,7 +126,7 @@ class Settings(BaseSettings):
         False, description="Run in dry-run mode, only printing what would have changed."
     )
 
-    log_level: LogLevel = LogLevel.INFO
+    log_level: LogLevel = LogLevel.DEBUG
 
     expose_metrics: bool = Field(True, description="Whether to expose metrics.")
 
