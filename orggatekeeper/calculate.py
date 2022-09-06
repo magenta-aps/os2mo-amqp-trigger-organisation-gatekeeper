@@ -134,7 +134,7 @@ async def below_bvn(
             org_units(uuids: $uuids) {
                 objects {
                     user_key
-                    parent_uuid
+                    parent { uuid }
                 }
             }
         }
@@ -147,8 +147,8 @@ async def below_bvn(
 
     if obj["user_key"] in bvns:
         return True
-    if obj["parent_uuid"] is not None:
-        return await below_bvn(gql_client, obj["parent_uuid"], bvns)
+    if obj["parent"]:
+        return await below_bvn(gql_client, one(obj["parent"])["uuid"], bvns)
     return False
 
 
