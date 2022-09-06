@@ -126,11 +126,15 @@ class Settings(BaseSettings):
         False, description="Run in dry-run mode, only printing what would have changed."
     )
 
-    log_level: LogLevel = LogLevel.DEBUG
+    log_level: LogLevel = LogLevel.INFO
 
     expose_metrics: bool = Field(True, description="Whether to expose metrics.")
 
     graphql_timeout: int = 120
+
+    line_management_top_level_bvn: str | None = Field(
+        None, description="Name of the top organisation unit in line management."
+    )
 
     class Config:
         env_nested_delimiter = "__"  # allows setting e.g. AMQP__QUEUE_PREFIX=foo

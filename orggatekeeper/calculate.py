@@ -115,6 +115,43 @@ async def is_self_owned(
     )
 
 
+async def below_bvn(
+    gql_client: PersistentGraphQLClient, uuid: UUID, bvns: list[str]
+) -> bool:
+    """Determine whether the organisation unit is below one where bvn is in the given list
+
+    Args:
+        gql_client: The GraphQL client to run our queries on.
+        org_unit: The organisation unit object.
+        bvns: User-keys of organisation units to check parentship on.
+
+    Returns:
+        Whether the organisation unit has a parent with bvn in bvns.
+    """
+    query = gql(
+        """
+        query ParentQuery($uuids: [UUID!]) {
+            org_units(uuids: $uuids) {
+                objects {
+                    user_key
+                    parent_uuid
+                }
+            }
+        }
+        """
+    )
+    result = await gql_client.execute(query, {"uuids": [str(uuid)]})
+    obj = one(one(result["org_units"])["objects"])
+
+    logger.debug("GraphQL obj", obj=obj)
+
+    if obj["user_key"] in bvns:
+        return True
+    if obj["parent_uuid"] is not None:
+        return await below_bvn(gql_client, obj["parent_uuid"], bvns)
+    return False
+
+
 async def should_hide(
     gql_client: PersistentGraphQLClient, uuid: UUID, hidden: list[str]
 ) -> bool:
@@ -135,27 +172,7 @@ async def should_hide(
         logger.debug("should_hide called with empty hidden list")
         return False
 
-    query = gql(
-        """
-        query ParentQuery($uuids: [UUID!]) {
-            org_units(uuids: $uuids) {
-                objects {
-                    user_key
-                    parent_uuid
-                }
-            }
-        }
-        """
-    )
-    result = await gql_client.execute(query, {"uuids": [str(uuid)]})
-    obj = one(one(result["org_units"])["objects"])
-    logger.debug("GraphQL obj", obj=obj)
-
-    if obj["user_key"] in hidden:
-        return True
-    if obj["parent_uuid"] is not None:
-        return await should_hide(gql_client, obj["parent_uuid"], hidden)
-    return False
+    return await below_bvn(gql_client=gql_client, uuid=uuid, bvns=hidden)
 
 
 async def update_line_management(
@@ -184,19 +201,26 @@ async def update_line_management(
     Returns:
         Whether an update was made.
     """
+    line_top_level_bvn_list: list[str] = (
+        [settings.line_management_top_level_bvn]
+        if settings.line_management_top_level_bvn
+        else []
+    )
     # Determine the desired org_unit_hierarchy class uuid
     new_org_unit_hierarchy: OrgUnitHierarchy | None = None
     if settings.enable_hide_logic and await should_hide(
         gql_client, uuid, settings.hidden
     ):
-        logger.debug("Organisation Unit needs to be hidden", uuid=uuid)
+        logger.info("Organisation Unit needs to be hidden", uuid=uuid)
         hidden_uuid = await get_class_uuid(
             gql_client,
             settings.hidden_uuid,
             settings.hidden_user_key,
         )
         new_org_unit_hierarchy = OrgUnitHierarchy(uuid=hidden_uuid)
-    elif await is_line_management(gql_client, uuid):
+    elif await below_bvn(
+        gql_client, uuid, line_top_level_bvn_list
+    ) and await is_line_management(gql_client, uuid):
         logger.debug("Organisation Unit needs to be in line management", uuid=uuid)
         line_management_uuid = await get_class_uuid(
             gql_client,
@@ -215,6 +239,9 @@ async def update_line_management(
         )
         new_org_unit_hierarchy = OrgUnitHierarchy(uuid=self_owned_uuid)
     else:
+        logger.debug(
+            "Organisation Unit needs to marked as outside hierarchy", uuid=uuid
+        )
         na_uuid = await get_class_uuid(
             gql_client,
             None,
@@ -246,7 +273,7 @@ async def update_line_management(
     if settings.dry_run:
         logger.info("dry-run: Would have send edit payload", org_unit=org_unit)
         return True
-
+    logger.info(f"Editing organisation unit {uuid=} to {new_org_unit_hierarchy=}")
     logger.debug("Sending ModelClient edit request", org_unit=org_unit)
     response = await model_client.edit([org_unit])
     logger.debug("ModelClient response", response=response)
