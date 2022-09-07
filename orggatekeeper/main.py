@@ -307,7 +307,7 @@ def create_app(  # pylint: disable=too-many-statements
         result = await gql_client.execute(query)
 
         org_unit_uuids = list(map(UUID, map(itemgetter("uuid"), result["org_units"])))
-        logger.warning(org_unit_uuids)
+        logger.info("Manually triggered recalculation", uuids=org_unit_uuids)
         org_unit_tasks = map(context["seeded_update_line_management"], org_unit_uuids)
         background_tasks.add_task(gather_with_concurrency, 5, *org_unit_tasks)
         return {"status": "Background job triggered"}
@@ -321,6 +321,7 @@ def create_app(  # pylint: disable=too-many-statements
         )
     ) -> dict[str, str]:
         """Call update_line_management on the provided org unit."""
+        logger.info("Manually triggered recalculation", uuids=[uuid])
         await context["seeded_update_line_management"](uuid)
         return {"status": "OK"}
 
