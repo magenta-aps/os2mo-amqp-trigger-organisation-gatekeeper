@@ -57,7 +57,7 @@ async def is_line_management(gql_client: PersistentGraphQLClient, uuid: UUID) ->
     logger.debug("GraphQL obj", obj=obj)
 
     if not obj.get("org_unit_level"):
-        logger.debug(f"Found no org_unit_level on {uuid=}, assuming not in line-org")
+        logger.debug("Found no org_unit_level, assuming not in line-org", uuid=uuid)
         return False
 
     unit_level_user_key = obj["org_unit_level"]["user_key"]
@@ -269,7 +269,11 @@ async def update_line_management(
     if settings.dry_run:
         logger.info("dry-run: Would have send edit payload", org_unit=org_unit)
         return True
-    logger.info(f"Editing organisation unit {uuid=} to {new_org_unit_hierarchy=}")
+    logger.info(
+        "Editing organisation unit",
+        uuid=uuid,
+        new_org_unit_hierarchy=new_org_unit_hierarchy,
+    )
     logger.debug("Sending ModelClient edit request", org_unit=org_unit)
     response = await model_client.edit([org_unit])
     logger.debug("ModelClient response", response=response)
