@@ -115,18 +115,19 @@ async def is_self_owned(
     )
 
 
-async def below_bvn(
-    gql_client: PersistentGraphQLClient, uuid: UUID, bvns: list[str]
+async def below_user_key(
+    gql_client: PersistentGraphQLClient, uuid: UUID, user_keys: list[str]
 ) -> bool:
-    """Determine whether the organisation unit is below one where bvn is in the given list
+    """Determine whether the organisation unit is below one where user_key
+    is in the given list
 
     Args:
         gql_client: The GraphQL client to run our queries on.
         org_unit: The organisation unit object.
-        bvns: User-keys of organisation units to check parentship on.
+        user_keys: User-keys of organisation units to check parentship on.
 
     Returns:
-        Whether the organisation unit has a parent with bvn in bvns.
+        Whether the organisation unit has a parent with user_key in user_keys.
     """
     query = gql(
         """
@@ -145,10 +146,10 @@ async def below_bvn(
 
     logger.debug("GraphQL obj", obj=obj)
 
-    if obj["user_key"] in bvns:
+    if obj["user_key"] in user_keys:
         return True
     if obj["parent"]:
-        return await below_bvn(gql_client, one(obj["parent"])["uuid"], bvns)
+        return await below_user_key(gql_client, one(obj["parent"])["uuid"], user_keys)
     return False
 
 
@@ -172,7 +173,7 @@ async def should_hide(
         logger.debug("should_hide called with empty hidden list")
         return False
 
-    return await below_bvn(gql_client=gql_client, uuid=uuid, bvns=hidden)
+    return await below_user_key(gql_client=gql_client, uuid=uuid, user_keys=hidden)
 
 
 async def update_line_management(
@@ -201,11 +202,6 @@ async def update_line_management(
     Returns:
         Whether an update was made.
     """
-    line_top_level_bvn_list: list[str] = (
-        [settings.line_management_top_level_bvn]
-        if settings.line_management_top_level_bvn
-        else []
-    )
     # Determine the desired org_unit_hierarchy class uuid
     new_org_unit_hierarchy: OrgUnitHierarchy | None = None
     if settings.enable_hide_logic and await should_hide(
@@ -218,8 +214,8 @@ async def update_line_management(
             settings.hidden_user_key,
         )
         new_org_unit_hierarchy = OrgUnitHierarchy(uuid=hidden_uuid)
-    elif await below_bvn(
-        gql_client, uuid, line_top_level_bvn_list
+    elif await below_user_key(
+        gql_client, uuid, settings.line_management_top_level_user_keys
     ) and await is_line_management(gql_client, uuid):
         logger.debug("Organisation Unit needs to be in line management", uuid=uuid)
         line_management_uuid = await get_class_uuid(

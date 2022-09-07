@@ -16,7 +16,7 @@ services:
       CLIENT_ID: "dipex"
       CLIENT_SECRET: "603f1c82-d012-4d04-9382-dbe659c533fb"
       SELF_OWNED_IT_SYSTEM_CHECK: "SD_uuid"
-      LINE_MANAGEMENT_TOP_LEVEL_BVN: "Kolding Kommune"
+      LINE_MANAGEMENT_TOP_LEVEL_USER_KEYS: '["Kolding Kommune"]'
       HIDDEN: '["Skole og Børn"]'
     networks:
       - os2mo_default
