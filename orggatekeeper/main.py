@@ -297,9 +297,7 @@ def create_app(  # pylint: disable=too-many-statements
     async def index() -> dict[str, str]:
         return {"name": "orggatekeeper"}
 
-    @app.post(
-        "/trigger/all",
-    )
+    @app.post("/trigger/all", status_code=202)
     async def update_all_org_units(background_tasks: BackgroundTasks) -> dict[str, str]:
         """Call update_line_management on all org units."""
         gql_client = context["gql_client"]
