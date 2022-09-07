@@ -251,7 +251,7 @@ async def test_trigger_all_endpoint(
     }
     test_client = test_client_builder()
     response = test_client.post("/trigger/all")
-    assert response.status_code == 200
+    assert response.status_code == 202
     assert response.json() == {"status": "Background job triggered"}
     assert len(gql_client.execute.mock_calls) == 1
     assert seeded_update_line_management.mock_calls == [
