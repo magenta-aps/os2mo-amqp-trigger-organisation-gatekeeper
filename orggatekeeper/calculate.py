@@ -211,7 +211,7 @@ async def update_line_management(
     if settings.enable_hide_logic and await should_hide(
         gql_client, uuid, settings.hidden
     ):
-        logger.info("Organisation Unit needs to be hidden", uuid=uuid)
+        logger.debug("Organisation Unit needs to be hidden", uuid=uuid)
         hidden_uuid = await get_class_uuid(
             gql_client,
             settings.hidden_uuid,
