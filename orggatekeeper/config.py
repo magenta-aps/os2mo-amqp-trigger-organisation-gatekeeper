@@ -133,7 +133,7 @@ class Settings(BaseSettings):
     graphql_timeout: int = 120
 
     line_management_top_level_bvn: str | None = Field(
-        None, description="Name of the top organisation unit in line management."
+        None, description="User_key of the top organisation unit in line management."
     )
 
     class Config:
