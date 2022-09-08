@@ -132,6 +132,13 @@ class Settings(BaseSettings):
 
     graphql_timeout: int = 120
 
+    line_management_top_level_user_keys: list[str] = Field(
+        [],
+        description=(
+            "List of user_keys of the top organisation units in line management."
+        ),
+    )
+
     class Config:
         env_nested_delimiter = "__"  # allows setting e.g. AMQP__QUEUE_PREFIX=foo
 

@@ -57,7 +57,7 @@ async def is_line_management(gql_client: PersistentGraphQLClient, uuid: UUID) ->
     logger.debug("GraphQL obj", obj=obj)
 
     if not obj.get("org_unit_level"):
-        logger.debug(f"Found no org_unit_level on {uuid=}, assuming not in line-org")
+        logger.debug("Found no org_unit_level, assuming not in line-org", uuid=uuid)
         return False
 
     unit_level_user_key = obj["org_unit_level"]["user_key"]
@@ -115,6 +115,44 @@ async def is_self_owned(
     )
 
 
+async def below_user_key(
+    gql_client: PersistentGraphQLClient, uuid: UUID, user_keys: list[str]
+) -> bool:
+    """Determine whether the organisation unit is below one where user_key
+    is in the given list
+
+    Args:
+        gql_client: The GraphQL client to run our queries on.
+        org_unit: The organisation unit object.
+        user_keys: User-keys of organisation units to check parentship on.
+
+    Returns:
+        Whether the organisation unit has a parent with user_key in user_keys.
+    """
+    query = gql(
+        """
+        query ParentQuery($uuids: [UUID!]) {
+            org_units(uuids: $uuids) {
+                objects {
+                    user_key
+                    parent { uuid }
+                }
+            }
+        }
+        """
+    )
+    result = await gql_client.execute(query, {"uuids": [str(uuid)]})
+    obj = one(one(result["org_units"])["objects"])
+
+    logger.debug("GraphQL obj", obj=obj)
+
+    if obj["user_key"] in user_keys:
+        return True
+    if obj["parent"]:
+        return await below_user_key(gql_client, one(obj["parent"])["uuid"], user_keys)
+    return False
+
+
 async def should_hide(
     gql_client: PersistentGraphQLClient, uuid: UUID, hidden: list[str]
 ) -> bool:
@@ -135,27 +173,7 @@ async def should_hide(
         logger.debug("should_hide called with empty hidden list")
         return False
 
-    query = gql(
-        """
-        query ParentQuery($uuids: [UUID!]) {
-            org_units(uuids: $uuids) {
-                objects {
-                    user_key
-                    parent_uuid
-                }
-            }
-        }
-        """
-    )
-    result = await gql_client.execute(query, {"uuids": [str(uuid)]})
-    obj = one(one(result["org_units"])["objects"])
-    logger.debug("GraphQL obj", obj=obj)
-
-    if obj["user_key"] in hidden:
-        return True
-    if obj["parent_uuid"] is not None:
-        return await should_hide(gql_client, obj["parent_uuid"], hidden)
-    return False
+    return await below_user_key(gql_client=gql_client, uuid=uuid, user_keys=hidden)
 
 
 async def update_line_management(
@@ -196,7 +214,9 @@ async def update_line_management(
             settings.hidden_user_key,
         )
         new_org_unit_hierarchy = OrgUnitHierarchy(uuid=hidden_uuid)
-    elif await is_line_management(gql_client, uuid):
+    elif await below_user_key(
+        gql_client, uuid, settings.line_management_top_level_user_keys
+    ) and await is_line_management(gql_client, uuid):
         logger.debug("Organisation Unit needs to be in line management", uuid=uuid)
         line_management_uuid = await get_class_uuid(
             gql_client,
@@ -215,6 +235,9 @@ async def update_line_management(
         )
         new_org_unit_hierarchy = OrgUnitHierarchy(uuid=self_owned_uuid)
     else:
+        logger.debug(
+            "Organisation Unit needs to marked as outside hierarchy", uuid=uuid
+        )
         na_uuid = await get_class_uuid(
             gql_client,
             None,
@@ -246,7 +269,11 @@ async def update_line_management(
     if settings.dry_run:
         logger.info("dry-run: Would have send edit payload", org_unit=org_unit)
         return True
-
+    logger.info(
+        "Editing organisation unit",
+        uuid=uuid,
+        new_org_unit_hierarchy=new_org_unit_hierarchy,
+    )
     logger.debug("Sending ModelClient edit request", org_unit=org_unit)
     response = await model_client.edit([org_unit])
     logger.debug("ModelClient response", response=response)

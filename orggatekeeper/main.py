@@ -17,6 +17,7 @@ from typing import TypeVar
 from uuid import UUID
 
 import structlog
+from fastapi import BackgroundTasks
 from fastapi import FastAPI
 from fastapi import Query
 from fastapi import Response
@@ -296,18 +297,18 @@ def create_app(  # pylint: disable=too-many-statements
     async def index() -> dict[str, str]:
         return {"name": "orggatekeeper"}
 
-    @app.post(
-        "/trigger/all",
-    )
-    async def update_all_org_units() -> dict[str, str]:
+    @app.post("/trigger/all", status_code=202)
+    async def update_all_org_units(background_tasks: BackgroundTasks) -> dict[str, str]:
         """Call update_line_management on all org units."""
         gql_client = context["gql_client"]
         query = gql("query OrgUnitUUIDQuery { org_units { uuid } }")
         result = await gql_client.execute(query)
-        org_unit_uuids = map(UUID, map(itemgetter("uuid"), result["org_units"]))
+
+        org_unit_uuids = list(map(UUID, map(itemgetter("uuid"), result["org_units"])))
+        logger.info("Manually triggered recalculation", uuids=org_unit_uuids)
         org_unit_tasks = map(context["seeded_update_line_management"], org_unit_uuids)
-        await gather_with_concurrency(5, *org_unit_tasks)
-        return {"status": "OK"}
+        background_tasks.add_task(gather_with_concurrency, 5, *org_unit_tasks)
+        return {"status": "Background job triggered"}
 
     @app.post(
         "/trigger/{uuid}",
@@ -318,6 +319,7 @@ def create_app(  # pylint: disable=too-many-statements
         )
     ) -> dict[str, str]:
         """Call update_line_management on the provided org unit."""
+        logger.info("Manually triggered recalculation", uuids=[uuid])
         await context["seeded_update_line_management"](uuid)
         return {"status": "OK"}
 
