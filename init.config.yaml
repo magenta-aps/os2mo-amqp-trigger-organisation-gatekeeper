@@ -12,5 +12,12 @@ facets:
     NA:
       title: "Udenfor organisation"
       scope: "TEXT"
+  org_unit_level:
+    NY1-niveau:
+      title: "NY1-niveau"
+      scope: "TEXT"
+    NY2-niveau:
+      title: "NY2-niveau"
+      scope: "TEXT"
 it_systems:
   SD_uuid: "SD UUID"
