@@ -6,6 +6,11 @@ SPDX-License-Identifier: MPL-2.0
 CHANGELOG
 =========
 
+2.1.0 - 2022-09-08
+------------------
+
+[#51474] Adds a check to the line management calculation which checks if the organisation unit is below the main line management organisation. Controlled by a user_key set in settings.
+
 2.0.0 - 2022-08-25
 ------------------
 
