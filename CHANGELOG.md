@@ -6,6 +6,11 @@ SPDX-License-Identifier: MPL-2.0
 CHANGELOG
 =========
 
+2.2.0 - 2022-09-26
+------------------
+
+[#50861] Switch to use new version of graphql api where org_unit parents are no longer lists.
+
 2.1.0 - 2022-09-08
 ------------------
 
