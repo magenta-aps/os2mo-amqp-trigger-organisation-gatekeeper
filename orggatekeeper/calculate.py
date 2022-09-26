@@ -149,7 +149,7 @@ async def below_user_key(
     if obj["user_key"] in user_keys:
         return True
     if obj["parent"]:
-        return await below_user_key(gql_client, one(obj["parent"])["uuid"], user_keys)
+        return await below_user_key(gql_client, obj["parent"]["uuid"], user_keys)
     return False
 
 
