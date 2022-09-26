@@ -259,19 +259,19 @@ async def test_should_hide_parent(
     parent_map = {
         UUID("0020f400-2777-4ef9-bfcb-5cdbb561d583"): {
             "user_key": "AAAA",
-            "parent": [],
+            "parent": None,
         },
         UUID("8b54ca22-66cb-4f46-94ae-ee0a0c370bcf"): {
             "user_key": "AAAB",
-            "parent": [{"uuid": UUID("0020f400-2777-4ef9-bfcb-5cdbb561d583")}],
+            "parent": {"uuid": UUID("0020f400-2777-4ef9-bfcb-5cdbb561d583")},
         },
         UUID("f29d62b6-4aab-44e5-95e4-be602dceaf8b"): {
             "user_key": "AAAC",
-            "parent": [{"uuid": UUID("8b54ca22-66cb-4f46-94ae-ee0a0c370bcf")}],
+            "parent": {"uuid": UUID("8b54ca22-66cb-4f46-94ae-ee0a0c370bcf")},
         },
         UUID("58fd9427-cde0-4740-b696-31690f21f831"): {
             "user_key": "AABA",
-            "parent": [{"uuid": UUID("0020f400-2777-4ef9-bfcb-5cdbb561d583")}],
+            "parent": {"uuid": UUID("0020f400-2777-4ef9-bfcb-5cdbb561d583")},
         },
     }
 

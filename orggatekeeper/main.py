@@ -161,7 +161,7 @@ def construct_clients(
         Tuple with PersistentGraphQLClient and ModelClient.
     """
     gql_client = PersistentGraphQLClient(
-        url=settings.mo_url + "/graphql",
+        url=settings.mo_url + "/graphql/v2",
         client_id=settings.client_id,
         client_secret=settings.client_secret.get_secret_value(),
         auth_server=settings.auth_server,
