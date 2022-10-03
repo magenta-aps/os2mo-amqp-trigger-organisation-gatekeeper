@@ -67,7 +67,7 @@ async def is_line_management(gql_client: PersistentGraphQLClient, uuid: UUID) ->
     # Also it needs to have people attached to be line managent
     is_ny_level = ny_regex.fullmatch(unit_level_user_key) is not None
     is_department_level = unit_level_user_key == "Afdelings-niveau"
-    has_engagements = len(obj["engagements"]) > 0
+    has_engagements = bool(obj["engagements"])
     has_associations = len(obj["associations"]) > 0
     # TODO: Check owners, leaders, it?
     return (is_ny_level or is_department_level) and (
