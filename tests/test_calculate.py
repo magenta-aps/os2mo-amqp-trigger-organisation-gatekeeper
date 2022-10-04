@@ -124,23 +124,23 @@ async def test_fetch_class_uuid() -> None:
     "org_unit_level_user_key,num_engagements,num_assocations,expected",
     [
         (None, 0, 0, False),
-        # Engagements and associations do not matter with NY
-        ("NY0-niveau", 0, 0, True),
+        # Engagements and associations do matter with NY as well as afdelings-niveau
+        # we need either engagements or assocations
+        ("NY0-niveau", 0, 0, False),
         ("NY0-niveau", 42, 0, True),
         ("NY0-niveau", 0, 42, True),
         ("NY0-niveau", 42, 42, True),
-        # Single digit is good
-        ("NY1-niveau", 0, 0, True),
-        ("NY6-niveau", 0, 0, True),
-        ("NY9-niveau", 0, 0, True),
-        # Double digit and negative are not
-        ("NY10-niveau", 0, 0, False),
-        ("NY-1-niveau", 0, 0, False),
-        # If afdelings-niveau we need either engagements or assocations
         ("Afdelings-niveau", 0, 0, False),
         ("Afdelings-niveau", 42, 0, True),
         ("Afdelings-niveau", 0, 42, True),
         ("Afdelings-niveau", 42, 42, True),
+        # Single digit is good
+        ("NY1-niveau", 1, 0, True),
+        ("NY6-niveau", 1, 0, True),
+        ("NY9-niveau", 1, 0, True),
+        # Double digit and negative are not
+        ("NY10-niveau", 1, 0, False),
+        ("NY-1-niveau", 1, 0, False),
     ],
 )
 async def test_is_line_management(
