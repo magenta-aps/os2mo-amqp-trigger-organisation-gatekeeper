@@ -63,16 +63,16 @@ async def is_line_management(gql_client: PersistentGraphQLClient, uuid: UUID) ->
     unit_level_user_key = obj["org_unit_level"]["user_key"]
 
     # Part of line management if userkey matches regex
-    if ny_regex.fullmatch(unit_level_user_key) is not None:
-        return True
-    # Or if it is "Afdelings-niveau" and it has people attached
-    if unit_level_user_key == "Afdelings-niveau":
-        # TODO: Check owners, leaders, it?
-        if len(obj["engagements"]) > 0:
-            return True
-        if len(obj["associations"]) > 0:
-            return True
-    return False
+    # Or if it is "Afdelings-niveau"
+    # Also it needs to have people attached to be line managent
+    is_ny_level = ny_regex.fullmatch(unit_level_user_key) is not None
+    is_department_level = unit_level_user_key == "Afdelings-niveau"
+    has_engagements = bool(obj["engagements"])
+    has_associations = len(obj["associations"]) > 0
+    # TODO: Check owners, leaders, it?
+    return (is_ny_level or is_department_level) and (
+        has_engagements or has_associations
+    )
 
 
 async def is_self_owned(
