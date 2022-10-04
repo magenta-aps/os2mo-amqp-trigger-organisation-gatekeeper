@@ -35,6 +35,7 @@ from ramqp.mo.models import ObjectType
 from ramqp.mo.models import PayloadType
 from ramqp.mo.models import RequestType
 from ramqp.mo.models import ServiceType
+from ramqp.utils import sleep_on_error
 from starlette.status import HTTP_204_NO_CONTENT
 from starlette.status import HTTP_503_SERVICE_UNAVAILABLE
 
@@ -119,6 +120,7 @@ async def healthcheck_model_client(model_client: ModelClient) -> bool:
     return False
 
 
+@sleep_on_error()
 async def organisation_gatekeeper_callback(
     seeded_update_line_management: Callable[[UUID], Awaitable[bool]],
     mo_routing_key: MORoutingKey,
