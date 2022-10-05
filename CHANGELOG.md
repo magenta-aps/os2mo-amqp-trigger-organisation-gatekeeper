@@ -6,6 +6,11 @@ SPDX-License-Identifier: MPL-2.0
 CHANGELOG
 =========
 
+2.2.1 - 2022-10-05
+------------------
+
+[#52332] Sleep on errors to avoid overloading MO
+
 2.2.0 - 2022-09-26
 ------------------
 
