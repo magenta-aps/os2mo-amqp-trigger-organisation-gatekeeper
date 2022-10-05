@@ -25,8 +25,6 @@ import pytest
 from asgi_lifespan import LifespanManager
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from ramqp.mo import MOAMQPSystem
-from ramqp.mo import MORouter
 from ramqp.mo.models import ObjectType
 from ramqp.mo.models import PayloadType
 from ramqp.mo.models import RequestType
@@ -282,8 +280,8 @@ async def test_trigger_uuid_endpoint(
 @patch("orggatekeeper.main.MOAMQPSystem")
 @patch("orggatekeeper.main.MORouter")
 async def test_lifespan(
-    mo_router: MORouter,
-    mo_amqpsystem: MOAMQPSystem,
+    mo_router: MagicMock,
+    mo_amqpsystem: MagicMock,
     mock_fetch_org_uuid: MagicMock,
     fastapi_app: FastAPI,
 ) -> None:
