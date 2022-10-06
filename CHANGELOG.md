@@ -6,6 +6,11 @@ SPDX-License-Identifier: MPL-2.0
 CHANGELOG
 =========
 
+2.2.2 - 2022-10-06
+------------------
+
+[#51982] Update dependencies
+
 2.2.1 - 2022-10-05
 ------------------
 
