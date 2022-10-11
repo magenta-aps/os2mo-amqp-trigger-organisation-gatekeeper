@@ -23,12 +23,17 @@ logger = structlog.get_logger()
 ny_regex = re.compile(r"NY\d-niveau")
 
 
-async def is_line_management(gql_client: PersistentGraphQLClient, uuid: UUID) -> bool:
+async def is_line_management(
+    gql_client: PersistentGraphQLClient,
+    uuid: UUID,
+    line_management_top_level_user_keys: list,
+) -> bool:
     """Determine whether the organisation unit is part of line management.
 
     Args:
         gql_client: The GraphQL client to run our queries on.
         uuid: UUID of the organisation unit.
+        line_management_top_level_user_keys: list of user_keys which are always line_management
 
     Returns:
         Whether the organisation unit should be part of line management.
@@ -38,6 +43,7 @@ async def is_line_management(gql_client: PersistentGraphQLClient, uuid: UUID) ->
         query OrgUnitQuery($uuids: [UUID!]) {
             org_units(uuids: $uuids) {
                 objects {
+                    user_key
                     org_unit_level {
                         user_key
                     }
@@ -55,6 +61,9 @@ async def is_line_management(gql_client: PersistentGraphQLClient, uuid: UUID) ->
     result = await gql_client.execute(query, {"uuids": [str(uuid)]})
     obj = one(one(result["org_units"])["objects"])
     logger.debug("GraphQL obj", obj=obj)
+
+    if obj["user_key"] in line_management_top_level_user_keys:
+        return True
 
     if not obj.get("org_unit_level"):
         logger.debug("Found no org_unit_level, assuming not in line-org", uuid=uuid)
@@ -216,7 +225,9 @@ async def update_line_management(
         new_org_unit_hierarchy = OrgUnitHierarchy(uuid=hidden_uuid)
     elif await below_user_key(
         gql_client, uuid, settings.line_management_top_level_user_keys
-    ) and await is_line_management(gql_client, uuid):
+    ) and await is_line_management(
+        gql_client, uuid, settings.line_management_top_level_user_keys
+    ):
         logger.debug("Organisation Unit needs to be in line management", uuid=uuid)
         line_management_uuid = await get_class_uuid(
             gql_client,

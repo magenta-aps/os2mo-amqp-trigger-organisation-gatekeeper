@@ -160,6 +160,7 @@ async def test_is_line_management(
                 {
                     "objects": [
                         {
+                            "user_key": "dummy_user_key",
                             "org_unit_level": {"user_key": org_unit_level_user_key},
                             "engagements": [
                                 {"uuid": uuid4()} for _ in range(num_engagements)
@@ -179,7 +180,7 @@ async def test_is_line_management(
     uuid = uuid4()
     session = MagicMock()
     session.execute = execute
-    result = await is_line_management(session, uuid)
+    result = await is_line_management(session, uuid, [])
     assert len(params["args"]) == 2
     assert isinstance(params["args"][0], DocumentNode)
     assert params["args"][1] == {"uuids": [str(uuid)]}
@@ -388,7 +389,7 @@ async def test_update_line_management_no_change(
     assert result is True
 
     should_hide.assert_called_once_with(gql_client, uuid, [])
-    is_line_management.assert_called_once_with(gql_client, uuid)
+    is_line_management.assert_called_once_with(gql_client, uuid, [])
     fetch_org_unit.assert_called_once_with(gql_client, uuid)
     model_client.assert_not_called()
 
@@ -526,7 +527,7 @@ async def test_update_line_management_line(
         below_user_key_mock.assert_called_once_with(gql_client, uuid, [])
 
     if not should_hide_return and below_user_key_return:
-        is_line_management_mock.assert_called_once_with(gql_client, uuid)
+        is_line_management_mock.assert_called_once_with(gql_client, uuid, [])
 
     # Then check for self-owned
     if not (should_hide_return or is_line_management_return):
@@ -592,7 +593,7 @@ async def test_update_line_management_line_for_root_org_unit(
     assert result is True
 
     should_hide.assert_called_once_with(gql_client, uuid, [])
-    is_line_management.assert_called_once_with(gql_client, uuid)
+    is_line_management.assert_called_once_with(gql_client, uuid, [])
     fetch_org_unit.assert_called_once_with(gql_client, uuid)
     assert model_client.mock_calls == [
         call.edit(
