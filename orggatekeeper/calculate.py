@@ -46,7 +46,6 @@ async def is_line_management(
         query OrgUnitQuery($uuids: [UUID!]) {
             org_units(uuids: $uuids) {
                 objects {
-                    uuid
                     org_unit_level {
                         user_key
                     }
@@ -236,9 +235,7 @@ async def update_line_management(
         )
         new_org_unit_hierarchy = OrgUnitHierarchy(uuid=self_owned_uuid)
     else:
-        logger.info(
-            "Organisation Unit needs to marked as outside hierarchy", uuid=uuid
-        )
+        logger.info("Organisation Unit needs to marked as outside hierarchy", uuid=uuid)
         na_uuid = await get_class_uuid(
             gql_client,
             None,
