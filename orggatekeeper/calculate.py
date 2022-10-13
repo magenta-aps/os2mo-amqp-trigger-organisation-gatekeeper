@@ -73,22 +73,25 @@ async def is_line_management(
 
     # Part of line management if userkey matches regex
     # Or if it is "Afdelings-niveau"
-    # Also it needs to have people attached to be line managent
-    # AND it needs to be below an orgunit that is explicitly line management
-    is_ny_level = ny_regex.fullmatch(unit_level_user_key) is not None
-    is_department_level = unit_level_user_key == "Afdelings-niveau"
-    has_engagements = bool(obj["engagements"])
-    has_associations = len(obj["associations"]) > 0
-    # TODO: Check owners, leaders, it?
-    is_below_top_level = await below_uuid(
-        gql_client, uuid, line_management_top_level_uuid
-    )
 
-    return (
-        (is_ny_level or is_department_level)
-        and (has_engagements or has_associations)
-        and is_below_top_level
-    )
+    if (
+        ny_regex.fullmatch(unit_level_user_key) is None
+        or unit_level_user_key == "Afdelings-niveau"
+    ):
+        return False
+
+    # Also it needs to have people attached to be line managent
+    # TODO: Check owners, leaders, it?
+    if not (bool(obj["engagements"]) or bool(obj["associations"])):
+        return False
+
+    # AND it needs to be below an orgunit that is explicitly line management
+
+    if not await below_uuid(gql_client, uuid, line_management_top_level_uuid):
+        return False
+
+    # If all above checks passes it is line management.
+    return True
 
 
 async def is_self_owned(
@@ -171,9 +174,10 @@ async def below_uuid(
         # top level org_unit
         return False
 
-    return (UUID(parent["uuid"]) in uuids) or await below_uuid(
-        gql_client, parent["uuid"], uuids
-    )
+    if UUID(parent["uuid"]) in uuids:
+        return True
+
+    return await below_uuid(gql_client, parent["uuid"], uuids)
 
 
 async def update_line_management(
