@@ -23,6 +23,29 @@ logger = structlog.get_logger()
 ny_regex = re.compile(r"NY\d-niveau")
 
 
+async def should_hide(
+    gql_client: PersistentGraphQLClient,
+    uuid: UUID,
+    enable_hide_logic: bool,
+    hidden: set[UUID],
+) -> bool:
+    """Determine whether the organisation unit should be hidden.
+
+    Args:
+        gql_client: The GraphQL client to run our queries on.
+        org_unit: The organisation unit object.
+        hidden: User-keys of organisation units to hide (all children included).
+
+    Returns:
+        Whether the organisation unit should be hidden.
+    """
+    if not enable_hide_logic:
+        return False
+    if uuid in hidden:
+        return True
+    return await below_uuid(gql_client, uuid=uuid, uuids=hidden)
+
+
 async def is_line_management(
     gql_client: PersistentGraphQLClient,
     uuid: UUID,
@@ -212,9 +235,11 @@ async def update_line_management(
     new_org_unit_hierarchy: OrgUnitHierarchy | None = None
     # if the orgunit uuid is in settings.hidden or it is below one that is
     # it should be hidden
-    if settings.enable_hide_logic and (
-        uuid in settings.hidden
-        or await below_uuid(gql_client, uuid=uuid, uuids=settings.hidden)
+    if await should_hide(
+        gql_client,
+        uuid=uuid,
+        enable_hide_logic=settings.enable_hide_logic,
+        hidden=settings.hidden,
     ):
         logger.info("Organisation Unit needs to be hidden", uuid=uuid)
         hidden_uuid = await get_class_uuid(

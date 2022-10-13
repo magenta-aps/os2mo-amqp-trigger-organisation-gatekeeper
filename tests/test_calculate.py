@@ -30,6 +30,7 @@ from orggatekeeper.calculate import fetch_org_unit
 from orggatekeeper.calculate import get_class_uuid
 from orggatekeeper.calculate import is_line_management
 from orggatekeeper.calculate import is_self_owned
+from orggatekeeper.calculate import should_hide
 from orggatekeeper.calculate import update_line_management
 from orggatekeeper.config import get_settings
 from orggatekeeper.config import Settings
@@ -673,3 +674,11 @@ async def test_get_class_uuid(
     assert class_uuid == uuid
 
     fetch_class_uuid.assert_called_once_with(session, "hide")
+
+
+@pytest.mark.parametrize("enable_hide_logic", [True, False])
+@pytest.mark.parametrize("below_uuid_return", [True, False])
+async def test_should_hide(enable_hide_logic: bool, below_uuid_return: bool):
+    session = AsyncMock()
+    with patch("orggatekeeper.calculate.below_uuid", return_value=below_uuid_return):
+        result = await should_hide(session, uuid4(), enable_hide_logic, set([uuid4()]))
