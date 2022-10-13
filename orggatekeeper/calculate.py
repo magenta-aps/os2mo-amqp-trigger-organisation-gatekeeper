@@ -87,7 +87,9 @@ async def is_line_management(
 
     # AND it needs to be below an orgunit that is explicitly line management
 
-    if not await below_uuid(gql_client, uuid, line_management_top_level_uuid):
+    if not await below_uuid(
+        gql_client, uuid=uuid, uuids=line_management_top_level_uuid
+    ):
         return False
 
     # If all above checks passes it is line management.
@@ -142,7 +144,7 @@ async def below_uuid(
 
     Args:
         gql_client: The GraphQL client to run our queries on.
-        org_unit: The organisation unit object.
+        uuid: uuid of an organisation unit.
         uuids: uuids of organisation units to check parentship on.
 
     Returns:
@@ -177,7 +179,7 @@ async def below_uuid(
     if UUID(parent["uuid"]) in uuids:
         return True
 
-    return await below_uuid(gql_client, parent["uuid"], uuids)
+    return await below_uuid(gql_client, uuid=parent["uuid"], uuids=uuids)
 
 
 async def update_line_management(
@@ -211,7 +213,8 @@ async def update_line_management(
     # if the orgunit uuid is in settings.hidden or it is below one that is
     # it should be hidden
     if settings.enable_hide_logic and (
-        uuid in settings.hidden or await below_uuid(gql_client, uuid, settings.hidden)
+        uuid in settings.hidden
+        or await below_uuid(gql_client, uuid=uuid, uuids=settings.hidden)
     ):
         logger.info("Organisation Unit needs to be hidden", uuid=uuid)
         hidden_uuid = await get_class_uuid(
