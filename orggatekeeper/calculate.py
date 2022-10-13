@@ -26,14 +26,15 @@ ny_regex = re.compile(r"NY\d-niveau")
 async def is_line_management(
     gql_client: PersistentGraphQLClient,
     uuid: UUID,
-    line_management_top_level_uuid: list,
+    line_management_top_level_uuid: set[UUID],
 ) -> bool:
     """Determine whether the organisation unit is part of line management.
 
     Args:
         gql_client: The GraphQL client to run our queries on.
         uuid: UUID of the organisation unit.
-        line_management_top_level_uuid: list of user_keys which are always line_management
+        line_management_top_level_uuid: set of user_keys which are always
+        line_management
 
     Returns:
         Whether the organisation unit should be part of line management.
@@ -131,7 +132,7 @@ async def is_self_owned(
 
 
 async def below_uuid(
-    gql_client: PersistentGraphQLClient, uuid: UUID, uuids: list[str]
+    gql_client: PersistentGraphQLClient, uuid: UUID, uuids: set[UUID]
 ) -> bool:
     """Determine whether the organisation unit is below one where user_key
     is in the given list
@@ -170,7 +171,7 @@ async def below_uuid(
         # top level org_unit
         return False
 
-    return (parent["uuid"] in uuids) or await below_uuid(
+    return (UUID(parent["uuid"]) in uuids) or await below_uuid(
         gql_client, parent["uuid"], uuids
     )
 
@@ -203,7 +204,8 @@ async def update_line_management(
     """
     # Determine the desired org_unit_hierarchy class uuid
     new_org_unit_hierarchy: OrgUnitHierarchy | None = None
-    # if the orgunit uuid is in settings.uuid or it is below one that is it should be hidden
+    # if the orgunit uuid is in settings.hidden or it is below one that is
+    # it should be hidden
     if settings.enable_hide_logic and (
         uuid in settings.hidden or await below_uuid(gql_client, uuid, settings.hidden)
     ):

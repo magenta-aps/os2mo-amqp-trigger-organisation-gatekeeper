@@ -67,10 +67,12 @@ class Settings(BaseSettings):
     )
     auth_realm: str = Field("mo", description="Realm to authenticate against")
 
-    enable_hide_logic = Field(True, description="Whether or not to enable hide logic.")
-    hidden: list[UUID] = Field(
-        [],
-        description="List of organisation-unit uuids to hide (childrens included).",
+    enable_hide_logic: bool = Field(
+        True, description="Whether or not to enable hide logic."
+    )
+    hidden: set[UUID] = Field(
+        set(),
+        description="Set of organisation-unit uuids to hide (childrens included).",
     )
     hidden_uuid: UUID | None = Field(
         None,
@@ -132,9 +134,9 @@ class Settings(BaseSettings):
 
     graphql_timeout: int = 120
 
-    line_management_top_level_uuids: list[UUID] = Field(
-        [],
-        description="List of uuids of the top organisation units in line management.",
+    line_management_top_level_uuids: set[UUID] = Field(
+        set(),
+        description="set of uuids of the top organisation units in line management.",
     )
 
     class Config:

@@ -182,15 +182,16 @@ async def test_is_line_management(
     session.execute = execute
     # Assume that the unit is below the uuids given in settings.
     with patch("orggatekeeper.calculate.below_uuid", return_value=True):
-        result = await is_line_management(session, uuid, [])
+        result = await is_line_management(session, uuid, set())
     assert len(params["args"]) == 2
     assert isinstance(params["args"][0], DocumentNode)
     assert params["args"][1] == {"uuids": [str(uuid)]}
     assert result == expected
 
-    # If the unit is not below the uuids given in settings it can never be line-management.
+    # If the unit is not below the uuids given in settings it can
+    # never be line-management.
     with patch("orggatekeeper.calculate.below_uuid", return_value=False):
-        result = await is_line_management(session, uuid, [])
+        result = await is_line_management(session, uuid, set())
     assert result is False
 
 
@@ -235,12 +236,12 @@ async def test_below_uuid_no_list() -> None:
     """Test that calculate_hidden returns false when given empty list."""
     uuid = uuid4()
     session = AsyncMock()
-    result = await below_uuid(session, uuid, [])
+    result = await below_uuid(session, uuid, set())
     assert result is False
 
 
 @pytest.mark.parametrize(
-    "uuid,uuid_list,expected",
+    "uuid,uuid_set,expected",
     [
         # Directly on top-level
         (
@@ -289,7 +290,7 @@ async def test_below_uuid_no_list() -> None:
     ],
 )
 async def test_below_uuid_parent(
-    uuid: UUID, uuid_list: list[str], expected: bool
+    uuid: UUID, uuid_set: set[UUID], expected: bool
 ) -> None:
     """Test that below_uuid works as expected."""
     parent_map = {
@@ -319,7 +320,7 @@ async def test_below_uuid_parent(
 
     session = MagicMock()
     session.execute = execute
-    result = await below_uuid(session, uuid, uuid_list)
+    result = await below_uuid(session, uuid, uuid_set)
     assert len(params["args"]) == 2
     assert isinstance(params["args"][0], DocumentNode)
     assert isinstance(params["args"][1], dict)
