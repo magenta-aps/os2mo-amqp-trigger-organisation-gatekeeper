@@ -208,7 +208,7 @@ async def update_line_management(
     if settings.enable_hide_logic and (
         uuid in settings.hidden or await below_uuid(gql_client, uuid, settings.hidden)
     ):
-        logger.debug("Organisation Unit needs to be hidden", uuid=uuid)
+        logger.info("Organisation Unit needs to be hidden", uuid=uuid)
         hidden_uuid = await get_class_uuid(
             gql_client,
             settings.hidden_uuid,
@@ -218,7 +218,7 @@ async def update_line_management(
     elif uuid in settings.line_management_top_level_uuids or await is_line_management(
         gql_client, uuid, settings.line_management_top_level_uuids
     ):
-        logger.debug("Organisation Unit needs to be in line management", uuid=uuid)
+        logger.info("Organisation Unit needs to be in line management", uuid=uuid)
         line_management_uuid = await get_class_uuid(
             gql_client,
             settings.line_management_uuid,
@@ -228,7 +228,7 @@ async def update_line_management(
     elif settings.self_owned_it_system_check and await is_self_owned(
         gql_client, uuid, settings.self_owned_it_system_check
     ):
-        logger.debug("Organisation Unit needs to marked as self-owned", uuid=uuid)
+        logger.info("Organisation Unit needs to marked as self-owned", uuid=uuid)
         self_owned_uuid = await get_class_uuid(
             gql_client,
             settings.self_owned_uuid,
@@ -236,7 +236,7 @@ async def update_line_management(
         )
         new_org_unit_hierarchy = OrgUnitHierarchy(uuid=self_owned_uuid)
     else:
-        logger.debug(
+        logger.info(
             "Organisation Unit needs to marked as outside hierarchy", uuid=uuid
         )
         na_uuid = await get_class_uuid(
