@@ -26,24 +26,27 @@ ny_regex = re.compile(r"NY\d-niveau")
 async def is_line_management(
     gql_client: PersistentGraphQLClient,
     uuid: UUID,
-    line_management_top_level_user_keys: list,
+    line_management_top_level_uuid: list,
 ) -> bool:
     """Determine whether the organisation unit is part of line management.
 
     Args:
         gql_client: The GraphQL client to run our queries on.
         uuid: UUID of the organisation unit.
-        line_management_top_level_user_keys: list of user_keys which are always line_management
+        line_management_top_level_uuid: list of user_keys which are always line_management
 
     Returns:
         Whether the organisation unit should be part of line management.
     """
+    if uuid in line_management_top_level_uuid:
+        return True
+
     query = gql(
         """
         query OrgUnitQuery($uuids: [UUID!]) {
             org_units(uuids: $uuids) {
                 objects {
-                    user_key
+                    uuid
                     org_unit_level {
                         user_key
                     }
@@ -62,9 +65,6 @@ async def is_line_management(
     obj = one(one(result["org_units"])["objects"])
     logger.debug("GraphQL obj", obj=obj)
 
-    if obj["user_key"] in line_management_top_level_user_keys:
-        return True
-
     if not obj.get("org_unit_level"):
         logger.debug("Found no org_unit_level, assuming not in line-org", uuid=uuid)
         return False
@@ -74,13 +74,20 @@ async def is_line_management(
     # Part of line management if userkey matches regex
     # Or if it is "Afdelings-niveau"
     # Also it needs to have people attached to be line managent
+    # AND it needs to be below an orgunit that is explicitly line management
     is_ny_level = ny_regex.fullmatch(unit_level_user_key) is not None
     is_department_level = unit_level_user_key == "Afdelings-niveau"
     has_engagements = bool(obj["engagements"])
     has_associations = len(obj["associations"]) > 0
     # TODO: Check owners, leaders, it?
-    return (is_ny_level or is_department_level) and (
-        has_engagements or has_associations
+    is_below_top_level = await below_uuid(
+        gql_client, uuid, line_management_top_level_uuid
+    )
+
+    return (
+        (is_ny_level or is_department_level)
+        and (has_engagements or has_associations)
+        and is_below_top_level
     )
 
 
@@ -124,8 +131,8 @@ async def is_self_owned(
     )
 
 
-async def below_user_key(
-    gql_client: PersistentGraphQLClient, uuid: UUID, user_keys: list[str]
+async def below_uuid(
+    gql_client: PersistentGraphQLClient, uuid: UUID, uuids: list[str]
 ) -> bool:
     """Determine whether the organisation unit is below one where user_key
     is in the given list
@@ -133,17 +140,16 @@ async def below_user_key(
     Args:
         gql_client: The GraphQL client to run our queries on.
         org_unit: The organisation unit object.
-        user_keys: User-keys of organisation units to check parentship on.
+        uuids: uuids of organisation units to check parentship on.
 
     Returns:
-        Whether the organisation unit has a parent with user_key in user_keys.
+        Whether the organisation unit has a parent with uuid in uuids.
     """
     query = gql(
         """
         query ParentQuery($uuids: [UUID!]) {
             org_units(uuids: $uuids) {
                 objects {
-                    user_key
                     parent { uuid }
                 }
             }
@@ -155,34 +161,15 @@ async def below_user_key(
 
     logger.debug("GraphQL obj", obj=obj)
 
-    if obj["user_key"] in user_keys:
-        return True
-    if obj["parent"]:
-        return await below_user_key(gql_client, obj["parent"]["uuid"], user_keys)
-    return False
+    parent = obj["parent"]
 
-
-async def should_hide(
-    gql_client: PersistentGraphQLClient, uuid: UUID, hidden: list[str]
-) -> bool:
-    """Determine whether the organisation unit should be hidden.
-
-    Args:
-        gql_client: The GraphQL client to run our queries on.
-        org_unit: The organisation unit object.
-        hidden: User-keys of organisation units to hide (all children included).
-
-    Returns:
-        Whether the organisation unit should be hidden.
-    """
-    # TODO: Should we really just be updating the top-most parent itself?
-    # TODO answer: probably not as this leads(?) to HTTP status 500 errors
-    # (see Redmine 46148 #82)
-    if not hidden:
-        logger.debug("should_hide called with empty hidden list")
+    if not parent:
+        # top level org_unit
         return False
 
-    return await below_user_key(gql_client=gql_client, uuid=uuid, user_keys=hidden)
+    return (parent["uuid"] in uuids) or await below_uuid(
+        gql_client, parent["uuid"], uuids
+    )
 
 
 async def update_line_management(
@@ -213,8 +200,9 @@ async def update_line_management(
     """
     # Determine the desired org_unit_hierarchy class uuid
     new_org_unit_hierarchy: OrgUnitHierarchy | None = None
-    if settings.enable_hide_logic and await should_hide(
-        gql_client, uuid, settings.hidden
+    # if the orgunit uuid is in settings.uuid or it is below one that is it should be hidden
+    if settings.enable_hide_logic and (
+        uuid in settings.hidden or await below_uuid(gql_client, uuid, settings.hidden)
     ):
         logger.debug("Organisation Unit needs to be hidden", uuid=uuid)
         hidden_uuid = await get_class_uuid(
@@ -223,10 +211,8 @@ async def update_line_management(
             settings.hidden_user_key,
         )
         new_org_unit_hierarchy = OrgUnitHierarchy(uuid=hidden_uuid)
-    elif await below_user_key(
-        gql_client, uuid, settings.line_management_top_level_user_keys
-    ) and await is_line_management(
-        gql_client, uuid, settings.line_management_top_level_user_keys
+    elif uuid in settings.line_management_top_level_uuids or await is_line_management(
+        gql_client, uuid, settings.line_management_top_level_uuids
     ):
         logger.debug("Organisation Unit needs to be in line management", uuid=uuid)
         line_management_uuid = await get_class_uuid(

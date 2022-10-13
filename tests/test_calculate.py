@@ -366,11 +366,11 @@ def seeded_update_line_management(
 
 @patch("orggatekeeper.calculate.is_line_management")
 @patch("orggatekeeper.calculate.should_hide")
-@patch("orggatekeeper.calculate.below_user_key")
+@patch("orggatekeeper.calculate.below_uuid")
 @patch("orggatekeeper.calculate.fetch_org_unit")
 async def test_update_line_management_no_change(
     fetch_org_unit: MagicMock,
-    below_user_key: MagicMock,
+    below_uuid: MagicMock,
     should_hide: MagicMock,
     is_line_management: MagicMock,
     gql_client: MagicMock,
@@ -394,7 +394,7 @@ async def test_update_line_management_no_change(
     model_client.assert_not_called()
 
 
-@patch("orggatekeeper.calculate.should_hide")
+@patch("orggatekeeper.calculate.below_uuid")
 @patch("orggatekeeper.calculate.fetch_org_unit")
 async def test_update_line_management_dry_run(
     fetch_org_unit: MagicMock,
@@ -467,7 +467,7 @@ async def test_update_line_management_hidden(
 # pylint: disable=R0914
 @pytest.mark.parametrize("should_hide_return", [True, False])
 @pytest.mark.parametrize("is_line_management_return", [True, False])
-@pytest.mark.parametrize("below_user_key_return", [True, False])
+@pytest.mark.parametrize("below_uuid_return", [True, False])
 @pytest.mark.parametrize("is_self_owned_return", [True, False])
 @pytest.mark.parametrize("changes", [True, False])
 @patch("orggatekeeper.calculate.datetime")
@@ -479,7 +479,7 @@ async def test_update_line_management_line(
     mock_datetime: MagicMock,
     changes: bool,
     is_self_owned_return: MagicMock,
-    below_user_key_return: MagicMock,
+    below_uuid_return: MagicMock,
     is_line_management_return: MagicMock,
     should_hide_return: MagicMock,
     gql_client: MagicMock,
@@ -512,9 +512,9 @@ async def test_update_line_management_line(
                 "orggatekeeper.calculate.should_hide", return_value=should_hide_return
             ) as should_hide_mock:
                 with patch(
-                    "orggatekeeper.calculate.below_user_key",
-                    return_value=below_user_key_return,
-                ) as below_user_key_mock:
+                    "orggatekeeper.calculate.below_uuid",
+                    return_value=below_uuid_return,
+                ) as below_uuid_mock:
                     result = await seeded_update_line_management(uuid)
 
     assert result == changes
@@ -524,9 +524,9 @@ async def test_update_line_management_line(
 
     # Then check if below main line management unit if it isn't hidden
     if not should_hide_return:
-        below_user_key_mock.assert_called_once_with(gql_client, uuid, [])
+        below_uuid_mock.assert_called_once_with(gql_client, uuid, [])
 
-    if not should_hide_return and below_user_key_return:
+    if not should_hide_return and below_uuid_return:
         is_line_management_mock.assert_called_once_with(gql_client, uuid, [])
 
     # Then check for self-owned
@@ -555,11 +555,11 @@ async def test_update_line_management_line(
 @patch("orggatekeeper.calculate.datetime")
 @patch("orggatekeeper.calculate.is_line_management")
 @patch("orggatekeeper.calculate.should_hide")
-@patch("orggatekeeper.calculate.below_user_key")
+@patch("orggatekeeper.calculate.below_uuid")
 @patch("orggatekeeper.calculate.fetch_org_unit")
 async def test_update_line_management_line_for_root_org_unit(
     fetch_org_unit: MagicMock,
-    below_user_key: MagicMock,
+    below_uuid: MagicMock,
     should_hide: MagicMock,
     is_line_management: MagicMock,
     mock_datetime: MagicMock,
