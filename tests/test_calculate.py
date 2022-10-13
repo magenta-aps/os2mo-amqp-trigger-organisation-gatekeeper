@@ -689,5 +689,12 @@ async def test_should_hide(enable_hide_logic: bool, below_uuid_return: bool) -> 
     """Test that should hide works as expected"""
     session = AsyncMock()
     with patch("orggatekeeper.calculate.below_uuid", return_value=below_uuid_return):
-        result = await should_hide(session, uuid4(), enable_hide_logic, set([uuid4()]))
+        result = await should_hide(session, uuid4(), enable_hide_logic, set())
     assert result == (enable_hide_logic and below_uuid_return)
+
+async def test_should_hide_in_settings() -> None:
+    """Test that should hide works as expected"""
+    session = AsyncMock()
+    uuid = uuid4()
+    result = await should_hide(session, uuid, True, set([uuid]))
+    assert result == True
