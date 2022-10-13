@@ -145,6 +145,10 @@ async def below_uuid(
     Returns:
         Whether the organisation unit has a parent with uuid in uuids.
     """
+    if not uuids:
+        logger.debug("below_uuid called with empty uuid list")
+        return False
+
     query = gql(
         """
         query ParentQuery($uuids: [UUID!]) {

@@ -25,11 +25,11 @@ from ramodels.mo import OrganisationUnit
 from ramodels.mo import Validity
 from ramodels.mo._shared import OrgUnitHierarchy
 
+from orggatekeeper.calculate import below_uuid
 from orggatekeeper.calculate import fetch_org_unit
 from orggatekeeper.calculate import get_class_uuid
 from orggatekeeper.calculate import is_line_management
 from orggatekeeper.calculate import is_self_owned
-from orggatekeeper.calculate import should_hide
 from orggatekeeper.calculate import update_line_management
 from orggatekeeper.config import get_settings
 from orggatekeeper.config import Settings
@@ -180,11 +180,18 @@ async def test_is_line_management(
     uuid = uuid4()
     session = MagicMock()
     session.execute = execute
-    result = await is_line_management(session, uuid, [])
+    # Assume that the unit is below the uuids given in settings.
+    with patch("orggatekeeper.calculate.below_uuid", return_value=True):
+        result = await is_line_management(session, uuid, [])
     assert len(params["args"]) == 2
     assert isinstance(params["args"][0], DocumentNode)
     assert params["args"][1] == {"uuids": [str(uuid)]}
     assert result == expected
+
+    # If the unit is not below the uuids given in settings it can never be line-management.
+    with patch("orggatekeeper.calculate.below_uuid", return_value=False):
+        result = await is_line_management(session, uuid, [])
+    assert result is False
 
 
 @pytest.mark.parametrize("expected", [True, False])
@@ -224,54 +231,78 @@ async def test_is_self_owned(expected: bool) -> None:
     assert result == expected
 
 
-async def test_should_hide_no_list() -> None:
+async def test_below_uuid_no_list() -> None:
     """Test that calculate_hidden returns false when given empty list."""
     uuid = uuid4()
-    session = MagicMock()
-    result = await should_hide(session, uuid, [])
+    session = AsyncMock()
+    result = await below_uuid(session, uuid, [])
     assert result is False
 
 
 @pytest.mark.parametrize(
-    "uuid,hidden_list,expected",
+    "uuid,uuid_list,expected",
     [
         # Directly on top-level
-        (UUID("0020f400-2777-4ef9-bfcb-5cdbb561d583"), ["QQQQ"], False),
-        (UUID("0020f400-2777-4ef9-bfcb-5cdbb561d583"), ["AAAA"], True),
-        (UUID("0020f400-2777-4ef9-bfcb-5cdbb561d583"), ["AAAB"], False),
+        (
+            UUID("0020f400-2777-4ef9-bfcb-5cdbb561d583"),
+            [UUID("0020f400-2777-4ef9-bfcb-5cdbb561d583")],
+            False,
+        ),
         # Immediate child
-        (UUID("8b54ca22-66cb-4f46-94ae-ee0a0c370bcf"), ["QQQQ"], False),
-        (UUID("8b54ca22-66cb-4f46-94ae-ee0a0c370bcf"), ["AAAA"], True),
-        (UUID("8b54ca22-66cb-4f46-94ae-ee0a0c370bcf"), ["AAAB"], True),
-        (UUID("8b54ca22-66cb-4f46-94ae-ee0a0c370bcf"), ["AABA"], False),
-        (UUID("8b54ca22-66cb-4f46-94ae-ee0a0c370bcf"), ["AAAC"], False),
+        (
+            UUID("8b54ca22-66cb-4f46-94ae-ee0a0c370bcf"),
+            [UUID("8b54ca22-66cb-4f46-94ae-ee0a0c370bcf")],
+            False,
+        ),
+        (
+            UUID("8b54ca22-66cb-4f46-94ae-ee0a0c370bcf"),
+            [UUID("58fd9427-cde0-4740-b696-31690f21f831")],
+            False,
+        ),
+        (
+            UUID("8b54ca22-66cb-4f46-94ae-ee0a0c370bcf"),
+            [UUID("0020f400-2777-4ef9-bfcb-5cdbb561d583")],
+            True,
+        ),
+        (
+            UUID("8b54ca22-66cb-4f46-94ae-ee0a0c370bcf"),
+            [
+                UUID("8b54ca22-66cb-4f46-94ae-ee0a0c370bcf"),
+                UUID("0020f400-2777-4ef9-bfcb-5cdbb561d583"),
+            ],
+            True,
+        ),
         # Nested child
-        (UUID("f29d62b6-4aab-44e5-95e4-be602dceaf8b"), ["QQQQ"], False),
-        (UUID("f29d62b6-4aab-44e5-95e4-be602dceaf8b"), ["AAAA"], True),
-        (UUID("f29d62b6-4aab-44e5-95e4-be602dceaf8b"), ["AAAB"], True),
-        (UUID("f29d62b6-4aab-44e5-95e4-be602dceaf8b"), ["AABA"], False),
-        (UUID("f29d62b6-4aab-44e5-95e4-be602dceaf8b"), ["AAAC"], True),
+        (
+            UUID("f29d62b6-4aab-44e5-95e4-be602dceaf8b"),
+            [UUID("0020f400-2777-4ef9-bfcb-5cdbb561d583")],
+            True,
+        ),
+        (
+            UUID("f29d62b6-4aab-44e5-95e4-be602dceaf8b"),
+            [
+                UUID("8b54ca22-66cb-4f46-94ae-ee0a0c370bcf"),
+                UUID("0020f400-2777-4ef9-bfcb-5cdbb561d583"),
+            ],
+            True,
+        ),
     ],
 )
-async def test_should_hide_parent(
-    uuid: UUID, hidden_list: list[str], expected: bool
+async def test_below_uuid_parent(
+    uuid: UUID, uuid_list: list[str], expected: bool
 ) -> None:
-    """Test that should_hide works as expected."""
+    """Test that below_uuid works as expected."""
     parent_map = {
         UUID("0020f400-2777-4ef9-bfcb-5cdbb561d583"): {
-            "user_key": "AAAA",
             "parent": None,
         },
         UUID("8b54ca22-66cb-4f46-94ae-ee0a0c370bcf"): {
-            "user_key": "AAAB",
             "parent": {"uuid": UUID("0020f400-2777-4ef9-bfcb-5cdbb561d583")},
         },
         UUID("f29d62b6-4aab-44e5-95e4-be602dceaf8b"): {
-            "user_key": "AAAC",
             "parent": {"uuid": UUID("8b54ca22-66cb-4f46-94ae-ee0a0c370bcf")},
         },
         UUID("58fd9427-cde0-4740-b696-31690f21f831"): {
-            "user_key": "AABA",
             "parent": {"uuid": UUID("0020f400-2777-4ef9-bfcb-5cdbb561d583")},
         },
     }
@@ -288,7 +319,7 @@ async def test_should_hide_parent(
 
     session = MagicMock()
     session.execute = execute
-    result = await should_hide(session, uuid, hidden_list)
+    result = await below_uuid(session, uuid, uuid_list)
     assert len(params["args"]) == 2
     assert isinstance(params["args"][0], DocumentNode)
     assert isinstance(params["args"][1], dict)
@@ -365,13 +396,11 @@ def seeded_update_line_management(
 
 
 @patch("orggatekeeper.calculate.is_line_management")
-@patch("orggatekeeper.calculate.should_hide")
 @patch("orggatekeeper.calculate.below_uuid")
 @patch("orggatekeeper.calculate.fetch_org_unit")
 async def test_update_line_management_no_change(
     fetch_org_unit: MagicMock,
     below_uuid: MagicMock,
-    should_hide: MagicMock,
     is_line_management: MagicMock,
     gql_client: MagicMock,
     model_client: AsyncMock,
@@ -380,7 +409,7 @@ async def test_update_line_management_no_change(
     org_unit: OrganisationUnit,
 ) -> None:
     """Test that update_line_management can't do noop."""
-    should_hide.return_value = False
+    below_uuid.return_value = False
     is_line_management.return_value = False
     fetch_org_unit.return_value = org_unit
 
@@ -388,7 +417,7 @@ async def test_update_line_management_no_change(
     result = await seeded_update_line_management(uuid)
     assert result is True
 
-    should_hide.assert_called_once_with(gql_client, uuid, [])
+    below_uuid.assert_called_once_with(gql_client, uuid, [])
     is_line_management.assert_called_once_with(gql_client, uuid, [])
     fetch_org_unit.assert_called_once_with(gql_client, uuid)
     model_client.assert_not_called()
@@ -398,7 +427,7 @@ async def test_update_line_management_no_change(
 @patch("orggatekeeper.calculate.fetch_org_unit")
 async def test_update_line_management_dry_run(
     fetch_org_unit: MagicMock,
-    should_hide: MagicMock,
+    below_uuid: MagicMock,
     gql_client: MagicMock,
     model_client: AsyncMock,
     set_settings: Callable[..., Settings],
@@ -411,24 +440,24 @@ async def test_update_line_management_dry_run(
         update_line_management, gql_client, model_client, settings, ORG_UUID
     )
 
-    should_hide.return_value = True
+    below_uuid.return_value = True
     fetch_org_unit.return_value = org_unit
 
     uuid = org_unit.uuid
     result = await seeded_update_line_management(uuid)
     assert result is True
 
-    should_hide.assert_called_once_with(gql_client, uuid, [])
+    below_uuid.assert_called_once_with(gql_client, uuid, [])
     fetch_org_unit.assert_called_once_with(gql_client, uuid)
     model_client.edit.assert_not_called()
 
 
 @patch("orggatekeeper.calculate.datetime")
-@patch("orggatekeeper.calculate.should_hide")
+@patch("orggatekeeper.calculate.below_uuid")
 @patch("orggatekeeper.calculate.fetch_org_unit")
 async def test_update_line_management_hidden(
     fetch_org_unit: MagicMock,
-    should_hide: MagicMock,
+    below_uuid: MagicMock,
     mock_datetime: MagicMock,
     gql_client: MagicMock,
     model_client: AsyncMock,
@@ -438,7 +467,7 @@ async def test_update_line_management_hidden(
     org_unit: OrganisationUnit,
 ) -> None:
     """Test that update_line_management can set class_uuid."""
-    should_hide.return_value = True
+    below_uuid.return_value = True
     fetch_org_unit.return_value = org_unit
 
     now = datetime.now()
@@ -448,7 +477,7 @@ async def test_update_line_management_hidden(
     result = await seeded_update_line_management(uuid)
     assert result is True
 
-    should_hide.assert_called_once_with(gql_client, uuid, [])
+    below_uuid.assert_called_once_with(gql_client, uuid, [])
     fetch_org_unit.assert_called_once_with(gql_client, uuid)
     assert model_client.mock_calls == [
         call.edit(
@@ -465,9 +494,8 @@ async def test_update_line_management_hidden(
 
 
 # pylint: disable=R0914
-@pytest.mark.parametrize("should_hide_return", [True, False])
-@pytest.mark.parametrize("is_line_management_return", [True, False])
 @pytest.mark.parametrize("below_uuid_return", [True, False])
+@pytest.mark.parametrize("is_line_management_return", [True, False])
 @pytest.mark.parametrize("is_self_owned_return", [True, False])
 @pytest.mark.parametrize("changes", [True, False])
 @patch("orggatekeeper.calculate.datetime")
@@ -481,7 +509,6 @@ async def test_update_line_management_line(
     is_self_owned_return: MagicMock,
     below_uuid_return: MagicMock,
     is_line_management_return: MagicMock,
-    should_hide_return: MagicMock,
     gql_client: MagicMock,
     model_client: AsyncMock,
     settings: Settings,
@@ -509,8 +536,8 @@ async def test_update_line_management_line(
             "orggatekeeper.calculate.is_self_owned", return_value=is_self_owned_return
         ) as is_self_owned_mock:
             with patch(
-                "orggatekeeper.calculate.should_hide", return_value=should_hide_return
-            ) as should_hide_mock:
+                "orggatekeeper.calculate.below_uuid", return_value=below_uuid_return
+            ) as below_uuid_mock:
                 with patch(
                     "orggatekeeper.calculate.below_uuid",
                     return_value=below_uuid_return,
@@ -520,17 +547,17 @@ async def test_update_line_management_line(
     assert result == changes
 
     # Always check if hidden
-    should_hide_mock.assert_called_once_with(gql_client, uuid, [])
+    below_uuid_mock.assert_called_once_with(gql_client, uuid, [])
 
     # Then check if below main line management unit if it isn't hidden
-    if not should_hide_return:
+    if not below_uuid_return:
         below_uuid_mock.assert_called_once_with(gql_client, uuid, [])
 
-    if not should_hide_return and below_uuid_return:
+    if not below_uuid_return and below_uuid_return:
         is_line_management_mock.assert_called_once_with(gql_client, uuid, [])
 
     # Then check for self-owned
-    if not (should_hide_return or is_line_management_return):
+    if not (below_uuid_return or is_line_management_return):
         is_self_owned_mock.assert_called_once_with(
             gql_client, uuid, self_owned_it_system_check
         )
@@ -554,13 +581,11 @@ async def test_update_line_management_line(
 
 @patch("orggatekeeper.calculate.datetime")
 @patch("orggatekeeper.calculate.is_line_management")
-@patch("orggatekeeper.calculate.should_hide")
 @patch("orggatekeeper.calculate.below_uuid")
 @patch("orggatekeeper.calculate.fetch_org_unit")
 async def test_update_line_management_line_for_root_org_unit(
     fetch_org_unit: MagicMock,
     below_uuid: MagicMock,
-    should_hide: MagicMock,
     is_line_management: MagicMock,
     mock_datetime: MagicMock,
     gql_client: MagicMock,
@@ -573,7 +598,7 @@ async def test_update_line_management_line_for_root_org_unit(
     Test that update_line_management can set line_management_uuid for
     for an root org unit.
     """
-    should_hide.return_value = False
+    below_uuid.return_value = False
     is_line_management.return_value = True
     org_unit = OrganisationUnit.from_simplified_fields(
         user_key="AAAA",
@@ -592,7 +617,7 @@ async def test_update_line_management_line_for_root_org_unit(
     result = await seeded_update_line_management(uuid)
     assert result is True
 
-    should_hide.assert_called_once_with(gql_client, uuid, [])
+    below_uuid.assert_called_once_with(gql_client, uuid, [])
     is_line_management.assert_called_once_with(gql_client, uuid, [])
     fetch_org_unit.assert_called_once_with(gql_client, uuid)
     assert model_client.mock_calls == [

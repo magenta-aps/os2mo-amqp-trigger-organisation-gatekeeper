@@ -308,10 +308,9 @@ def create_app(  # pylint: disable=too-many-statements
 
         org_unit_uuids = list(map(UUID, map(itemgetter("uuid"), result["org_units"])))
         logger.info("Manually triggered recalculation", uuids=org_unit_uuids)
-        # org_unit_tasks = map(context["seeded_update_line_management"], org_unit_uuids)
-        for uuid in org_unit_uuids:
-            await context["seeded_update_line_management"](uuid)
-        return {"status": "OK"}
+        org_unit_tasks = map(context["seeded_update_line_management"], org_unit_uuids)
+        background_tasks.add_task(gather, *org_unit_tasks)
+        return {"status": "Background job triggered"}
 
     @app.post(
         "/trigger/{uuid}",
