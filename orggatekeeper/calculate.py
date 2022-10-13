@@ -99,7 +99,7 @@ async def is_line_management(
 
     if (
         ny_regex.fullmatch(unit_level_user_key) is None
-        or unit_level_user_key == "Afdelings-niveau"
+        and unit_level_user_key != "Afdelings-niveau"
     ):
         return False
 
