@@ -6,6 +6,11 @@ SPDX-License-Identifier: MPL-2.0
 CHANGELOG
 =========
 
+2.3.0 - 2022-10-14
+------------------
+
+[#56148] Configure top level line-management units and hidden units with uuids instead of user_keys, as user_keys are not guarantied to be unique. Always set unit to line_management if it is found in LINE_MANAGEMENT_TOP_LEVEL_USER_UUIDS
+
 2.2.2 - 2022-10-06
 ------------------
 
