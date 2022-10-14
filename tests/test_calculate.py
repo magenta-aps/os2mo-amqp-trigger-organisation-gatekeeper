@@ -692,9 +692,27 @@ async def test_should_hide(enable_hide_logic: bool, below_uuid_return: bool) -> 
         result = await should_hide(session, uuid4(), enable_hide_logic, set())
     assert result == (enable_hide_logic and below_uuid_return)
 
+
 async def test_should_hide_in_settings() -> None:
     """Test that should hide works as expected"""
     session = AsyncMock()
     uuid = uuid4()
-    result = await should_hide(session, uuid, True, set([uuid]))
-    assert result == True
+    result = await should_hide(
+        session,
+        uuid,
+        True,
+        set([uuid]),
+    )
+    assert result is True
+
+
+async def test_line_management_for_unit_in_settings() -> None:
+    """Test that a unit is marked as line management if its uuid is in settings"""
+    session = AsyncMock()
+    uuid = uuid4()
+    result = await is_line_management(
+        session,
+        uuid,
+        set([uuid]),
+    )
+    assert result is True
