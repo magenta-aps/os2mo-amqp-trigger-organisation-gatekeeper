@@ -46,6 +46,38 @@ async def should_hide(
     return await below_uuid(gql_client, uuid=uuid, uuids=hidden)
 
 
+async def check_org_unit_line_management(
+    gql_client: PersistentGraphQLClient,
+    uuid: UUID,
+    org_unit: dict,
+    line_management_top_level_uuid: set[UUID],
+) -> bool:
+    """Checks if a given org_unit passes the requirements to be in line management"""
+    if not org_unit.get("org_unit_level"):
+        logger.debug("Found no org_unit_level, assuming not in line-org", uuid=uuid)
+        return False
+    unit_level_user_key = org_unit["org_unit_level"]["user_key"]
+    # Part of line management if unit_level_user_key matches regex
+    # Or if it is "Afdelings-niveau"
+    is_ny_level = ny_regex.fullmatch(unit_level_user_key) is not None
+    is_department_level = unit_level_user_key == "Afdelings-niveau"
+    if not is_ny_level and not is_department_level:
+        return False
+    # Also it needs to have people attached to be line managent
+    # TODO: Check owners, leaders, it?
+    has_engagements = bool(org_unit["engagements"])
+    has_associations = bool(org_unit["associations"])
+    if not has_engagements and not has_associations:
+        return False
+    # AND it needs to be below an orgunit that is explicitly line management
+    if not await below_uuid(
+        gql_client, uuid=uuid, uuids=line_management_top_level_uuid
+    ):
+        return False
+    # If all above checks passes it is line management.
+    return True
+
+
 async def is_line_management(
     gql_client: PersistentGraphQLClient,
     uuid: UUID,
@@ -80,9 +112,6 @@ async def is_line_management(
                     associations {
                         uuid
                     }
-                    children {
-                        uuid
-                    }
                 }
             }
         }
@@ -93,37 +122,11 @@ async def is_line_management(
     obj = one(one(result["org_units"])["objects"])
     logger.debug("GraphQL obj", obj=obj)
 
-    if not obj.get("org_unit_level"):
-        logger.debug("Found no org_unit_level, assuming not in line-org", uuid=uuid)
-        return False
-
-    unit_level_user_key = obj["org_unit_level"]["user_key"]
-
-    # Part of line management if unit_level_user_key matches regex
-    # Or if it is "Afdelings-niveau"
-    is_ny_level = ny_regex.fullmatch(unit_level_user_key) is not None
-    is_department_level = unit_level_user_key == "Afdelings-niveau"
-
-    if not is_ny_level and not is_department_level:
-        line_management = False
-
-    # Also it needs to have people attached to be line managent
-    # TODO: Check owners, leaders, it?
-    has_engagements = bool(obj["engagements"])
-    has_associations = bool(obj["associations"])
-    if not has_engagements and not has_associations:
-        line_management = False
-
-    # AND it needs to be below an orgunit that is explicitly line management
-
-    if not await below_uuid(
-        gql_client, uuid=uuid, uuids=line_management_top_level_uuid
+    if await check_org_unit_line_management(
+        gql_client, uuid, obj, line_management_top_level_uuid
     ):
-        line_management = False
-
-    # If all above checks passes it is line management.
-    if line_management:
         return True
+
     # If not we need to check if any org_units below this unit passes the checks.
     # If an org_unit below this unit is line-management, we need to mark this one
     # as line management too in order for the frontend to show the whole tree.
