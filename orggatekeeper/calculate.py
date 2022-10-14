@@ -94,18 +94,19 @@ async def is_line_management(
 
     unit_level_user_key = obj["org_unit_level"]["user_key"]
 
-    # Part of line management if userkey matches regex
+    # Part of line management if unit_level_user_key matches regex
     # Or if it is "Afdelings-niveau"
+    is_ny_level = ny_regex.fullmatch(unit_level_user_key) is not None
+    is_department_level = unit_level_user_key == "Afdelings-niveau"
 
-    if (
-        ny_regex.fullmatch(unit_level_user_key) is None
-        and unit_level_user_key != "Afdelings-niveau"
-    ):
+    if not is_ny_level and not is_department_level:
         return False
 
     # Also it needs to have people attached to be line managent
     # TODO: Check owners, leaders, it?
-    if not (bool(obj["engagements"]) or bool(obj["associations"])):
+    has_engagements = bool(obj["engagements"])
+    has_associations = bool(obj["associations"])
+    if not has_engagements and not has_associations:
         return False
 
     # AND it needs to be below an orgunit that is explicitly line management
