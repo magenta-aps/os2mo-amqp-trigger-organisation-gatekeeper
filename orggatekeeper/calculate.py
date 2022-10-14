@@ -112,6 +112,9 @@ async def is_line_management(
                     associations {
                         uuid
                     }
+                    children {
+                        uuid
+                    }
                 }
             }
         }
