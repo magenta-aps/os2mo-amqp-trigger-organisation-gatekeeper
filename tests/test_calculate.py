@@ -683,14 +683,23 @@ async def test_get_class_uuid(
     fetch_class_uuid.assert_called_once_with(session, "hide")
 
 
-@pytest.mark.parametrize("enable_hide_logic", [True, False])
-@pytest.mark.parametrize("below_uuid_return", [True, False])
-async def test_should_hide(enable_hide_logic: bool, below_uuid_return: bool) -> None:
+@pytest.mark.parametrize(
+    "enable_hide_logic,below_uuid_return,expected",
+    [
+        (True, True, True),
+        (True, False, False),
+        (False, True, False),
+        (False, False, False),
+    ],
+)
+async def test_should_hide(
+    enable_hide_logic: bool, below_uuid_return: bool, expected: bool
+) -> None:
     """Test that should hide works as expected"""
     session = AsyncMock()
     with patch("orggatekeeper.calculate.below_uuid", return_value=below_uuid_return):
         result = await should_hide(session, uuid4(), enable_hide_logic, set())
-    assert result == (enable_hide_logic and below_uuid_return)
+    assert result == expected
 
 
 async def test_should_hide_in_settings() -> None:
