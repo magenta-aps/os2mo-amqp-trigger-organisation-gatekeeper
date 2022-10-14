@@ -6,6 +6,11 @@ SPDX-License-Identifier: MPL-2.0
 CHANGELOG
 =========
 
+2.4.0 - 2022-10-14
+------------------
+
+[#46148] Add a check if org_units below a unit is line-management to get the top org_units to be shown as line-management.
+
 2.3.0 - 2022-10-14
 ------------------
 
