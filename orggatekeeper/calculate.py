@@ -94,9 +94,8 @@ async def is_line_management(
     Returns:
         Whether the organisation unit should be part of line management.
     """
-    line_management = True
     if uuid in line_management_top_level_uuid:
-        return line_management
+        return True
 
     query = gql(
         """
