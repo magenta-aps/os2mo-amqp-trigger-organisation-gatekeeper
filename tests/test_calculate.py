@@ -169,6 +169,7 @@ async def test_is_line_management(
                             "associations": [
                                 {"uuid": uuid4()} for _ in range(num_assocations)
                             ],
+                            "children": [],
                         }
                     ]
                 }
