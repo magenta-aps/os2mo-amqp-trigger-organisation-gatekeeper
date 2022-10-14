@@ -126,7 +126,10 @@ async def is_line_management(
 
     # Check this unit according to the rules for line-management
     if await check_org_unit_line_management(
-        gql_client, uuid, obj, line_management_top_level_uuid
+        gql_client=gql_client,
+        uuid=uuid,
+        org_unit=obj,
+        line_management_top_level_uuid=line_management_top_level_uuid,
     ):
         return True
     # If the above check fails we need to check below this org_unit to see if
