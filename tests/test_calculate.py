@@ -197,6 +197,40 @@ async def test_is_line_management(
     assert result is False
 
 
+@pytest.mark.parametrize("is_children_line_management", [True, False])
+async def test_is_line_management_recursion(is_children_line_management: bool) -> None:
+    """Test that is_line_management is called recursively on children."""
+
+    async def execute(*_: Any, **__: Any) -> dict[str, Any]:
+        return {
+            "org_units": [
+                {
+                    "objects": [
+                        {
+                            "children": [{"uuid": uuid4()}],
+                        }
+                    ]
+                }
+            ]
+        }
+
+    uuid = uuid4()
+    session = MagicMock()
+    session.execute = execute
+
+    with patch(
+        "orggatekeeper.calculate.check_org_unit_line_management", return_value=False
+    ):
+        with patch(
+            "orggatekeeper.calculate.is_line_management",
+            return_value=is_children_line_management,
+        ):
+            result = await is_line_management(
+                gql_client=session, uuid=uuid, line_management_top_level_uuid=set()
+            )
+            assert result is is_children_line_management
+
+
 @pytest.mark.parametrize("expected", [True, False])
 async def test_is_self_owned(expected: bool) -> None:
     """Test check for self-owned"""
