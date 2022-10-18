@@ -135,14 +135,14 @@ async def is_line_management(
     # If the above check fails we need to check below this org_unit to see if
     # an org_unit below this unit is line-management. Then we need to mark this one
     # as line management too in order for the frontend to show the whole tree.
-    return any(
-        is_line_management(
+    for child in obj["children"]:
+        if await is_line_management(
             gql_client=gql_client,
             uuid=child["uuid"],
             line_management_top_level_uuid=line_management_top_level_uuid,
-        )
-        for child in obj["children"]
-    )
+        ):
+            return True
+    return False
 
 
 async def is_self_owned(
