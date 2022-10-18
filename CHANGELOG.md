@@ -6,6 +6,11 @@ SPDX-License-Identifier: MPL-2.0
 CHANGELOG
 =========
 
+2.4.1 - 2022-10-18
+------------------
+
+[#46148] Fix is_line_management for children
+
 2.4.0 - 2022-10-14
 ------------------
 
