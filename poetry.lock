@@ -243,6 +243,17 @@ optional = false
 python-versions = "*"
 
 [[package]]
+name = "exceptiongroup"
+version = "1.1.0"
+description = "Backport of PEP 654 (exception groups)"
+category = "main"
+optional = false
+python-versions = ">=3.7"
+
+[package.extras]
+test = ["pytest (>=6)"]
+
+[[package]]
 name = "fastapi"
 version = "0.85.0"
 description = "FastAPI framework, high performance, easy to learn, fast to code, ready for production"
@@ -699,14 +710,6 @@ fastapi = ">=0.38.1,<1.0.0"
 prometheus-client = ">=0.8.0,<1.0.0"
 
 [[package]]
-name = "py"
-version = "1.11.0"
-description = "library with cross-python path, ini-parsing, io, code, log facilities"
-category = "main"
-optional = false
-python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*"
-
-[[package]]
 name = "pycparser"
 version = "2.21"
 description = "C parser in Python"
@@ -787,7 +790,7 @@ diagrams = ["jinja2", "railroad-diagrams"]
 
 [[package]]
 name = "pytest"
-version = "7.1.3"
+version = "7.2.1"
 description = "pytest: simple powerful testing with Python"
 category = "main"
 optional = false
@@ -796,11 +799,11 @@ python-versions = ">=3.7"
 [package.dependencies]
 attrs = ">=19.2.0"
 colorama = {version = "*", markers = "sys_platform == \"win32\""}
+exceptiongroup = {version = ">=1.0.0rc8", markers = "python_version < \"3.11\""}
 iniconfig = "*"
 packaging = "*"
 pluggy = ">=0.12,<2.0"
-py = ">=1.8.2"
-tomli = ">=1.0.0"
+tomli = {version = ">=1.0.0", markers = "python_version < \"3.11\""}
 
 [package.extras]
 testing = ["argcomplete", "hypothesis (>=3.56)", "mock", "nose", "pygments (>=2.7.2)", "requests", "xmlschema"]
@@ -888,7 +891,7 @@ pyyaml = "*"
 
 [[package]]
 name = "ra-utils"
-version = "1.3.1"
+version = "1.2.1"
 description = "Utilities for OS2mo/LoRa"
 category = "main"
 optional = false
@@ -1235,7 +1238,7 @@ multidict = ">=4.0"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.10"
-content-hash = "93c2a34d6982e8961024b066df0a9b3f89cc6a1291e573ab17fdfe92705b5ae5"
+content-hash = "2b6075f61467785b47a5354a87ace9d551afb026f0b9d6e05ee17d67f8aade46"
 
 [metadata.files]
 aio-pika = [
@@ -1470,6 +1473,10 @@ dill = [
 distlib = [
     {file = "distlib-0.3.6-py2.py3-none-any.whl", hash = "sha256:f35c4b692542ca110de7ef0bea44d73981caeb34ca0b9b6b2e6d7790dda8f80e"},
     {file = "distlib-0.3.6.tar.gz", hash = "sha256:14bad2d9b04d3a36127ac97f30b12a19268f211063d8f8ee4f47108896e11b46"},
+]
+exceptiongroup = [
+    {file = "exceptiongroup-1.1.0-py3-none-any.whl", hash = "sha256:327cbda3da756e2de031a3107b81ab7b3770a602c4d16ca618298c526f4bec1e"},
+    {file = "exceptiongroup-1.1.0.tar.gz", hash = "sha256:bcb67d800a4497e1b404c2dd44fca47d3b7a5e5433dbab67f96c1a685cdfdf23"},
 ]
 fastapi = [
     {file = "fastapi-0.85.0-py3-none-any.whl", hash = "sha256:1803d962f169dc9f8dde54a64b22eb16f6d81573f54401971f90f0a67234a8b4"},
@@ -1809,10 +1816,6 @@ prometheus-fastapi-instrumentator = [
     {file = "prometheus-fastapi-instrumentator-5.9.1.tar.gz", hash = "sha256:3651a72f73359a28e8afb0d370ebe3774147323ee2285e21236b229ce79172fc"},
     {file = "prometheus_fastapi_instrumentator-5.9.1-py3-none-any.whl", hash = "sha256:b5206ea9aa6975a0b07f3bf7376932b8a1b2983164b5abb04878e75ba336d9ed"},
 ]
-py = [
-    {file = "py-1.11.0-py2.py3-none-any.whl", hash = "sha256:607c53218732647dff4acdfcd50cb62615cedf612e72d1724fb1a0cc6405b378"},
-    {file = "py-1.11.0.tar.gz", hash = "sha256:51c75c4126074b472f746a24399ad32f6053d1b34b68d2fa41e558e6f4a98719"},
-]
 pycparser = [
     {file = "pycparser-2.21-py2.py3-none-any.whl", hash = "sha256:8ee45429555515e1f6b185e78100aea234072576aa43ab53aefcae078162fca9"},
     {file = "pycparser-2.21.tar.gz", hash = "sha256:e644fdec12f7872f86c58ff790da456218b10f863970249516d60a5eaca77206"},
@@ -1871,8 +1874,8 @@ pyparsing = [
     {file = "pyparsing-3.0.9.tar.gz", hash = "sha256:2b020ecf7d21b687f219b71ecad3631f644a47f01403fa1d1036b0c6416d70fb"},
 ]
 pytest = [
-    {file = "pytest-7.1.3-py3-none-any.whl", hash = "sha256:1377bda3466d70b55e3f5cecfa55bb7cfcf219c7964629b967c37cf0bda818b7"},
-    {file = "pytest-7.1.3.tar.gz", hash = "sha256:4f365fec2dff9c1162f834d9f18af1ba13062db0c708bf7b946f8a5c76180c39"},
+    {file = "pytest-7.2.1-py3-none-any.whl", hash = "sha256:c7c6ca206e93355074ae32f7403e8ea12163b1163c976fee7d4d84027c162be5"},
+    {file = "pytest-7.2.1.tar.gz", hash = "sha256:d45e0952f3727241918b8fd0f376f5ff6b301cc0777c6f9a556935c92d8a7d42"},
 ]
 pytest-asyncio = [
     {file = "pytest-asyncio-0.19.0.tar.gz", hash = "sha256:ac4ebf3b6207259750bc32f4c1d8fcd7e79739edbc67ad0c58dd150b1d072fed"},
@@ -1941,8 +1944,8 @@ pyyaml-env-tag = [
     {file = "pyyaml_env_tag-0.1.tar.gz", hash = "sha256:70092675bda14fdec33b31ba77e7543de9ddc88f2e5b99160396572d11525bdb"},
 ]
 ra-utils = [
-    {file = "ra_utils-1.3.1-py3-none-any.whl", hash = "sha256:4809186630e5241e55faf7b4affec9111882867b4dddc74de977745626c157e8"},
-    {file = "ra_utils-1.3.1.tar.gz", hash = "sha256:96189cf91d18c86cbf9466a20548f2236521863fbda1d845485b562c413095dc"},
+    {file = "ra-utils-1.2.1.tar.gz", hash = "sha256:fb94cef81f5a9adb04c6bc263c92750ad17f5d37b91cd7d88607b66220c0d923"},
+    {file = "ra_utils-1.2.1-py3-none-any.whl", hash = "sha256:ec3fddfcfeea93b06b2d51cb35b3e22a93e7096303f08c8f960e5091b59be36f"},
 ]
 raclients = [
     {file = "raclients-2.0.1-py3-none-any.whl", hash = "sha256:517c693f84351c44ad6371956bbd958d5e311a67b8739613cacb726d6e096869"},
