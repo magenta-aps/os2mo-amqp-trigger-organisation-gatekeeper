@@ -888,7 +888,7 @@ pyyaml = "*"
 
 [[package]]
 name = "ra-utils"
-version = "1.2.1"
+version = "1.3.1"
 description = "Utilities for OS2mo/LoRa"
 category = "main"
 optional = false
@@ -1235,7 +1235,7 @@ multidict = ">=4.0"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.10"
-content-hash = "ffb358474ca212e84cb896f3ebde05576eff12abf5b747f1d82e3cfb4c8e8c5c"
+content-hash = "93c2a34d6982e8961024b066df0a9b3f89cc6a1291e573ab17fdfe92705b5ae5"
 
 [metadata.files]
 aio-pika = [
@@ -1941,8 +1941,8 @@ pyyaml-env-tag = [
     {file = "pyyaml_env_tag-0.1.tar.gz", hash = "sha256:70092675bda14fdec33b31ba77e7543de9ddc88f2e5b99160396572d11525bdb"},
 ]
 ra-utils = [
-    {file = "ra-utils-1.2.1.tar.gz", hash = "sha256:fb94cef81f5a9adb04c6bc263c92750ad17f5d37b91cd7d88607b66220c0d923"},
-    {file = "ra_utils-1.2.1-py3-none-any.whl", hash = "sha256:ec3fddfcfeea93b06b2d51cb35b3e22a93e7096303f08c8f960e5091b59be36f"},
+    {file = "ra_utils-1.3.1-py3-none-any.whl", hash = "sha256:4809186630e5241e55faf7b4affec9111882867b4dddc74de977745626c157e8"},
+    {file = "ra_utils-1.3.1.tar.gz", hash = "sha256:96189cf91d18c86cbf9466a20548f2236521863fbda1d845485b562c413095dc"},
 ]
 raclients = [
     {file = "raclients-2.0.1-py3-none-any.whl", hash = "sha256:517c693f84351c44ad6371956bbd958d5e311a67b8739613cacb726d6e096869"},
