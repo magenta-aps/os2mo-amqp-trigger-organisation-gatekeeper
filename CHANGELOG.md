@@ -6,6 +6,11 @@ SPDX-License-Identifier: MPL-2.0
 CHANGELOG
 =========
 
+2.5.0 - 2023-01-19
+------------------
+
+[#xxxxx] Add sentry
+
 2.4.1 - 2022-10-18
 ------------------
 
