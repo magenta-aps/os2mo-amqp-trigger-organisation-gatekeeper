@@ -16,6 +16,7 @@ from typing import Tuple
 from typing import TypeVar
 from uuid import UUID
 
+import sentry_sdk
 import structlog
 from fastapi import BackgroundTasks
 from fastapi import FastAPI
@@ -231,6 +232,8 @@ def create_app(  # pylint: disable=too-many-statements
     """
     settings = get_settings(*args, **kwargs)
     configure_logging(settings)
+    if settings.sentry_dsn:
+        sentry_sdk.init(dsn=settings.sentry_dsn)
 
     app = FastAPI()
 

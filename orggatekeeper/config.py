@@ -67,6 +67,8 @@ class Settings(BaseSettings):
     )
     auth_realm: str = Field("mo", description="Realm to authenticate against")
 
+    sentry_dsn: str | None = None
+
     enable_hide_logic: bool = Field(
         True, description="Whether or not to enable hide logic."
     )
