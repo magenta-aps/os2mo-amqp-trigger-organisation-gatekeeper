@@ -389,7 +389,7 @@ async def test_readiness_endpoint(
     print(model_client.mock_calls)
     assert model_client.mock_calls == [
         call.async_httpx_client.get("/service/o/"),
-        call.async_httpx_client.get().json()
+        call.async_httpx_client.get().json(),
     ]
     assert amqp_system.mock_calls == [call.healthcheck()]
 
