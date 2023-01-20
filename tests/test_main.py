@@ -370,7 +370,7 @@ async def test_readiness_endpoint(
     else:
         model_client_response.json.return_value = "BOOM"
     model_client = AsyncMock()
-    model_client.get.return_value = model_client_response
+    model_client.async_httpx_client.get.return_value = model_client_response
 
     amqp_system = MagicMock()
     amqp_system.healthcheck.return_value = amqp_ok
@@ -386,7 +386,11 @@ async def test_readiness_endpoint(
     assert response.status_code == expected
 
     assert len(gql_client.execute.mock_calls) == 1
-    assert model_client.mock_calls == [call.get("/service/o/"), call.get().json()]
+    print(model_client.mock_calls)
+    assert model_client.mock_calls == [
+        call.async_httpx_client.get("/service/o/"),
+        call.async_httpx_client.get().json()
+    ]
     assert amqp_system.mock_calls == [call.healthcheck()]
 
 
@@ -429,7 +433,7 @@ async def test_readiness_endpoint_exception(
     else:
         model_client_response.json.side_effect = ValueError("BOOM")
     model_client = AsyncMock()
-    model_client.get.return_value = model_client_response
+    model_client.async_httpx_client.get.return_value = model_client_response
 
     amqp_system = MagicMock()
     if amqp_ok:

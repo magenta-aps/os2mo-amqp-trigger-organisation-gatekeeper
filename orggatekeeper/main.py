@@ -112,7 +112,7 @@ async def healthcheck_model_client(model_client: ModelClient) -> bool:
         Whether the client is healthy or not.
     """
     try:
-        response = await model_client.get("/service/o/")
+        response = await model_client.async_httpx_client.get("/service/o/")
         result = response.json()
         if one(result)["uuid"]:
             return True
