@@ -6,6 +6,11 @@ SPDX-License-Identifier: MPL-2.0
 CHANGELOG
 =========
 
+2.5.1 - 2023-01-20
+------------------
+
+[#54503] Fix model client health check
+
 2.5.0 - 2023-01-19
 ------------------
 
