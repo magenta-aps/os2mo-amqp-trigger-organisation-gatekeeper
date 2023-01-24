@@ -964,7 +964,7 @@ structlog = ">=22.1.0,<23.0.0"
 
 [[package]]
 name = "reorder-python-imports"
-version = "3.8.4"
+version = "3.9.0"
 description = "Tool for reordering python imports"
 category = "dev"
 optional = false
@@ -1275,7 +1275,7 @@ multidict = ">=4.0"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.10"
-content-hash = "3ca7b564ca7516f550e523c3eb2a18be200fb03e90cae074d8f7dce2c3350547"
+content-hash = "c931df6fcc274dc29031a76ee6809053f321a298d1476d6d709bd41ce2dd42c6"
 
 [metadata.files]
 aio-pika = [
@@ -1995,8 +1995,8 @@ ramqp = [
     {file = "ramqp-6.7.1.tar.gz", hash = "sha256:b1c8c00dc76ca74d99c585dc2fca8d0542b15737a636a22d39b14accb0828f4c"},
 ]
 reorder-python-imports = [
-    {file = "reorder_python_imports-3.8.4-py2.py3-none-any.whl", hash = "sha256:7f68b8528dd483554d71769ef5eb6f53cfcacc641ec479cb3a9d4debf0cab0bc"},
-    {file = "reorder_python_imports-3.8.4.tar.gz", hash = "sha256:65d35e6df8ab083998d88b08c4e44b70dadfc75e53e0ac9ad5f8c797e97a26f5"},
+    {file = "reorder_python_imports-3.9.0-py2.py3-none-any.whl", hash = "sha256:3f9c16e8781f54c944756d0d1eb34a8c863554f7a4eb3693f574fe19b1a29b56"},
+    {file = "reorder_python_imports-3.9.0.tar.gz", hash = "sha256:49292ed537829a6bece9fb3746fc1bbe98f52643be5de01a4e13680268a5b0ec"},
 ]
 requests = [
     {file = "requests-2.28.1-py3-none-any.whl", hash = "sha256:8fefa2a1a1365bf5520aac41836fbee479da67864514bdb821f31ce07ce65349"},
