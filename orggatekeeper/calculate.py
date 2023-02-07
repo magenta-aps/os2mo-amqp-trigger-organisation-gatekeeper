@@ -335,4 +335,9 @@ async def update_line_management(
     logger.debug("Sending ModelClient edit request", org_unit=org_unit)
     response = await model_client.edit([org_unit])
     logger.debug("ModelClient response", response=response)
+    if org_unit.parent is not None:
+        # Check if parent org_unit needs to be updated.
+        await update_line_management(
+            gql_client, model_client, settings, org_uuid, org_unit.parent.uuid
+        )
     return True

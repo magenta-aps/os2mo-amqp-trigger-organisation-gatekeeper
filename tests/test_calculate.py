@@ -443,11 +443,19 @@ async def test_update_line_management_no_change(
     model_client: AsyncMock,
     seeded_update_line_management: Callable[[UUID], Awaitable[bool]],
     class_uuid: MagicMock,
-    org_unit: OrganisationUnit,
 ) -> None:
     """Test that update_line_management can't do noop."""
     should_hide.return_value = False
     is_line_management.return_value = False
+    # Test with top level org_unit to avoid recursive calls to update_line_management
+    org_unit = OrganisationUnit.from_simplified_fields(
+        user_key="AAAA",
+        name="Test",
+        org_unit_type_uuid=uuid4(),
+        org_unit_level_uuid=uuid4(),
+        parent_uuid=ORG_UUID,
+        from_date=datetime.now().isoformat(),
+    )
     fetch_org_unit.return_value = org_unit
 
     uuid = org_unit.uuid
@@ -505,10 +513,19 @@ async def test_update_line_management_hidden(
     settings: Settings,
     class_uuid: UUID,
     seeded_update_line_management: Callable[[UUID], Awaitable[bool]],
-    org_unit: OrganisationUnit,
 ) -> None:
     """Test that update_line_management can set class_uuid."""
     should_hide.return_value = True
+    # Test with top level org_unit to avoid recursive calls to update_line_management
+    org_unit = OrganisationUnit.from_simplified_fields(
+        user_key="AAAA",
+        name="Test",
+        org_unit_type_uuid=uuid4(),
+        org_unit_level_uuid=uuid4(),
+        parent_uuid=ORG_UUID,
+        from_date=datetime.now().isoformat(),
+    )
+
     fetch_org_unit.return_value = org_unit
 
     now = datetime.now()
@@ -528,6 +545,7 @@ async def test_update_line_management_hidden(
                 org_unit.copy(
                     update={
                         "org_unit_hierarchy": OrgUnitHierarchy(uuid=class_uuid),
+                        "parent": None,
                         "validity": Validity(from_date=now.date()),
                     }
                 )
@@ -560,10 +578,27 @@ async def test_update_line_management_line(
     org_unit: OrganisationUnit,
 ) -> None:
     """Test that update_line_management can set line_management_uuid."""
-    fetch_org_unit.return_value = org_unit
-    org_unit_hierarchy_mock.return_value = (
-        OrgUnitHierarchy(uuid=class_uuid) if changes else org_unit.org_unit_hierarchy
+    parent_org_unit = OrganisationUnit.from_simplified_fields(
+        user_key="AAAB",
+        name="Test Parent",
+        org_unit_type_uuid=uuid4(),
+        org_unit_level_uuid=uuid4(),
+        parent_uuid=ORG_UUID,
+        from_date=datetime.now().isoformat(),
     )
+    org_unit = OrganisationUnit.from_simplified_fields(
+        user_key="AAAA",
+        name="Test",
+        org_unit_type_uuid=uuid4(),
+        org_unit_level_uuid=uuid4(),
+        parent_uuid=parent_org_unit.uuid,
+        from_date=datetime.now().isoformat(),
+    )
+    fetch_org_unit.side_effect = [org_unit, parent_org_unit]
+    org_unit_hierarchy_mock.side_effect = [
+        OrgUnitHierarchy(uuid=class_uuid) if changes else org_unit.org_unit_hierarchy,
+        parent_org_unit.org_unit_hierarchy,
+    ]
     self_owned_it_system_check = "IT-system"
 
     now = datetime.now()
@@ -589,24 +624,36 @@ async def test_update_line_management_line(
 
     assert result == changes
 
-    # Always check if hidden
-    should_hide_mock.assert_called_once_with(
-        gql_client, uuid=uuid, enable_hide_logic=True, hidden=set()
-    )
-
-    # Then check if it is line management
-    if not should_hide_return:
-        is_line_management_mock.assert_called_once_with(gql_client, uuid, set())
-
-    # Then check for self-owned
-    if not (should_hide_return or is_line_management_return):
-        is_self_owned_mock.assert_called_once_with(
-            gql_client, uuid, self_owned_it_system_check
-        )
-    fetch_org_unit.assert_called_once_with(gql_client, uuid)
+    # There are no changes to the org_unit_hierarchy, don't check the parent
     if not changes:
+        # Always check if hidden
+        should_hide_mock.assert_called_once_with(
+            gql_client, uuid=uuid, enable_hide_logic=True, hidden=set()
+        )
+
+        # Then check if it is line management
+        if not should_hide_return:
+            is_line_management_mock.assert_called_once_with(
+                gql_client, uuid, settings.line_management_top_level_uuids
+            )
+
+        # Then check for self-owned
+        if not (should_hide_return or is_line_management_return):
+            is_self_owned_mock.assert_called_once_with(
+                gql_client, uuid, self_owned_it_system_check
+            )
+        fetch_org_unit.assert_called_once_with(gql_client, uuid)
         assert model_client.mock_calls == []
+
+    # If there are changes to org_unit_hierarchy, test that the parent is also checked
     else:
+
+        assert should_hide_mock.call_count == 2
+        if not should_hide_return:
+            assert is_line_management_mock.call_count == 2
+        if not (should_hide_return or is_line_management_return):
+            assert is_self_owned_mock.call_count == 2
+        # Only the org_unit, not the parent, is updated
         assert model_client.mock_calls == [
             call.edit(
                 [
