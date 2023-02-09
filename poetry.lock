@@ -675,7 +675,7 @@ testing = ["pytest", "pytest-benchmark"]
 
 [[package]]
 name = "pre-commit"
-version = "3.0.0"
+version = "3.0.4"
 description = "A framework for managing and maintaining multi-language pre-commit hooks."
 category = "dev"
 optional = false
@@ -769,11 +769,11 @@ pylint = ">=1.7"
 
 [[package]]
 name = "pylint-pydantic"
-version = "0.1.6"
+version = "0.1.5"
 description = "A Pylint plugin to help Pylint understand the Pydantic"
 category = "dev"
 optional = false
-python-versions = ">=3.9"
+python-versions = ">=3.6"
 
 [package.dependencies]
 pydantic = "<2.0"
@@ -1280,7 +1280,7 @@ multidict = ">=4.0"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.10"
-content-hash = "c5a214d333de83b6dd2b1a1e386c259c622ca51e3b7382d2ed84919de7b0ce96"
+content-hash = "c89bfa14ec27e2684a7a39f875834002fce8cc9d88988379905179bd6a1f5cf4"
 
 [metadata.files]
 aio-pika = [
@@ -1840,8 +1840,8 @@ pluggy = [
     {file = "pluggy-1.0.0.tar.gz", hash = "sha256:4224373bacce55f955a878bf9cfa763c1e360858e330072059e10bad68531159"},
 ]
 pre-commit = [
-    {file = "pre_commit-3.0.0-py2.py3-none-any.whl", hash = "sha256:6af0a0b4137c0903794632f77b7223c4af0373f5cd3337056d2dab32aa3a5caf"},
-    {file = "pre_commit-3.0.0.tar.gz", hash = "sha256:de265f74325f0c3ff1a727a974449315ea9b11975cf6b02c11f26e50acfa48f1"},
+    {file = "pre_commit-3.0.4-py2.py3-none-any.whl", hash = "sha256:9e3255edb0c9e7fe9b4f328cb3dc86069f8fdc38026f1bf521018a05eaf4d67b"},
+    {file = "pre_commit-3.0.4.tar.gz", hash = "sha256:bc4687478d55578c4ac37272fe96df66f73d9b5cf81be6f28627d4e712e752d5"},
 ]
 prometheus-client = [
     {file = "prometheus_client-0.14.1-py3-none-any.whl", hash = "sha256:522fded625282822a89e2773452f42df14b5a8e84a86433e3f8a189c1d54dc01"},
@@ -1902,7 +1902,7 @@ pylint-plugin-utils = [
     {file = "pylint_plugin_utils-0.7-py3-none-any.whl", hash = "sha256:b3d43e85ab74c4f48bb46ae4ce771e39c3a20f8b3d56982ab17aa73b4f98d535"},
 ]
 pylint-pydantic = [
-    {file = "pylint_pydantic-0.1.6-py3-none-any.whl", hash = "sha256:47664f959b0895844e6dd39045d44ef0277e3a21b55b9e1f3a514b1ea8cd0923"},
+    {file = "pylint_pydantic-0.1.5-py3-none-any.whl", hash = "sha256:fcd83a5ff496c188a3f08f4b8c2254b3a859095b75f7fb7e24c33485c62384d1"},
 ]
 pymdown-extensions = [
     {file = "pymdown_extensions-9.6-py3-none-any.whl", hash = "sha256:1e36490adc7bfcef1fdb21bb0306e93af99cff8ec2db199bd17e3bf009768c11"},
