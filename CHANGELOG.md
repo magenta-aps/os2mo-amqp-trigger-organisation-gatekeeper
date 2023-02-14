@@ -6,6 +6,11 @@ SPDX-License-Identifier: MPL-2.0
 CHANGELOG
 =========
 
+2.5.2 - 2023-02-14
+------------------
+
+[#54858] Listen to all AMQP events
+
 2.5.1 - 2023-01-20
 ------------------
 
