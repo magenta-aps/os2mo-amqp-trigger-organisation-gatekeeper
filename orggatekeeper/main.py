@@ -148,7 +148,7 @@ async def organisation_gatekeeper_callback(
         request_type=mo_routing_key.request_type,
         payload=payload,
     )
-    changed = await seeded_update_line_management(payload.uuid)
+    changed = await seeded_update_line_management(payload.object_uuid)
     update_counter.labels(updated=changed).inc()
 
 
@@ -286,7 +286,7 @@ def create_app(  # pylint: disable=too-many-statements
             amqp_system = MOAMQPSystem(settings=settings.amqp, router=router)
             for object_type in object_types:
                 router.register(
-                    ServiceType.WILDCARD, object_type, RequestType.WILDCARD
+                    ServiceType.ORG_UNIT, object_type, RequestType.WILDCARD
                 )(callback)
             context["amqp_system"] = amqp_system
 
