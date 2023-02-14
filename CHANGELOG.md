@@ -6,6 +6,11 @@ SPDX-License-Identifier: MPL-2.0
 CHANGELOG
 =========
 
+2.5.3 - 2023-02-14
+------------------
+
+[#54858] Revert changes in previous release
+
 2.5.2 - 2023-02-14
 ------------------
 
