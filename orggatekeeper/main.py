@@ -286,7 +286,7 @@ def create_app(  # pylint: disable=too-many-statements
             amqp_system = MOAMQPSystem(settings=settings.amqp, router=router)
             for object_type in object_types:
                 router.register(
-                    ServiceType.WILDCARD, object_type, RequestType.WILDCARD
+                    ServiceType.ORG_UNIT, object_type, RequestType.WILDCARD
                 )(callback)
             context["amqp_system"] = amqp_system
 
