@@ -6,6 +6,11 @@ SPDX-License-Identifier: MPL-2.0
 CHANGELOG
 =========
 
+2.6.0 - 2023-02-21
+------------------
+
+[#54794] Check parent of an org_unit on changes to ensure a full tree of line management org_units.
+
 2.5.3 - 2023-02-14
 ------------------
 
