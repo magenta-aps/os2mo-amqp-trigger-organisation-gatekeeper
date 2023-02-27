@@ -699,8 +699,8 @@ twisted = ["twisted"]
 
 [[package]]
 name = "prometheus-fastapi-instrumentator"
-version = "5.9.1"
-description = "Instrument your FastAPI with Prometheus metrics"
+version = "5.10.0"
+description = "Instrument your FastAPI with Prometheus metrics."
 category = "main"
 optional = false
 python-versions = ">=3.7.0,<4.0.0"
@@ -1270,7 +1270,7 @@ multidict = ">=4.0"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.10"
-content-hash = "20d71a71b45b55577395fd4cd5cd62462c6a96272b08baa2245852cec96f86bb"
+content-hash = "9b7a236fcad60d2fc560b095cafbd2304702e23fa32828e52ee52f231bd45f61"
 
 [metadata.files]
 aio-pika = [
@@ -1849,8 +1849,8 @@ prometheus-client = [
     {file = "prometheus_client-0.14.1.tar.gz", hash = "sha256:5459c427624961076277fdc6dc50540e2bacb98eebde99886e59ec55ed92093a"},
 ]
 prometheus-fastapi-instrumentator = [
-    {file = "prometheus-fastapi-instrumentator-5.9.1.tar.gz", hash = "sha256:3651a72f73359a28e8afb0d370ebe3774147323ee2285e21236b229ce79172fc"},
-    {file = "prometheus_fastapi_instrumentator-5.9.1-py3-none-any.whl", hash = "sha256:b5206ea9aa6975a0b07f3bf7376932b8a1b2983164b5abb04878e75ba336d9ed"},
+    {file = "prometheus_fastapi_instrumentator-5.10.0-py3-none-any.whl", hash = "sha256:cf0fb37d506f8a999a16a47e71f75b140f0673cb4ecbce634f7b41a8b4caf8f6"},
+    {file = "prometheus_fastapi_instrumentator-5.10.0.tar.gz", hash = "sha256:705d2e29ca11fba9110f425a283592b8f2067ed8144405aa71b5879f7271c2a1"},
 ]
 pycparser = [
     {file = "pycparser-2.21-py2.py3-none-any.whl", hash = "sha256:8ee45429555515e1f6b185e78100aea234072576aa43ab53aefcae078162fca9"},
