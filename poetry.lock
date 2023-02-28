@@ -1009,7 +1009,7 @@ idna2008 = ["idna"]
 
 [[package]]
 name = "sentry-sdk"
-version = "1.15.0"
+version = "1.16.0"
 description = "Python client for Sentry (https://sentry.io)"
 category = "main"
 optional = false
@@ -1021,6 +1021,7 @@ urllib3 = {version = ">=1.26.11", markers = "python_version >= \"3.6\""}
 
 [package.extras]
 aiohttp = ["aiohttp (>=3.5)"]
+arq = ["arq (>=0.23)"]
 beam = ["apache-beam (>=2.12)"]
 bottle = ["bottle (>=0.12.13)"]
 celery = ["celery (>=3)"]
@@ -1270,7 +1271,7 @@ multidict = ">=4.0"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.10"
-content-hash = "9b7a236fcad60d2fc560b095cafbd2304702e23fa32828e52ee52f231bd45f61"
+content-hash = "0d8358e4a1d40bf28fa5c7375d2ba27a54d9554fe2adca6d669823e4807c1b8f"
 
 [metadata.files]
 aio-pika = [
@@ -2008,8 +2009,8 @@ rfc3986 = [
     {file = "rfc3986-1.5.0.tar.gz", hash = "sha256:270aaf10d87d0d4e095063c65bf3ddbc6ee3d0b226328ce21e036f946e421835"},
 ]
 sentry-sdk = [
-    {file = "sentry-sdk-1.15.0.tar.gz", hash = "sha256:69ecbb2e1ff4db02a06c4f20f6f69cb5dfe3ebfbc06d023e40d77cf78e9c37e7"},
-    {file = "sentry_sdk-1.15.0-py2.py3-none-any.whl", hash = "sha256:7ad4d37dd093f4a7cb5ad804c6efe9e8fab8873f7ffc06042dc3f3fd700a93ec"},
+    {file = "sentry-sdk-1.16.0.tar.gz", hash = "sha256:a900845bd78c263d49695d48ce78a4bce1030bbd917e0b6cc021fc000c901113"},
+    {file = "sentry_sdk-1.16.0-py2.py3-none-any.whl", hash = "sha256:633edefead34d976ff22e7edc367cdf57768e24bc714615ccae746d9d91795ae"},
 ]
 setuptools = [
     {file = "setuptools-65.5.1-py3-none-any.whl", hash = "sha256:d0b9a8433464d5800cbe05094acf5c6d52a91bfac9b52bcfc4d41382be5d5d31"},
