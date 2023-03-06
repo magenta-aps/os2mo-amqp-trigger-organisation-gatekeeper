@@ -152,6 +152,36 @@ async def organisation_gatekeeper_callback(
     update_counter.labels(updated=changed).inc()
 
 
+async def check_no_orgunit_unset(gql_client: PersistentGraphQLClient) -> list[UUID]:
+    """Check that our GraphQL connection is healthy.
+
+    Args:
+        gql_client: The GraphQL client to check health of.
+
+    Returns:
+        Whether the client is healthy or not.
+    """
+    query = gql(
+        """
+        query MyQuery {
+          org_units {
+            uuid
+            objects {
+              org_unit_hierarchy
+            }
+          }
+        }
+        """
+    )
+    result = await gql_client.execute(query)
+    missing = [
+        ou["uuid"]
+        for ou in result["org_units"]
+        if one(ou["objects"])["org_unit_hierarchy"] is None
+    ]
+    return missing
+
+
 def construct_clients(
     settings: Settings,
 ) -> Tuple[PersistentGraphQLClient, ModelClient]:
@@ -328,6 +358,22 @@ def create_app(  # pylint: disable=too-many-statements
         logger.info("Manually triggered recalculation", uuids=[uuid])
         await context["seeded_update_line_management"](uuid)
         return {"status": "OK"}
+
+    @app.post(
+        "/check-no-unset",
+    )
+    async def check_no_unset() -> dict[str, str]:
+        """Check that all orgunits belong to a org_unit_hierarchy."""
+        logger.info("Manually triggered check for unset org_unit_hierarchy")
+        res = await check_no_orgunit_unset(context["gql_client"])
+        if len(res) == 0:
+            logger.info("No orgunits with unset org_unit_hierarchy found")
+            return {"status": "OK"}
+
+        for uuid in res:
+            logger.error("Unset org_unit_hierarchy.", uuid=uuid)
+            await context["seeded_update_line_management"](uuid)
+        return {"status": f"Updated {len(res)} orgunits"}
 
     @app.get("/health/live", status_code=HTTP_204_NO_CONTENT)
     async def liveness() -> None:

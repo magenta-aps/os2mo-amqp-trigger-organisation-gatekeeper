@@ -32,6 +32,7 @@ from ramqp.mo.models import ServiceType
 
 from orggatekeeper.config import get_settings
 from orggatekeeper.main import build_information
+from orggatekeeper.main import check_no_orgunit_unset
 from orggatekeeper.main import construct_clients
 from orggatekeeper.main import create_app
 from orggatekeeper.main import gather_with_concurrency
@@ -465,3 +466,64 @@ def test_gql_client_created_with_timeout(mock_gql_client: MagicMock) -> None:
     # Assert
     assert 15 == mock_gql_client.call_args.kwargs["httpx_client_kwargs"]["timeout"]
     assert 15 == mock_gql_client.call_args.kwargs["execute_timeout"]
+
+
+@patch("orggatekeeper.main.construct_context")
+async def test_check_unset_endpoint_ok(
+    construct_context: MagicMock,
+    test_client_builder: Callable[..., TestClient],
+) -> None:
+    """Test the check-no-unset endpoint when no orgunit is unset."""
+    seeded_update_line_management = AsyncMock()
+    construct_context.return_value = {
+        "seeded_update_line_management": seeded_update_line_management,
+        "gql_client": AsyncMock(),
+    }
+
+    with patch("orggatekeeper.main.check_no_orgunit_unset", return_value=[]):
+        test_client = test_client_builder()
+        response = test_client.post("/check-no-unset")
+    assert response.status_code == 200
+    assert response.json() == {"status": "OK"}
+    seeded_update_line_management.assert_not_called()
+
+
+@patch("orggatekeeper.main.construct_context")
+async def test_check_unset_endpoint_updates(
+    construct_context: MagicMock,
+    test_client_builder: Callable[..., TestClient],
+) -> None:
+    """Test the check-no-unset endpoint without org_unit_hierarchy unset"""
+    uuids = [uuid4(), uuid4(), uuid4()]
+    gql_client = AsyncMock()
+    seeded_update_line_management = AsyncMock()
+    construct_context.return_value = {
+        "seeded_update_line_management": seeded_update_line_management,
+        "gql_client": gql_client,
+    }
+
+    with patch("orggatekeeper.main.check_no_orgunit_unset", return_value=uuids):
+        test_client = test_client_builder()
+        response = test_client.post("/check-no-unset")
+    assert response.status_code == 200
+    assert response.json() == {"status": "Updated 3 orgunits"}
+    assert seeded_update_line_management.mock_calls == [call(uuid) for uuid in uuids]
+
+
+async def test_check_no_orgunit_unset() -> None:
+    """Test the graphql call to return org_units where org_unit_hierarchy is unset"""
+    gql_client = AsyncMock()
+    gql_client.execute.return_value = gql_client.execute.return_value = {
+        "org_units": [
+            {
+                "uuid": uuid4(),
+                "objects": [{"org_unit_hierarchy": None}],
+            },
+            {
+                "uuid": uuid4(),
+                "objects": [{"org_unit_hierarchy": uuid4()}],
+            },
+        ]
+    }
+    res = await check_no_orgunit_unset(gql_client)
+    assert len(res) == 1
