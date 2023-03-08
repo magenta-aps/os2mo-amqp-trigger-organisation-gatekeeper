@@ -40,6 +40,7 @@ from ramqp.utils import sleep_on_error
 from starlette.status import HTTP_204_NO_CONTENT
 from starlette.status import HTTP_503_SERVICE_UNAVAILABLE
 
+from .calculate import get_org_units_with_no_hierarchy
 from .calculate import update_line_management
 from .config import get_settings
 from .config import Settings
@@ -150,38 +151,6 @@ async def organisation_gatekeeper_callback(
     )
     changed = await seeded_update_line_management(payload.uuid)
     update_counter.labels(updated=changed).inc()
-
-
-async def get_org_units_with_no_hierarchy(
-    gql_client: PersistentGraphQLClient,
-) -> list[UUID]:
-    """Check that our GraphQL connection is healthy.
-
-    Args:
-        gql_client: The GraphQL client to check health of.
-
-    Returns:
-        Whether the client is healthy or not.
-    """
-    query = gql(
-        """
-        query MyQuery {
-          org_units {
-            uuid
-            objects {
-              org_unit_hierarchy
-            }
-          }
-        }
-        """
-    )
-    result = await gql_client.execute(query)
-    missing = [
-        ou["uuid"]
-        for ou in result["org_units"]
-        if one(ou["objects"])["org_unit_hierarchy"] is None
-    ]
-    return missing
 
 
 def construct_clients(

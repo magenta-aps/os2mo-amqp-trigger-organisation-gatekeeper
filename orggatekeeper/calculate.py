@@ -341,3 +341,35 @@ async def update_line_management(
             gql_client, model_client, settings, org_uuid, org_unit.parent.uuid
         )
     return True
+
+
+async def get_org_units_with_no_hierarchy(
+    gql_client: PersistentGraphQLClient,
+) -> list[UUID]:
+    """Check that our GraphQL connection is healthy.
+
+    Args:
+        gql_client: The GraphQL client to check health of.
+
+    Returns:
+        Whether the client is healthy or not.
+    """
+    query = gql(
+        """
+        query MyQuery {
+          org_units {
+            uuid
+            objects {
+              org_unit_hierarchy
+            }
+          }
+        }
+        """
+    )
+    result = await gql_client.execute(query)
+    missing = [
+        ou["uuid"]
+        for ou in result["org_units"]
+        if one(ou["objects"])["org_unit_hierarchy"] is None
+    ]
+    return missing
