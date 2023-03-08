@@ -341,9 +341,10 @@ def create_app(  # pylint: disable=too-many-statements
             logger.info("No orgunits with unset org_unit_hierarchy found")
             return {"status": "OK"}
 
-        for uuid in res:
-            logger.error("Unset org_unit_hierarchy.", uuid=uuid)
-            await context["seeded_update_line_management"](uuid)
+        logger.error("Unset org_unit_hierarchy.", uuids=res)
+        tasks = [context["seeded_update_line_management"](uuid) for uuid in res]
+        await gather_with_concurrency(5, *tasks)
+
         return {"status": f"Updated {len(res)} orgunits"}
 
     @app.get("/health/live", status_code=HTTP_204_NO_CONTENT)
