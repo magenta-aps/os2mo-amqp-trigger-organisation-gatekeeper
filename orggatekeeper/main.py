@@ -152,7 +152,9 @@ async def organisation_gatekeeper_callback(
     update_counter.labels(updated=changed).inc()
 
 
-async def check_no_orgunit_unset(gql_client: PersistentGraphQLClient) -> list[UUID]:
+async def get_org_units_with_no_hierarchy(
+    gql_client: PersistentGraphQLClient,
+) -> list[UUID]:
     """Check that our GraphQL connection is healthy.
 
     Args:
@@ -360,12 +362,12 @@ def create_app(  # pylint: disable=too-many-statements
         return {"status": "OK"}
 
     @app.post(
-        "/check-no-unset",
+        "/ensure-no-unset",
     )
-    async def check_no_unset() -> dict[str, str]:
+    async def ensure_no_unset() -> dict[str, str]:
         """Check that all orgunits belong to a org_unit_hierarchy."""
         logger.info("Manually triggered check for unset org_unit_hierarchy")
-        res = await check_no_orgunit_unset(context["gql_client"])
+        res = await get_org_units_with_no_hierarchy(context["gql_client"])
         if len(res) == 0:
             logger.info("No orgunits with unset org_unit_hierarchy found")
             return {"status": "OK"}
