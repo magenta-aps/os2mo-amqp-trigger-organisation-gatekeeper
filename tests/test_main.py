@@ -35,7 +35,6 @@ from orggatekeeper.main import build_information
 from orggatekeeper.main import construct_clients
 from orggatekeeper.main import create_app
 from orggatekeeper.main import gather_with_concurrency
-from orggatekeeper.main import get_org_units_with_no_hierarchy
 from orggatekeeper.main import organisation_gatekeeper_callback
 from orggatekeeper.main import update_build_information
 from orggatekeeper.main import update_counter
@@ -510,23 +509,3 @@ async def test_check_unset_endpoint_updates(
     assert response.status_code == 200
     assert response.json() == {"status": "Updated 3 orgunits"}
     assert seeded_update_line_management.mock_calls == [call(uuid) for uuid in uuids]
-
-
-async def test_get_org_units_with_no_hierarchy() -> None:
-    """Test the graphql call to return org_units where org_unit_hierarchy is unset"""
-    gql_client = AsyncMock()
-    unset_org_unit_uuids = [uuid4(), uuid4(), uuid4()]
-    unset_org_units = [
-        {"uuid": uuid, "objects": [{"org_unit_hierarchy": None}]}
-        for uuid in unset_org_unit_uuids
-    ]
-    set_org_unit_uuids = [uuid4(), uuid4(), uuid4()]
-    set_org_units = [
-        {"uuid": uuid, "objects": [{"org_unit_hierarchy": uuid4()}]}
-        for uuid in set_org_unit_uuids
-    ]
-    gql_client.execute.return_value = gql_client.execute.return_value = {
-        "org_units": unset_org_units + set_org_units
-    }
-    res = await get_org_units_with_no_hierarchy(gql_client)
-    assert res == unset_org_unit_uuids
