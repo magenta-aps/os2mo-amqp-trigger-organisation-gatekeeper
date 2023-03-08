@@ -356,7 +356,7 @@ async def get_org_units_with_no_hierarchy(
     """
     query = gql(
         """
-        query MyQuery {
+        query GetOrgUnitHierarchy {
           org_units {
             uuid
             objects {
