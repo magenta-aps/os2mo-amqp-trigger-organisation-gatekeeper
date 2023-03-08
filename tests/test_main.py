@@ -515,17 +515,18 @@ async def test_check_unset_endpoint_updates(
 async def test_get_org_units_with_no_hierarchy() -> None:
     """Test the graphql call to return org_units where org_unit_hierarchy is unset"""
     gql_client = AsyncMock()
+    unset_org_unit_uuids = [uuid4(), uuid4(), uuid4()]
+    unset_org_units = [
+        {"uuid": uuid, "objects": [{"org_unit_hierarchy": None}]}
+        for uuid in unset_org_unit_uuids
+    ]
+    set_org_unit_uuids = [uuid4(), uuid4(), uuid4()]
+    set_org_units = [
+        {"uuid": uuid, "objects": [{"org_unit_hierarchy": uuid4()}]}
+        for uuid in set_org_unit_uuids
+    ]
     gql_client.execute.return_value = gql_client.execute.return_value = {
-        "org_units": [
-            {
-                "uuid": uuid4(),
-                "objects": [{"org_unit_hierarchy": None}],
-            },
-            {
-                "uuid": uuid4(),
-                "objects": [{"org_unit_hierarchy": uuid4()}],
-            },
-        ]
+        "org_units": unset_org_units + set_org_units
     }
     res = await get_org_units_with_no_hierarchy(gql_client)
-    assert len(res) == 1
+    assert res == unset_org_unit_uuids
