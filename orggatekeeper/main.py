@@ -40,6 +40,7 @@ from ramqp.utils import sleep_on_error
 from starlette.status import HTTP_204_NO_CONTENT
 from starlette.status import HTTP_503_SERVICE_UNAVAILABLE
 
+from .calculate import get_org_units_with_no_hierarchy
 from .calculate import update_line_management
 from .config import get_settings
 from .config import Settings
@@ -328,6 +329,23 @@ def create_app(  # pylint: disable=too-many-statements
         logger.info("Manually triggered recalculation", uuids=[uuid])
         await context["seeded_update_line_management"](uuid)
         return {"status": "OK"}
+
+    @app.post(
+        "/ensure-no-unset",
+    )
+    async def ensure_no_unset() -> dict[str, str]:
+        """Check that all orgunits belong to a org_unit_hierarchy."""
+        logger.info("Manually triggered check for unset org_unit_hierarchy")
+        res = await get_org_units_with_no_hierarchy(context["gql_client"])
+        if len(res) == 0:
+            logger.info("No orgunits with unset org_unit_hierarchy found")
+            return {"status": "OK"}
+
+        logger.error("Unset org_unit_hierarchy.", uuids=res)
+        tasks = [context["seeded_update_line_management"](uuid) for uuid in res]
+        await gather_with_concurrency(5, *tasks)
+
+        return {"status": f"Updated {len(res)} orgunits"}
 
     @app.get("/health/live", status_code=HTTP_204_NO_CONTENT)
     async def liveness() -> None:
