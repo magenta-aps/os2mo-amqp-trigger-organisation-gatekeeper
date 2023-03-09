@@ -32,7 +32,7 @@ black = "^23.1.0"
 reorder-python-imports = "^3.9.0"
 mypy = "^1.0"
 pre-commit = "^3.0.4"
-pylint-pydantic = "^0.1.6"
+pylint-pydantic = "^0.1.7"
 requests = "^2.28.2"
 asgi-lifespan = "^2.0.0"
 
