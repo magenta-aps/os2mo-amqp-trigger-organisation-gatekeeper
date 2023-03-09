@@ -6,6 +6,11 @@ SPDX-License-Identifier: MPL-2.0
 CHANGELOG
 =========
 
+2.7.0 - 2023-03-09
+------------------
+
+[#55112] Add endpoint to ensure no org_unit has an empty org_unit_hierarchy
+
 2.6.0 - 2023-02-21
 ------------------
 
