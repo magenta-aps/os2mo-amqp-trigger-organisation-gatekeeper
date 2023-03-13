@@ -4,6 +4,8 @@
 """Update logic."""
 import datetime
 import re
+from typing import Awaitable
+from typing import Callable
 from uuid import UUID
 
 import structlog
@@ -13,6 +15,9 @@ from raclients.graph.client import PersistentGraphQLClient
 from raclients.modelclient.mo import ModelClient
 from ramodels.mo import Validity
 from ramodels.mo._shared import OrgUnitHierarchy
+from ramqp.mo.models import MORoutingKey
+from ramqp.mo.models import PayloadType
+from ramqp.utils import sleep_on_error
 
 from .config import Settings
 from .mo import fetch_org_unit
@@ -373,3 +378,43 @@ async def get_org_units_with_no_hierarchy(
         if one(ou["objects"])["org_unit_hierarchy"] is None
     ]
     return missing
+
+
+async def get_orgunit_from_user(
+    gql_client: PersistentGraphQLClient, user_uuid: UUID
+) -> list[UUID]:
+    """Get org_unit uuid from user uuid
+
+    Args:
+        gql_client: The GraphQL client to use.
+        user_uuid: UUID of a person in OS2MO
+
+
+    """
+    query = gql(
+        """
+        query GetOrgUnit($uuids: [UUID!]) {
+            engagements(employees: $uuids, to_date: null, from_date: null) {
+                objects {
+                    org_unit_uuid
+                }
+            }
+        }
+        """
+    )
+    result = await gql_client.execute(query, {"uuids": str(user_uuid)})
+
+    return [UUID(one(eng["objects"])["org_unit_uuid"]) for eng in result["engagements"]]
+
+
+@sleep_on_error()
+async def engagement_callback(
+    _: MORoutingKey,
+    payload: PayloadType,
+    func: Callable[[UUID], Awaitable[bool]],
+    gql_client: PersistentGraphQLClient,
+) -> None:
+    """Check org_unit_hierarchy on changes to engagement.
+    Check any org_unit that the person has an engagement at."""
+    for uuid in await get_orgunit_from_user(gql_client, payload.uuid):
+        await func(uuid)

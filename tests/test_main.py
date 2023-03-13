@@ -301,7 +301,7 @@ async def test_lifespan(
     # Fire startup event on entry, and shutdown on exit
     async with LifespanManager(fastapi_app):
 
-        assert len(router.mock_calls) == 8
+        assert len(router.mock_calls) == 10
         # Create register calls
         assert router.mock_calls[0] == call.register(
             ServiceType.ORG_UNIT, ObjectType.ASSOCIATION, RequestType.WILDCARD
@@ -318,6 +318,14 @@ async def test_lifespan(
         # Register calls
         assert router.mock_calls[1] == router.mock_calls[3]
         assert router.mock_calls[1] == router.mock_calls[5]
+        assert router.mock_calls[1] == router.mock_calls[7]
+
+        # Register employee engagement
+        assert router.mock_calls[8] == call.register(
+            ServiceType.EMPLOYEE, ObjectType.ENGAGEMENT, RequestType.WILDCARD
+        )
+        # This uses a different callback function
+        assert router.mock_calls[1] != router.mock_calls[9]
 
         # Clean mock to only capture shutdown changes
         amqp_system.reset_mock()

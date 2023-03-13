@@ -40,6 +40,7 @@ from ramqp.utils import sleep_on_error
 from starlette.status import HTTP_204_NO_CONTENT
 from starlette.status import HTTP_503_SERVICE_UNAVAILABLE
 
+from .calculate import engagement_callback
 from .calculate import get_org_units_with_no_hierarchy
 from .calculate import update_line_management
 from .config import get_settings
@@ -295,6 +296,16 @@ def create_app(  # pylint: disable=too-many-statements
                 router.register(
                     ServiceType.ORG_UNIT, object_type, RequestType.WILDCARD
                 )(callback)
+            eng_callback = partial(
+                engagement_callback,
+                func=seeded_update_line_management,
+                gql_client=gql_client,
+            )
+            # RAMQP asserts no functions have the same name
+            eng_callback.__name__ = "engagement_to_org_unit"  # type:ignore
+            router.register(
+                ServiceType.EMPLOYEE, ObjectType.ENGAGEMENT, RequestType.WILDCARD
+            )(eng_callback)
             context["amqp_system"] = amqp_system
 
             logger.info("Starting AMQP system")
