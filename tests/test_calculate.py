@@ -24,11 +24,16 @@ from more_itertools import one
 from ramodels.mo import OrganisationUnit
 from ramodels.mo import Validity
 from ramodels.mo._shared import OrgUnitHierarchy
+from ramqp.mo.models import PayloadType
 
+from orggatekeeper.calculate import association_callback
 from orggatekeeper.calculate import below_uuid
+from orggatekeeper.calculate import engagement_callback
 from orggatekeeper.calculate import fetch_org_unit
 from orggatekeeper.calculate import get_class_uuid
 from orggatekeeper.calculate import get_org_units_with_no_hierarchy
+from orggatekeeper.calculate import get_orgunit_from_association
+from orggatekeeper.calculate import get_orgunit_from_engagement
 from orggatekeeper.calculate import is_line_management
 from orggatekeeper.calculate import is_self_owned
 from orggatekeeper.calculate import should_hide
@@ -828,3 +833,69 @@ async def test_get_org_units_with_no_hierarchy() -> None:
     }
     res = await get_org_units_with_no_hierarchy(gql_client)
     assert res == unset_org_unit_uuids
+
+
+async def test_get_orgunit_from_engagement() -> None:
+    """Test graphql call to return org_unit from a users engagements"""
+    gql_client = AsyncMock()
+    expected = uuid4()
+    gql_client.execute.return_value = {
+        "engagements": [
+            {
+                "objects": [
+                    {"org_unit_uuid": str(expected)},
+                    {"org_unit_uuid": str(expected)},
+                ]
+            }
+        ]
+    }
+    res = await get_orgunit_from_engagement(gql_client, uuid4())
+    gql_client.execute.assert_called_once()
+    assert res == {expected}
+
+
+async def test_get_orgunit_from_association() -> None:
+    """Test graphql call to return org_unit from an association"""
+    gql_client = AsyncMock()
+    expected = uuid4()
+    gql_client.execute.return_value = {
+        "associations": [
+            {
+                "objects": [
+                    {"org_unit_uuid": str(expected)},
+                    {"org_unit_uuid": str(expected)},
+                ]
+            }
+        ]
+    }
+    res = await get_orgunit_from_association(gql_client, uuid4())
+    gql_client.execute.assert_called_once()
+    assert res == {expected}
+
+
+async def test_engagement_callback() -> None:
+    """Test that calls to engagement_callback calls the provided function"""
+    gql_client = AsyncMock()
+    update_line_management_mock = AsyncMock()
+    payload = PayloadType(uuid=uuid4(), object_uuid=uuid4(), time=datetime.now())
+    with patch(
+        "orggatekeeper.calculate.get_orgunit_from_engagement", return_value={uuid4()}
+    ):
+        await engagement_callback(
+            gql_client=gql_client, func=update_line_management_mock, payload=payload
+        )
+    update_line_management_mock.assert_called_once()
+
+
+async def test_association_callback() -> None:
+    """Test that calls to association_callback calls the provided function"""
+    gql_client = AsyncMock()
+    update_line_management_mock = AsyncMock()
+    payload = PayloadType(uuid=uuid4(), object_uuid=uuid4(), time=datetime.now())
+    with patch(
+        "orggatekeeper.calculate.get_orgunit_from_association", return_value={uuid4()}
+    ):
+        await association_callback(
+            gql_client=gql_client, func=update_line_management_mock, payload=payload
+        )
+    update_line_management_mock.assert_called_once()

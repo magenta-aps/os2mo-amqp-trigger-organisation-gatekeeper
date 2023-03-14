@@ -301,31 +301,26 @@ async def test_lifespan(
     # Fire startup event on entry, and shutdown on exit
     async with LifespanManager(fastapi_app):
 
-        assert len(router.mock_calls) == 10
+        assert len(router.mock_calls) == 8
+
         # Create register calls
         assert router.mock_calls[0] == call.register(
-            ServiceType.ORG_UNIT, ObjectType.ASSOCIATION, RequestType.WILDCARD
-        )
-        assert router.mock_calls[2] == call.register(
-            ServiceType.ORG_UNIT, ObjectType.ENGAGEMENT, RequestType.WILDCARD
-        )
-        assert router.mock_calls[4] == call.register(
             ServiceType.ORG_UNIT, ObjectType.ORG_UNIT, RequestType.WILDCARD
         )
-        assert router.mock_calls[6] == call.register(
+
+        assert router.mock_calls[2] == call.register(
             ServiceType.ORG_UNIT, ObjectType.IT, RequestType.WILDCARD
         )
-        # Register calls
+        # Same callback-function for org_units and IT
         assert router.mock_calls[1] == router.mock_calls[3]
-        assert router.mock_calls[1] == router.mock_calls[5]
-        assert router.mock_calls[1] == router.mock_calls[7]
 
-        # Register employee engagement
-        assert router.mock_calls[8] == call.register(
-            ServiceType.EMPLOYEE, ObjectType.ENGAGEMENT, RequestType.WILDCARD
+        assert router.mock_calls[4] == call.register(
+            ServiceType.WILDCARD, ObjectType.ASSOCIATION, RequestType.WILDCARD
         )
-        # This uses a different callback function
-        assert router.mock_calls[1] != router.mock_calls[9]
+        # Register employee engagement
+        assert router.mock_calls[6] == call.register(
+            ServiceType.WILDCARD, ObjectType.ENGAGEMENT, RequestType.WILDCARD
+        )
 
         # Clean mock to only capture shutdown changes
         amqp_system.reset_mock()

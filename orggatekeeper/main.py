@@ -40,6 +40,7 @@ from ramqp.utils import sleep_on_error
 from starlette.status import HTTP_204_NO_CONTENT
 from starlette.status import HTTP_503_SERVICE_UNAVAILABLE
 
+from .calculate import association_callback
 from .calculate import engagement_callback
 from .calculate import get_org_units_with_no_hierarchy
 from .calculate import update_line_management
@@ -279,33 +280,46 @@ def create_app(  # pylint: disable=too-many-statements
             context["seeded_update_line_management"] = seeded_update_line_management
 
             logger.info("Settings up AMQP system")
+            # Prepare callback functions
             callback = partial(
                 organisation_gatekeeper_callback, seeded_update_line_management
             )
-
-            object_types = [
-                ObjectType.ASSOCIATION,
-                ObjectType.ENGAGEMENT,
-                ObjectType.ORG_UNIT,
-                ObjectType.IT,
-            ]
-
-            router = MORouter()
-            amqp_system = MOAMQPSystem(settings=settings.amqp, router=router)
-            for object_type in object_types:
-                router.register(
-                    ServiceType.ORG_UNIT, object_type, RequestType.WILDCARD
-                )(callback)
-            eng_callback = partial(
+            engagement_callbacks = partial(
                 engagement_callback,
                 func=seeded_update_line_management,
                 gql_client=gql_client,
             )
-            # RAMQP asserts no functions have the same name
-            eng_callback.__name__ = "engagement_to_org_unit"  # type:ignore
+            # RAMQP demands callback-functions to have unique names
+            # The use of 'partial' means we need to name the functions explicitly
+            engagement_callbacks.__name__ = "engagement_to_orgunit"  # type:ignore
+
+            association_callbacks = partial(
+                association_callback,
+                func=seeded_update_line_management,
+                gql_client=gql_client,
+            )
+            association_callbacks.__name__ = "association_to_orgunit"  # type:ignore
+
+            router = MORouter()
+            amqp_system = MOAMQPSystem(settings=settings.amqp, router=router)
+
+            # Register listeners for orgunits:
             router.register(
-                ServiceType.EMPLOYEE, ObjectType.ENGAGEMENT, RequestType.WILDCARD
-            )(eng_callback)
+                ServiceType.ORG_UNIT, ObjectType.ORG_UNIT, RequestType.WILDCARD
+            )(callback)
+            # Orgunits it-accounts
+            router.register(ServiceType.ORG_UNIT, ObjectType.IT, RequestType.WILDCARD)(
+                callback
+            )
+            # Associations
+            router.register(
+                ServiceType.WILDCARD, ObjectType.ASSOCIATION, RequestType.WILDCARD
+            )(association_callbacks)
+            # Engagements
+            router.register(
+                ServiceType.WILDCARD, ObjectType.ENGAGEMENT, RequestType.WILDCARD
+            )(engagement_callbacks)
+
             context["amqp_system"] = amqp_system
 
             logger.info("Starting AMQP system")
