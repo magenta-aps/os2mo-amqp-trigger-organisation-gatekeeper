@@ -767,7 +767,7 @@ pylint = ">=1.7"
 
 [[package]]
 name = "pylint-pydantic"
-version = "0.1.7"
+version = "0.1.8"
 description = "A Pylint plugin to help Pylint understand the Pydantic"
 category = "dev"
 optional = false
@@ -1271,7 +1271,7 @@ multidict = ">=4.0"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.10"
-content-hash = "1a0e2a234df7f4fcfeb0160141a1477bccb2887edcfafaa1b92ee76463903650"
+content-hash = "8c6e9459466412987598300da27d3664bc0c6a2d4714467a611c4f0d726de45a"
 
 [metadata.files]
 aio-pika = [
@@ -1904,7 +1904,7 @@ pylint-plugin-utils = [
     {file = "pylint_plugin_utils-0.7-py3-none-any.whl", hash = "sha256:b3d43e85ab74c4f48bb46ae4ce771e39c3a20f8b3d56982ab17aa73b4f98d535"},
 ]
 pylint-pydantic = [
-    {file = "pylint_pydantic-0.1.7-py3-none-any.whl", hash = "sha256:9c69c0f45b60985817dd03c8ad87ed3634116b8a706c72dd3387548dd85d7f4b"},
+    {file = "pylint_pydantic-0.1.8-py3-none-any.whl", hash = "sha256:4033c67e06885115fa3bb16e3b9ce918ac6439a87e9b4d314158e09bc1067ecb"},
 ]
 pymdown-extensions = [
     {file = "pymdown_extensions-9.6-py3-none-any.whl", hash = "sha256:1e36490adc7bfcef1fdb21bb0306e93af99cff8ec2db199bd17e3bf009768c11"},
