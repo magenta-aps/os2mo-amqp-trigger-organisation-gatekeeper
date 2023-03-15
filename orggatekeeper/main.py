@@ -32,6 +32,7 @@ from starlette.status import HTTP_503_SERVICE_UNAVAILABLE
 
 from .calculate import get_org_units_with_no_hierarchy
 from .calculate import router
+from .calculate import update_line_management
 from .config import get_settings
 from .config import Settings
 from .mo import fetch_org_uuid
@@ -248,8 +249,12 @@ def create_app(  # pylint: disable=too-many-statements
 
         org_unit_uuids = list(map(UUID, map(itemgetter("uuid"), result["org_units"])))
         logger.info("Manually triggered recalculation", uuids=org_unit_uuids)
-        org_unit_tasks = map(context["seeded_update_line_management"], org_unit_uuids)
-        background_tasks.add_task(gather_with_concurrency, 5, *org_unit_tasks)
+        org_unit_tasks = [
+            update_line_management(context, uuid) for uuid in org_unit_uuids
+        ]
+        background_tasks.add_task(
+            gather_with_concurrency, 5, *org_unit_tasks  # type: ignore
+        )
         return {"status": "Background job triggered"}
 
     @app.post(
@@ -262,7 +267,7 @@ def create_app(  # pylint: disable=too-many-statements
     ) -> dict[str, str]:
         """Call update_line_management on the provided org unit."""
         logger.info("Manually triggered recalculation", uuids=[uuid])
-        await context["seeded_update_line_management"](uuid)
+        await update_line_management(context, uuid)
         return {"status": "OK"}
 
     @app.post(
@@ -277,8 +282,8 @@ def create_app(  # pylint: disable=too-many-statements
             return {"status": "OK"}
 
         logger.error("Unset org_unit_hierarchy.", uuids=res)
-        tasks = [context["seeded_update_line_management"](uuid) for uuid in res]
-        await gather_with_concurrency(5, *tasks)
+        tasks = [update_line_management(context, uuid) for uuid in res]
+        await gather_with_concurrency(5, *tasks)  # type: ignore
 
         return {"status": f"Updated {len(res)} orgunits"}
 
