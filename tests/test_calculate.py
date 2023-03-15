@@ -428,13 +428,24 @@ def class_uuid(
 
 
 @pytest.fixture()
-def seeded_update_line_management(
+def context(
     gql_client: MagicMock, model_client: AsyncMock, settings: Settings
+) -> dict[str, Any]:
+    """Fixture to generate context"""
+    return {
+        "gql_client": gql_client,
+        "model_client": model_client,
+        "settings": settings,
+        "org_uuid": ORG_UUID,
+    }
+
+
+@pytest.fixture()
+def seeded_update_line_management(
+    gql_client: MagicMock, model_client: AsyncMock, settings: Settings, context: dict
 ) -> Generator[Callable[[UUID], Awaitable[bool]], None, None]:
     """Fixture to generate update_line_management function."""
-    seeded_update_line_management = partial(
-        update_line_management, gql_client, model_client, settings, ORG_UUID
-    )
+    seeded_update_line_management = partial(update_line_management, context)
     yield seeded_update_line_management
 
 
@@ -489,15 +500,18 @@ async def test_update_line_management_dry_run(
 ) -> None:
     """Test that update_line_management can set class_uuid."""
     settings = set_settings(dry_run=True)
-    seeded_update_line_management = partial(
-        update_line_management, gql_client, model_client, settings, ORG_UUID
-    )
+    context = {
+        "gql_client": gql_client,
+        "model_client": model_client,
+        "settings": settings,
+        "org_uuid": ORG_UUID,
+    }
 
     should_hide.return_value = True
     fetch_org_unit.return_value = org_unit
 
     uuid = org_unit.uuid
-    result = await seeded_update_line_management(uuid)
+    result = await update_line_management(context, uuid)
     assert result is True
 
     should_hide.assert_called_once_with(
@@ -873,29 +887,27 @@ async def test_get_orgunit_from_association() -> None:
     assert res == {expected}
 
 
-async def test_engagement_callback() -> None:
+@patch("orggatekeeper.calculate.update_line_management")
+async def test_engagement_callback(
+    update_line_management_mock: MagicMock, context: dict[str, Any]
+) -> None:
     """Test that calls to engagement_callback calls the provided function"""
-    gql_client = AsyncMock()
-    update_line_management_mock = AsyncMock()
     payload = PayloadType(uuid=uuid4(), object_uuid=uuid4(), time=datetime.now())
     with patch(
         "orggatekeeper.calculate.get_orgunit_from_engagement", return_value={uuid4()}
     ):
-        await engagement_callback(
-            gql_client=gql_client, func=update_line_management_mock, payload=payload
-        )
+        await engagement_callback(context, payload=payload)
     update_line_management_mock.assert_called_once()
 
 
-async def test_association_callback() -> None:
+@patch("orggatekeeper.calculate.update_line_management")
+async def test_association_callback(
+    update_line_management_mock: MagicMock, context: dict[str, Any]
+) -> None:
     """Test that calls to association_callback calls the provided function"""
-    gql_client = AsyncMock()
-    update_line_management_mock = AsyncMock()
     payload = PayloadType(uuid=uuid4(), object_uuid=uuid4(), time=datetime.now())
     with patch(
         "orggatekeeper.calculate.get_orgunit_from_association", return_value={uuid4()}
     ):
-        await association_callback(
-            gql_client=gql_client, func=update_line_management_mock, payload=payload
-        )
+        await association_callback(context, payload=payload)
     update_line_management_mock.assert_called_once()

@@ -6,12 +6,10 @@ from asyncio import gather
 from asyncio import Semaphore
 from contextlib import asynccontextmanager
 from contextlib import AsyncExitStack
-from functools import partial
 from operator import itemgetter
 from typing import Any
 from typing import AsyncGenerator
 from typing import Awaitable
-from typing import Callable
 from typing import Tuple
 from typing import TypeVar
 from uuid import UUID
@@ -24,26 +22,16 @@ from fastapi import Query
 from fastapi import Response
 from gql import gql
 from more_itertools import one
-from prometheus_client import Counter
 from prometheus_client import Info
 from prometheus_fastapi_instrumentator import Instrumentator
 from raclients.graph.client import PersistentGraphQLClient
 from raclients.modelclient.mo import ModelClient
 from ramqp.mo import MOAMQPSystem
-from ramqp.mo import MORouter
-from ramqp.mo.models import MORoutingKey
-from ramqp.mo.models import ObjectType
-from ramqp.mo.models import PayloadType
-from ramqp.mo.models import RequestType
-from ramqp.mo.models import ServiceType
-from ramqp.utils import sleep_on_error
 from starlette.status import HTTP_204_NO_CONTENT
 from starlette.status import HTTP_503_SERVICE_UNAVAILABLE
 
-from .calculate import association_callback
-from .calculate import engagement_callback
 from .calculate import get_org_units_with_no_hierarchy
-from .calculate import update_line_management
+from .calculate import router
 from .config import get_settings
 from .config import Settings
 from .mo import fetch_org_uuid
@@ -51,12 +39,6 @@ from .mo import fetch_org_uuid
 logger = structlog.get_logger()
 T = TypeVar("T")
 
-
-update_counter = Counter(
-    "orggatekeeper_changes",
-    "Number of updates made",
-    ["updated"],
-)
 build_information = Info("build_information", "Build information")
 
 
@@ -122,37 +104,6 @@ async def healthcheck_model_client(model_client: ModelClient) -> bool:
     except Exception:  # pylint: disable=broad-except
         logger.exception("Exception occured during GraphQL healthcheck")
     return False
-
-
-@sleep_on_error()
-async def organisation_gatekeeper_callback(
-    seeded_update_line_management: Callable[[UUID], Awaitable[bool]],
-    mo_routing_key: MORoutingKey,
-    payload: PayloadType,
-    **_: Any,
-) -> None:
-    """Updates line management information.
-
-    Args:
-        gql_client: GraphQL client.
-        model_client: MO model client.
-        settings: Integration settings module.
-        mo_routing_key: The message routing key.
-        payload: The message payload.
-        _: Additional RAMQP kwargs required for forwards-compatibility.
-
-    Returns:
-        None
-    """
-    logger.debug(
-        "Message received",
-        service_type=mo_routing_key.service_type,
-        object_type=mo_routing_key.object_type,
-        request_type=mo_routing_key.request_type,
-        payload=payload,
-    )
-    changed = await seeded_update_line_management(payload.uuid)
-    update_counter.labels(updated=changed).inc()
 
 
 def construct_clients(
@@ -262,63 +213,16 @@ def create_app(  # pylint: disable=too-many-statements
         async with AsyncExitStack() as stack:
             logger.info("Settings up clients")
             gql_client, model_client = construct_clients(settings)
+            context["settings"] = settings
 
-            model_client = context["model_client"] = await stack.enter_async_context(
-                model_client
-            )
-            gql_client = context["gql_client"] = await stack.enter_async_context(
-                gql_client
-            )
+            context["model_client"] = await stack.enter_async_context(model_client)
+            context["gql_client"] = await stack.enter_async_context(gql_client)
 
             # Get organisation UUID
-            org_uuid = await fetch_org_uuid(gql_client)
-
-            logger.info("Seeding line management function")
-            seeded_update_line_management = partial(
-                update_line_management, gql_client, model_client, settings, org_uuid
+            context["org_uuid"] = await fetch_org_uuid(gql_client)
+            amqp_system = MOAMQPSystem(
+                settings=settings.amqp, router=router, context=context
             )
-            context["seeded_update_line_management"] = seeded_update_line_management
-
-            logger.info("Settings up AMQP system")
-            # Prepare callback functions
-            callback = partial(
-                organisation_gatekeeper_callback, seeded_update_line_management
-            )
-            engagement_callbacks = partial(
-                engagement_callback,
-                func=seeded_update_line_management,
-                gql_client=gql_client,
-            )
-            # RAMQP demands callback-functions to have unique names
-            # The use of 'partial' means we need to name the functions explicitly
-            engagement_callbacks.__name__ = "engagement_to_orgunit"  # type:ignore
-
-            association_callbacks = partial(
-                association_callback,
-                func=seeded_update_line_management,
-                gql_client=gql_client,
-            )
-            association_callbacks.__name__ = "association_to_orgunit"  # type:ignore
-
-            router = MORouter()
-            amqp_system = MOAMQPSystem(settings=settings.amqp, router=router)
-
-            # Register listeners for orgunits:
-            router.register(
-                ServiceType.ORG_UNIT, ObjectType.ORG_UNIT, RequestType.WILDCARD
-            )(callback)
-            # Orgunits it-accounts
-            router.register(ServiceType.ORG_UNIT, ObjectType.IT, RequestType.WILDCARD)(
-                callback
-            )
-            # Associations
-            router.register(
-                ServiceType.WILDCARD, ObjectType.ASSOCIATION, RequestType.WILDCARD
-            )(association_callbacks)
-            # Engagements
-            router.register(
-                ServiceType.WILDCARD, ObjectType.ENGAGEMENT, RequestType.WILDCARD
-            )(engagement_callbacks)
 
             context["amqp_system"] = amqp_system
 

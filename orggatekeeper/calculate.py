@@ -6,24 +6,23 @@ import datetime
 import re
 from asyncio import gather
 from typing import Any
-from typing import Awaitable
-from typing import Callable
 from uuid import UUID
 
 import structlog
 from gql import gql
 from more_itertools import one
 from raclients.graph.client import PersistentGraphQLClient
-from raclients.modelclient.mo import ModelClient
 from ramodels.mo import Validity
 from ramodels.mo._shared import OrgUnitHierarchy
+from ramqp.mo import MORouter
 from ramqp.mo.models import PayloadType
 from ramqp.utils import sleep_on_error
 
-from .config import Settings
 from .mo import fetch_org_unit
 from .mo import get_class_uuid
 from .mo import get_it_system_uuid
+
+router = MORouter()
 
 logger = structlog.get_logger()
 ny_regex = re.compile(r"NY\d-niveau")
@@ -235,10 +234,7 @@ async def below_uuid(
 
 
 async def update_line_management(
-    gql_client: PersistentGraphQLClient,
-    model_client: ModelClient,
-    settings: Settings,
-    org_uuid: UUID,
+    context: dict[str, Any],
     uuid: UUID,
 ) -> bool:
     """Update line management information for the provided organisation unit.
@@ -260,6 +256,11 @@ async def update_line_management(
     Returns:
         Whether an update was made.
     """
+    gql_client = context["gql_client"]
+    model_client = context["model_client"]
+    settings = context["settings"]
+    org_uuid = context["org_uuid"]
+
     # Determine the desired org_unit_hierarchy class uuid
     new_org_unit_hierarchy: OrgUnitHierarchy | None = None
     # if the orgunit uuid is in settings.hidden or it is below one that is
@@ -340,9 +341,7 @@ async def update_line_management(
     logger.debug("ModelClient response", response=response)
     if org_unit.parent is not None:
         # Check if parent org_unit needs to be updated.
-        await update_line_management(
-            gql_client, model_client, settings, org_uuid, org_unit.parent.uuid
-        )
+        await update_line_management(context, org_unit.parent.uuid)
     return True
 
 
@@ -411,17 +410,17 @@ async def get_orgunit_from_engagement(
 
 
 @sleep_on_error()
-async def engagement_callback(
-    gql_client: PersistentGraphQLClient,
-    payload: PayloadType,
-    func: Callable[[UUID], Awaitable[bool]],
-    **_: Any
-) -> None:
+@router.register("*.engagement.*")
+async def engagement_callback(context: dict, payload: PayloadType, **_: Any) -> None:
     """Check org_unit_hierarchy on changes to engagement.
     Check any org_unit that the engagement is connected to"""
-    org_units = await get_orgunit_from_engagement(gql_client, payload.object_uuid)
+    org_units = await get_orgunit_from_engagement(
+        context["gql_client"], payload.object_uuid
+    )
     logger.info("Changes to engagement. Checking org_units", org_unit=org_units)
-    await gather(*[func(uuid) for uuid in org_units])
+    await gather(
+        *[update_line_management(context=context, uuid=uuid) for uuid in org_units]
+    )
 
 
 async def get_orgunit_from_association(
@@ -457,14 +456,14 @@ async def get_orgunit_from_association(
 
 
 @sleep_on_error()
-async def association_callback(
-    gql_client: PersistentGraphQLClient,
-    payload: PayloadType,
-    func: Callable[[UUID], Awaitable[bool]],
-    **_: Any
-) -> None:
+@router.register("*.association.*")
+async def association_callback(context: dict, payload: PayloadType, **_: Any) -> None:
     """Check org_unit_hierarchy on changes to association.
     Check any org_unit that the association is connected to"""
-    org_units = await get_orgunit_from_association(gql_client, payload.object_uuid)
+    org_units = await get_orgunit_from_association(
+        context["gql_client"], payload.object_uuid
+    )
     logger.info("Changes to association. Checking org_units", org_unit=org_units)
-    await gather(*[func(uuid) for uuid in org_units])
+    await gather(
+        *[update_line_management(context=context, uuid=uuid) for uuid in org_units]
+    )
