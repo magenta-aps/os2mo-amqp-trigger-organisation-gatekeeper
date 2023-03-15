@@ -235,7 +235,13 @@ def create_app(  # pylint: disable=too-many-statements
     configure_logging(settings)
 
     if settings.sentry_dsn:  # pragma: no cover
-        sentry_sdk.init(dsn=settings.sentry_dsn)
+        sentry_sdk.init(
+            dsn=settings.sentry_dsn,
+            traces_sample_rate=1.0,
+            _experiments={
+                "profiles_sample_rate": 1.0,
+            },
+        )
 
     app = FastAPI()
 
