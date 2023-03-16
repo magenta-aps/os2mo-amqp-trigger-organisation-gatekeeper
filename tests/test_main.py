@@ -193,7 +193,7 @@ async def test_trigger_uuid_endpoint(
     assert response.status_code == 200
     assert response.json() == {"status": "OK"}
     assert update_line_management_mock.mock_calls == [
-        call({}, UUID("0a9d7211-16a1-47e1-82da-7ec8480e7487"))
+        call(uuid=UUID("0a9d7211-16a1-47e1-82da-7ec8480e7487"))
     ]
 
 
@@ -417,5 +417,5 @@ async def test_check_unset_endpoint_updates(
     assert response.status_code == 200
     assert response.json() == {"status": "Updated 3 orgunits"}
     assert update_line_management_mock.mock_calls == [
-        call(context, uuid) for uuid in uuids
+        call(**context, uuid=uuid) for uuid in uuids
     ]
