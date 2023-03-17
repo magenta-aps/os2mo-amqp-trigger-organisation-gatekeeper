@@ -4,6 +4,8 @@
 """Update logic."""
 import datetime
 import re
+from asyncio import gather
+from typing import Any
 from uuid import UUID
 
 import structlog
@@ -13,11 +15,16 @@ from raclients.graph.client import PersistentGraphQLClient
 from raclients.modelclient.mo import ModelClient
 from ramodels.mo import Validity
 from ramodels.mo._shared import OrgUnitHierarchy
+from ramqp.mo import MORouter
+from ramqp.mo.models import PayloadType
+from ramqp.utils import sleep_on_error
 
 from .config import Settings
 from .mo import fetch_org_unit
 from .mo import get_class_uuid
 from .mo import get_it_system_uuid
+
+router = MORouter()
 
 logger = structlog.get_logger()
 ny_regex = re.compile(r"NY\d-niveau")
@@ -122,7 +129,6 @@ async def is_line_management(
 
     result = await gql_client.execute(query, {"uuids": [str(uuid)]})
     obj = one(one(result["org_units"])["objects"])
-    logger.debug("GraphQL obj", obj=obj)
 
     # Check this unit according to the rules for line-management
     if await check_org_unit_line_management(
@@ -179,7 +185,7 @@ async def is_self_owned(
     )
     result = await gql_client.execute(query, {"uuids": [str(uuid)]})
     obj = one(one(result["org_units"])["objects"])
-    logger.debug("GraphQL obj", obj=obj)
+
     return any(
         UUID(it.get("itsystem_uuid")) == check_it_system_uuid for it in obj["itusers"]
     )
@@ -217,8 +223,6 @@ async def below_uuid(
     result = await gql_client.execute(query, {"uuids": [str(uuid)]})
     obj = one(one(result["org_units"])["objects"])
 
-    logger.debug("GraphQL obj", obj=obj)
-
     parent = obj["parent"]
 
     if not parent:
@@ -237,6 +241,7 @@ async def update_line_management(
     settings: Settings,
     org_uuid: UUID,
     uuid: UUID,
+    **_: Any,
 ) -> bool:
     """Update line management information for the provided organisation unit.
 
@@ -262,7 +267,7 @@ async def update_line_management(
     # if the orgunit uuid is in settings.hidden or it is below one that is
     # it should be hidden
     if await should_hide(
-        gql_client,
+        gql_client=gql_client,
         uuid=uuid,
         enable_hide_logic=settings.enable_hide_logic,
         hidden=settings.hidden,
@@ -373,3 +378,107 @@ async def get_org_units_with_no_hierarchy(
         if one(ou["objects"])["org_unit_hierarchy"] is None
     ]
     return missing
+
+
+async def get_orgunit_from_engagement(
+    gql_client: PersistentGraphQLClient, engagement_uuid: UUID
+) -> set[UUID]:
+    """Get org_unit uuid from user uuid
+
+    Args:
+        gql_client: The GraphQL client to use.
+        engagement_uuid: UUID of an engagement
+
+    Returns:
+        Set of org_unit uuids connected to the engagement
+
+
+    """
+    query = gql(
+        """
+        query GetOrgUnit($uuids: [UUID!]) {
+            engagements(uuids: $uuids, to_date: null, from_date: null) {
+                objects {
+                    org_unit_uuid
+                }
+            }
+        }
+        """
+    )
+    result = await gql_client.execute(query, {"uuids": str(engagement_uuid)})
+
+    objects = one(result["engagements"])["objects"]
+
+    return {UUID(e["org_unit_uuid"]) for e in objects}
+
+
+async def get_orgunit_from_association(
+    gql_client: PersistentGraphQLClient, associations_uuid: UUID
+) -> set[UUID]:
+    """Get org_unit uuid from user uuid
+
+    Args:
+        gql_client: The GraphQL client to use.
+        associations_uuid: UUID of an engagement
+
+    Returns:
+        Set of org_unit uuids connected to the associations
+
+
+    """
+    query = gql(
+        """
+        query GetOrgUnit($uuids: [UUID!]) {
+            associations(uuids: $uuids, to_date: null, from_date: null) {
+                objects {
+                    org_unit_uuid
+                }
+            }
+        }
+        """
+    )
+    logger.warn(associations_uuid)
+    result = await gql_client.execute(query, {"uuids": str(associations_uuid)})
+
+    objects = one(result["associations"])["objects"]
+
+    return {UUID(e["org_unit_uuid"]) for e in objects}
+
+
+@sleep_on_error()
+async def update(context: dict[str, Any], org_units: set[UUID]) -> None:
+    """Call update_line_management for each uuid in the given set"""
+    await gather(*[update_line_management(**context, uuid=uuid) for uuid in org_units])
+
+
+@router.register("org_unit.org_unit.*")
+@router.register("org_unit.it.*")
+async def org_unit_callback(context: dict, payload: PayloadType, **_: Any) -> None:
+    """Callback to check org_unit_hierarchy.
+
+    Listens to changes on org_units and it-accounts on org_units.
+    """
+    org_units = {payload.uuid}
+    logger.info("Changes to org_unit or its it-accounts", org_unit=org_units)
+    await update(context, org_units)
+
+
+@router.register("*.association.*")
+async def association_callback(context: dict, payload: PayloadType, **_: Any) -> None:
+    """Callback to check org_unit_hierarchy on changes to associations."""
+    org_units = await get_orgunit_from_association(
+        context["gql_client"], payload.object_uuid
+    )
+    logger.info("Changes to association. Checking org_units", org_unit=org_units)
+    await update(context, org_units)
+
+
+@router.register("*.engagement.*")
+async def engagement_callback(context: dict, payload: PayloadType, **_: Any) -> None:
+    """Callback to check org_unit_hierarchy on changes to engagements."""
+    org_units = await get_orgunit_from_engagement(
+        context["gql_client"], payload.object_uuid
+    )
+    logger.info("Changes to engagement. Checking org_units", org_unit=org_units)
+
+    await update(context, org_units)

@@ -5,15 +5,10 @@
 # pylint: disable=too-many-arguments
 """Test the fetch_org_unit function."""
 import asyncio
-from datetime import datetime
-from functools import partial
 from time import monotonic
 from typing import Any
 from typing import Callable
-from typing import cast
 from typing import Generator
-from typing import Set
-from typing import Tuple
 from unittest.mock import AsyncMock
 from unittest.mock import call
 from unittest.mock import MagicMock
@@ -25,35 +20,14 @@ import pytest
 from asgi_lifespan import LifespanManager
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from ramqp.mo.models import ObjectType
-from ramqp.mo.models import PayloadType
-from ramqp.mo.models import RequestType
-from ramqp.mo.models import ServiceType
 
 from orggatekeeper.config import get_settings
 from orggatekeeper.main import build_information
 from orggatekeeper.main import construct_clients
 from orggatekeeper.main import create_app
 from orggatekeeper.main import gather_with_concurrency
-from orggatekeeper.main import organisation_gatekeeper_callback
 from orggatekeeper.main import update_build_information
-from orggatekeeper.main import update_counter
 from tests import ORG_UUID
-
-
-def get_metric_value(metric: Any, labels: Tuple[str]) -> float:
-    """Get the value of a given metric with the given label-set.
-
-    Args:
-        metric: The metric to query.
-        labels: The label-set to query with.
-
-    Returns:
-        The metric value.
-    """
-    # pylint: disable=protected-access
-    metric = metric.labels(*labels)._value
-    return cast(float, metric.get())
 
 
 def clear_metric_value(metric: Any) -> None:
@@ -67,60 +41,6 @@ def clear_metric_value(metric: Any) -> None:
         The metric value.
     """
     metric.clear()
-
-
-def get_metric_labels(metric: Any) -> Set[Tuple[str]]:
-    """Get the label-set for a given metric.
-
-    Args:
-        metric: The metric to query.
-
-    Returns:
-        The label-set.
-    """
-    # pylint: disable=protected-access
-    return set(metric._metrics.keys())
-
-
-@patch("orggatekeeper.main.update_line_management")
-async def test_update_metric(update_line_management: MagicMock) -> None:
-    """Test that our update_counter metric is updated as expected."""
-    payload = PayloadType(uuid=uuid4(), object_uuid=uuid4(), time=datetime.now())
-    seeded_update_line_management = partial(
-        update_line_management, MagicMock(), MagicMock, MagicMock()
-    )
-    callback_caller = partial(
-        organisation_gatekeeper_callback, seeded_update_line_management, MagicMock()
-    )
-
-    clear_metric_value(update_counter)
-    assert get_metric_labels(update_counter) == set()
-
-    # Returning false, counts up false once
-    update_line_management.return_value = False
-    await callback_caller(payload)
-    assert get_metric_labels(update_counter) == {("False",)}
-    assert get_metric_value(update_counter, ("False",)) == 1.0
-
-    # Returning false, counts up false once
-    update_line_management.return_value = False
-    await callback_caller(payload)
-    assert get_metric_labels(update_counter) == {("False",)}
-    assert get_metric_value(update_counter, ("False",)) == 2.0
-
-    # Returning true, counts up true once
-    update_line_management.return_value = True
-    await callback_caller(payload)
-    assert get_metric_labels(update_counter) == {("False",), ("True",)}
-    assert get_metric_value(update_counter, ("False",)) == 2.0
-    assert get_metric_value(update_counter, ("True",)) == 1.0
-
-    # Returning true, counts up true once
-    update_line_management.return_value = True
-    await callback_caller(payload)
-    assert get_metric_labels(update_counter) == {("False",), ("True",)}
-    assert get_metric_value(update_counter, ("False",)) == 2.0
-    assert get_metric_value(update_counter, ("True",)) == 2.0
 
 
 def test_build_information() -> None:
@@ -228,57 +148,58 @@ async def test_metrics_endpoint(test_client_builder: Callable[..., TestClient]) 
     test_client = test_client_builder(default_args=False, client_secret="hunter2")
     response = test_client.get("/metrics")
     assert response.status_code == 200
-    assert "# TYPE orggatekeeper_changes_created gauge" in response.text
     assert "# TYPE build_information_info gauge" in response.text
 
 
+@patch("fastapi.BackgroundTasks.add_task", return_value=AsyncMock())
 @patch("orggatekeeper.main.construct_context")
 async def test_trigger_all_endpoint(
     construct_context: MagicMock,
+    backgroundtask_mock: AsyncMock,
     test_client_builder: Callable[..., TestClient],
 ) -> None:
     """Test the trigger all endpoint on our app."""
     gql_client = AsyncMock()
     gql_client.execute.return_value = {
-        "org_units": [{"uuid": "30206243-d930-4a69-bcfa-62e3292837d3"}]
+        "org_units": [
+            {"uuid": str(uuid4())},
+            {"uuid": str(uuid4())},
+            {"uuid": str(uuid4())},
+        ]
     }
-    seeded_update_line_management = AsyncMock()
     construct_context.return_value = {
+        "model_client": AsyncMock(),
         "gql_client": gql_client,
-        "seeded_update_line_management": seeded_update_line_management,
+        "settings": MagicMock(),
+        "org_uuid": ORG_UUID,
     }
     test_client = test_client_builder()
     response = test_client.post("/trigger/all")
     assert response.status_code == 202
     assert response.json() == {"status": "Background job triggered"}
     assert len(gql_client.execute.mock_calls) == 1
-    assert seeded_update_line_management.mock_calls == [
-        call(UUID("30206243-d930-4a69-bcfa-62e3292837d3"))
-    ]
+    assert len(backgroundtask_mock.call_args[0]) == 5
 
 
-@patch("orggatekeeper.main.construct_context")
+@patch("orggatekeeper.main.update_line_management", return_value=AsyncMock())
 async def test_trigger_uuid_endpoint(
-    construct_context: MagicMock,
+    update_line_management_mock: AsyncMock,
     test_client_builder: Callable[..., TestClient],
 ) -> None:
     """Test the trigger uuid endpoint on our app."""
-    seeded_update_line_management = AsyncMock()
-    construct_context.return_value = {
-        "seeded_update_line_management": seeded_update_line_management
-    }
+
     test_client = test_client_builder()
     response = test_client.post("/trigger/0a9d7211-16a1-47e1-82da-7ec8480e7487")
     assert response.status_code == 200
     assert response.json() == {"status": "OK"}
-    assert seeded_update_line_management.mock_calls == [
-        call(UUID("0a9d7211-16a1-47e1-82da-7ec8480e7487"))
+    assert update_line_management_mock.mock_calls == [
+        call(uuid=UUID("0a9d7211-16a1-47e1-82da-7ec8480e7487"))
     ]
 
 
 @patch("orggatekeeper.main.fetch_org_uuid")
 @patch("orggatekeeper.main.MOAMQPSystem")
-@patch("orggatekeeper.main.MORouter")
+@patch("orggatekeeper.calculate.MORouter")
 async def test_lifespan(
     mo_router: MagicMock,
     mo_amqpsystem: MagicMock,
@@ -301,23 +222,7 @@ async def test_lifespan(
     # Fire startup event on entry, and shutdown on exit
     async with LifespanManager(fastapi_app):
 
-        assert len(router.mock_calls) == 8
-        # Create register calls
-        assert router.mock_calls[0] == call.register(
-            ServiceType.ORG_UNIT, ObjectType.ASSOCIATION, RequestType.WILDCARD
-        )
-        assert router.mock_calls[2] == call.register(
-            ServiceType.ORG_UNIT, ObjectType.ENGAGEMENT, RequestType.WILDCARD
-        )
-        assert router.mock_calls[4] == call.register(
-            ServiceType.ORG_UNIT, ObjectType.ORG_UNIT, RequestType.WILDCARD
-        )
-        assert router.mock_calls[6] == call.register(
-            ServiceType.ORG_UNIT, ObjectType.IT, RequestType.WILDCARD
-        )
-        # Register calls
-        assert router.mock_calls[1] == router.mock_calls[3]
-        assert router.mock_calls[1] == router.mock_calls[5]
+        assert len(router.mock_calls) == 0
 
         # Clean mock to only capture shutdown changes
         amqp_system.reset_mock()
@@ -467,39 +372,42 @@ def test_gql_client_created_with_timeout(mock_gql_client: MagicMock) -> None:
     assert 15 == mock_gql_client.call_args.kwargs["execute_timeout"]
 
 
+@patch("orggatekeeper.calculate.update_line_management", return_value=AsyncMock())
 @patch("orggatekeeper.main.construct_context")
 async def test_ensure_no_unset_endpoint_ok(
     construct_context: MagicMock,
+    update_line_management_mock: AsyncMock,
     test_client_builder: Callable[..., TestClient],
 ) -> None:
     """Test the ensure-no-unset endpoint when no orgunit is unset."""
-    seeded_update_line_management = AsyncMock()
+
     construct_context.return_value = {
-        "seeded_update_line_management": seeded_update_line_management,
         "gql_client": AsyncMock(),
     }
-
     with patch("orggatekeeper.main.get_org_units_with_no_hierarchy", return_value=[]):
         test_client = test_client_builder()
         response = test_client.post("/ensure-no-unset")
     assert response.status_code == 200
     assert response.json() == {"status": "OK"}
-    seeded_update_line_management.assert_not_called()
+    update_line_management_mock.assert_not_called()
 
 
 @patch("orggatekeeper.main.construct_context")
+@patch("orggatekeeper.main.update_line_management", return_value=AsyncMock())
 async def test_check_unset_endpoint_updates(
+    update_line_management_mock: AsyncMock,
     construct_context: MagicMock,
     test_client_builder: Callable[..., TestClient],
 ) -> None:
     """Test the ensure-no-unset endpoint without org_unit_hierarchy unset"""
     uuids = [uuid4(), uuid4(), uuid4()]
-    gql_client = AsyncMock()
-    seeded_update_line_management = AsyncMock()
-    construct_context.return_value = {
-        "seeded_update_line_management": seeded_update_line_management,
-        "gql_client": gql_client,
+    context = {
+        "model_client": AsyncMock(),
+        "gql_client": AsyncMock(),
+        "settings": MagicMock(),
+        "org_uuid": ORG_UUID,
     }
+    construct_context.return_value = context
 
     with patch(
         "orggatekeeper.main.get_org_units_with_no_hierarchy", return_value=uuids
@@ -508,4 +416,6 @@ async def test_check_unset_endpoint_updates(
         response = test_client.post("/ensure-no-unset")
     assert response.status_code == 200
     assert response.json() == {"status": "Updated 3 orgunits"}
-    assert seeded_update_line_management.mock_calls == [call(uuid) for uuid in uuids]
+    assert update_line_management_mock.mock_calls == [
+        call(**context, uuid=uuid) for uuid in uuids
+    ]

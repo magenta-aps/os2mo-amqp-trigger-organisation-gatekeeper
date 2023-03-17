@@ -6,9 +6,7 @@
 # pylint: disable=unused-argument
 # pylint: disable=too-many-arguments
 from datetime import datetime
-from functools import partial
 from typing import Any
-from typing import Awaitable
 from typing import Callable
 from typing import Generator
 from unittest.mock import AsyncMock
@@ -24,13 +22,19 @@ from more_itertools import one
 from ramodels.mo import OrganisationUnit
 from ramodels.mo import Validity
 from ramodels.mo._shared import OrgUnitHierarchy
+from ramqp.mo.models import PayloadType
 
+from orggatekeeper.calculate import association_callback
 from orggatekeeper.calculate import below_uuid
+from orggatekeeper.calculate import engagement_callback
 from orggatekeeper.calculate import fetch_org_unit
 from orggatekeeper.calculate import get_class_uuid
 from orggatekeeper.calculate import get_org_units_with_no_hierarchy
+from orggatekeeper.calculate import get_orgunit_from_association
+from orggatekeeper.calculate import get_orgunit_from_engagement
 from orggatekeeper.calculate import is_line_management
 from orggatekeeper.calculate import is_self_owned
+from orggatekeeper.calculate import org_unit_callback
 from orggatekeeper.calculate import should_hide
 from orggatekeeper.calculate import update_line_management
 from orggatekeeper.config import get_settings
@@ -423,14 +427,16 @@ def class_uuid(
 
 
 @pytest.fixture()
-def seeded_update_line_management(
+def context(
     gql_client: MagicMock, model_client: AsyncMock, settings: Settings
-) -> Generator[Callable[[UUID], Awaitable[bool]], None, None]:
-    """Fixture to generate update_line_management function."""
-    seeded_update_line_management = partial(
-        update_line_management, gql_client, model_client, settings, ORG_UUID
-    )
-    yield seeded_update_line_management
+) -> dict[str, Any]:
+    """Fixture to generate context"""
+    return {
+        "gql_client": gql_client,
+        "model_client": model_client,
+        "settings": settings,
+        "org_uuid": ORG_UUID,
+    }
 
 
 @patch("orggatekeeper.calculate.is_line_management")
@@ -440,9 +446,7 @@ async def test_update_line_management_no_change(
     fetch_org_unit: MagicMock,
     should_hide: MagicMock,
     is_line_management: MagicMock,
-    gql_client: MagicMock,
-    model_client: AsyncMock,
-    seeded_update_line_management: Callable[[UUID], Awaitable[bool]],
+    context: dict[str, Any],
     class_uuid: MagicMock,
 ) -> None:
     """Test that update_line_management can't do noop."""
@@ -460,14 +464,16 @@ async def test_update_line_management_no_change(
     fetch_org_unit.return_value = org_unit
 
     uuid = org_unit.uuid
-    result = await seeded_update_line_management(uuid)
-    assert result is True
 
+    result = await update_line_management(**context, uuid=uuid)
+    assert result is True
+    gql_client = context["gql_client"]
     should_hide.assert_called_once_with(
-        gql_client, uuid=uuid, enable_hide_logic=True, hidden=set()
+        gql_client=gql_client, uuid=uuid, enable_hide_logic=True, hidden=set()
     )
     is_line_management.assert_called_once_with(gql_client, uuid, set())
     fetch_org_unit.assert_called_once_with(gql_client, uuid)
+    model_client = context["model_client"]
     model_client.assert_not_called()
 
 
@@ -484,19 +490,22 @@ async def test_update_line_management_dry_run(
 ) -> None:
     """Test that update_line_management can set class_uuid."""
     settings = set_settings(dry_run=True)
-    seeded_update_line_management = partial(
-        update_line_management, gql_client, model_client, settings, ORG_UUID
-    )
 
     should_hide.return_value = True
     fetch_org_unit.return_value = org_unit
 
     uuid = org_unit.uuid
-    result = await seeded_update_line_management(uuid)
+    result = await update_line_management(
+        gql_client=gql_client,
+        model_client=model_client,
+        settings=settings,
+        org_uuid=ORG_UUID,
+        uuid=uuid,
+    )
     assert result is True
 
     should_hide.assert_called_once_with(
-        gql_client, uuid=uuid, enable_hide_logic=True, hidden=set()
+        gql_client=gql_client, uuid=uuid, enable_hide_logic=True, hidden=set()
     )
     fetch_org_unit.assert_called_once_with(gql_client, uuid)
     model_client.edit.assert_not_called()
@@ -509,11 +518,8 @@ async def test_update_line_management_hidden(
     fetch_org_unit: MagicMock,
     should_hide: MagicMock,
     mock_datetime: MagicMock,
-    gql_client: MagicMock,
-    model_client: AsyncMock,
-    settings: Settings,
+    context: dict[str, Any],
     class_uuid: UUID,
-    seeded_update_line_management: Callable[[UUID], Awaitable[bool]],
 ) -> None:
     """Test that update_line_management can set class_uuid."""
     should_hide.return_value = True
@@ -533,13 +539,15 @@ async def test_update_line_management_hidden(
     mock_datetime.datetime.now.return_value = now
 
     uuid = org_unit.uuid
-    result = await seeded_update_line_management(uuid)
+    result = await update_line_management(**context, uuid=uuid)
     assert result is True
+    gql_client = context["gql_client"]
 
     should_hide.assert_called_once_with(
-        gql_client, uuid=uuid, enable_hide_logic=True, hidden=set()
+        gql_client=gql_client, uuid=uuid, enable_hide_logic=True, hidden=set()
     )
     fetch_org_unit.assert_called_once_with(gql_client, uuid)
+    model_client = context["model_client"]
     assert model_client.mock_calls == [
         call.edit(
             [
@@ -571,11 +579,8 @@ async def test_update_line_management_line(
     is_self_owned_return: MagicMock,
     should_hide_return: MagicMock,
     is_line_management_return: MagicMock,
-    gql_client: MagicMock,
-    model_client: AsyncMock,
-    settings: Settings,
+    context: dict[str, Any],
     class_uuid: UUID,
-    seeded_update_line_management: Callable[[UUID], Awaitable[bool]],
     org_unit: OrganisationUnit,
 ) -> None:
     """Test that update_line_management can set line_management_uuid."""
@@ -605,6 +610,10 @@ async def test_update_line_management_line(
     now = datetime.now()
     mock_datetime.datetime.now.return_value = now
     uuid = org_unit.uuid
+
+    gql_client = context["gql_client"]
+    model_client = context["model_client"]
+    settings = context["settings"]
     settings.self_owned_it_system_check = self_owned_it_system_check
 
     with patch(
@@ -621,7 +630,7 @@ async def test_update_line_management_line(
                     "orggatekeeper.calculate.should_hide",
                     return_value=should_hide_return,
                 ) as should_hide_mock:
-                    result = await seeded_update_line_management(uuid)
+                    result = await update_line_management(**context, uuid=uuid)
 
     assert result == changes
 
@@ -629,7 +638,7 @@ async def test_update_line_management_line(
     if not changes:
         # Always check if hidden
         should_hide_mock.assert_called_once_with(
-            gql_client, uuid=uuid, enable_hide_logic=True, hidden=set()
+            gql_client=gql_client, uuid=uuid, enable_hide_logic=True, hidden=set()
         )
 
         # Then check if it is line management
@@ -678,11 +687,8 @@ async def test_update_line_management_line_for_root_org_unit(
     should_hide: MagicMock,
     is_line_management: MagicMock,
     mock_datetime: MagicMock,
-    gql_client: MagicMock,
-    model_client: AsyncMock,
-    settings: Settings,
+    context: dict[str, Any],
     class_uuid: UUID,
-    seeded_update_line_management: Callable[[UUID], Awaitable[bool]],
 ) -> None:
     """
     Test that update_line_management can set line_management_uuid for
@@ -704,11 +710,13 @@ async def test_update_line_management_line_for_root_org_unit(
     mock_datetime.datetime.now.return_value = now
 
     uuid = org_unit.uuid
-    result = await seeded_update_line_management(uuid)
+    result = await update_line_management(**context, uuid=uuid)
     assert result is True
+    gql_client = context["gql_client"]
+    model_client = context["model_client"]
 
     should_hide.assert_called_once_with(
-        gql_client, uuid=uuid, enable_hide_logic=True, hidden=set()
+        gql_client=gql_client, uuid=uuid, enable_hide_logic=True, hidden=set()
     )
     is_line_management.assert_called_once_with(gql_client, uuid, set())
     fetch_org_unit.assert_called_once_with(gql_client, uuid)
@@ -828,3 +836,84 @@ async def test_get_org_units_with_no_hierarchy() -> None:
     }
     res = await get_org_units_with_no_hierarchy(gql_client)
     assert res == unset_org_unit_uuids
+
+
+async def test_get_orgunit_from_engagement() -> None:
+    """Test graphql call to return org_unit from a users engagements"""
+    gql_client = AsyncMock()
+    expected = uuid4()
+    gql_client.execute.return_value = {
+        "engagements": [
+            {
+                "objects": [
+                    {"org_unit_uuid": str(expected)},
+                    {"org_unit_uuid": str(expected)},
+                ]
+            }
+        ]
+    }
+    res = await get_orgunit_from_engagement(gql_client, uuid4())
+    gql_client.execute.assert_called_once()
+    assert res == {expected}
+
+
+async def test_get_orgunit_from_association() -> None:
+    """Test graphql call to return org_unit from an association"""
+    gql_client = AsyncMock()
+    expected = uuid4()
+    gql_client.execute.return_value = {
+        "associations": [
+            {
+                "objects": [
+                    {"org_unit_uuid": str(expected)},
+                    {"org_unit_uuid": str(expected)},
+                ]
+            }
+        ]
+    }
+    res = await get_orgunit_from_association(gql_client, uuid4())
+    gql_client.execute.assert_called_once()
+    assert res == {expected}
+
+
+@patch("orggatekeeper.calculate.update_line_management")
+async def test_callback_engagement(
+    update_line_management_mock: MagicMock, context: dict[str, Any]
+) -> None:
+    """Test that changes to engagements results in calls to update_line_management
+    with the org_unit_uuid of an engagement.
+    """
+    org_unit_uuid = uuid4()
+    payload = PayloadType(uuid=uuid4(), object_uuid=uuid4(), time=datetime.now())
+    with patch(
+        "orggatekeeper.calculate.get_orgunit_from_engagement",
+        return_value={org_unit_uuid},
+    ):
+        await engagement_callback(context, payload=payload)
+    update_line_management_mock.assert_called_once_with(**context, uuid=org_unit_uuid)
+
+
+@patch("orggatekeeper.calculate.update_line_management")
+async def test_callback_association(
+    update_line_management_mock: MagicMock, context: dict[str, Any]
+) -> None:
+    """Test that changes to associations results in calls to update_line_management
+    with the org_unit_uuid of an association.
+    """
+    payload = PayloadType(uuid=uuid4(), object_uuid=uuid4(), time=datetime.now())
+    with patch(
+        "orggatekeeper.calculate.get_orgunit_from_association", return_value={uuid4()}
+    ):
+        await association_callback(context, payload=payload)
+    update_line_management_mock.assert_called_once()
+
+
+@patch("orggatekeeper.calculate.update_line_management")
+async def test_callback_org_unit(
+    update_line_management_mock: MagicMock,
+    context: dict[str, Any],
+) -> None:
+    """Test that changes calls update line management with an org_units uuid"""
+    payload = PayloadType(uuid=uuid4(), object_uuid=uuid4(), time=datetime.now())
+    await org_unit_callback(context, payload=payload)
+    update_line_management_mock.assert_called_once_with(**context, uuid=payload.uuid)
