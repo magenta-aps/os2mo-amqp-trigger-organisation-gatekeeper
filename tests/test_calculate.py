@@ -22,14 +22,11 @@ from more_itertools import one
 from ramodels.mo import OrganisationUnit
 from ramodels.mo import Validity
 from ramodels.mo._shared import OrgUnitHierarchy
-from ramqp.mo.models import MORoutingKey
-from ramqp.mo.models import ObjectType
 from ramqp.mo.models import PayloadType
-from ramqp.mo.models import RequestType
-from ramqp.mo.models import ServiceType
 
+from orggatekeeper.calculate import association_callback
 from orggatekeeper.calculate import below_uuid
-from orggatekeeper.calculate import callback
+from orggatekeeper.calculate import engagement_callback
 from orggatekeeper.calculate import fetch_org_unit
 from orggatekeeper.calculate import get_class_uuid
 from orggatekeeper.calculate import get_org_units_with_no_hierarchy
@@ -37,6 +34,7 @@ from orggatekeeper.calculate import get_orgunit_from_association
 from orggatekeeper.calculate import get_orgunit_from_engagement
 from orggatekeeper.calculate import is_line_management
 from orggatekeeper.calculate import is_self_owned
+from orggatekeeper.calculate import org_unit_callback
 from orggatekeeper.calculate import should_hide
 from orggatekeeper.calculate import update_line_management
 from orggatekeeper.config import get_settings
@@ -887,14 +885,11 @@ async def test_callback_engagement(
     """
     org_unit_uuid = uuid4()
     payload = PayloadType(uuid=uuid4(), object_uuid=uuid4(), time=datetime.now())
-    mo_routing_key = MORoutingKey(
-        ServiceType.WILDCARD, ObjectType.ENGAGEMENT, RequestType.WILDCARD
-    )
     with patch(
         "orggatekeeper.calculate.get_orgunit_from_engagement",
         return_value={org_unit_uuid},
     ):
-        await callback(context, payload=payload, mo_routing_key=mo_routing_key)
+        await engagement_callback(context, payload=payload)
     update_line_management_mock.assert_called_once_with(**context, uuid=org_unit_uuid)
 
 
@@ -906,33 +901,19 @@ async def test_callback_association(
     with the org_unit_uuid of an association.
     """
     payload = PayloadType(uuid=uuid4(), object_uuid=uuid4(), time=datetime.now())
-    mo_routing_key = MORoutingKey(
-        ServiceType.WILDCARD, ObjectType.ASSOCIATION, RequestType.WILDCARD
-    )
     with patch(
         "orggatekeeper.calculate.get_orgunit_from_association", return_value={uuid4()}
     ):
-        await callback(context, payload=payload, mo_routing_key=mo_routing_key)
+        await association_callback(context, payload=payload)
     update_line_management_mock.assert_called_once()
 
 
-@pytest.mark.parametrize(
-    "object_type",
-    [
-        (ObjectType.IT),
-        (ObjectType.ORG_UNIT),
-    ],
-)
 @patch("orggatekeeper.calculate.update_line_management")
 async def test_callback_org_unit(
     update_line_management_mock: MagicMock,
     context: dict[str, Any],
-    object_type: ObjectType,
 ) -> None:
     """Test that changes calls update line management with an org_units uuid"""
     payload = PayloadType(uuid=uuid4(), object_uuid=uuid4(), time=datetime.now())
-    mo_routing_key = MORoutingKey(
-        ServiceType.ORG_UNIT, object_type, RequestType.WILDCARD
-    )
-    await callback(context, payload=payload, mo_routing_key=mo_routing_key)
+    await org_unit_callback(context, payload=payload)
     update_line_management_mock.assert_called_once_with(**context, uuid=payload.uuid)

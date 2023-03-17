@@ -16,8 +16,6 @@ from raclients.modelclient.mo import ModelClient
 from ramodels.mo import Validity
 from ramodels.mo._shared import OrgUnitHierarchy
 from ramqp.mo import MORouter
-from ramqp.mo.models import MORoutingKey
-from ramqp.mo.models import ObjectType
 from ramqp.mo.models import PayloadType
 from ramqp.utils import sleep_on_error
 
@@ -439,6 +437,7 @@ async def get_orgunit_from_association(
         }
         """
     )
+    logger.warn(associations_uuid)
     result = await gql_client.execute(query, {"uuids": str(associations_uuid)})
 
     objects = one(result["associations"])["objects"]
@@ -447,26 +446,39 @@ async def get_orgunit_from_association(
 
 
 @sleep_on_error()
-@router.register("*.association.*")
-@router.register("*.engagement.*")
+async def update(context: dict[str, Any], org_units: set[UUID]) -> None:
+    """Call update_line_management for each uuid in the given set"""
+    await gather(*[update_line_management(**context, uuid=uuid) for uuid in org_units])
+
+
 @router.register("org_unit.org_unit.*")
 @router.register("org_unit.it.*")
-async def callback(
-    context: dict, payload: PayloadType, mo_routing_key: MORoutingKey
-) -> None:
-    """Check org_unit_hierarchy on changes to engagement.
-    Check any org_unit that the engagement is connected to"""
-    gql_client = context["gql_client"]
+async def org_unit_callback(context: dict, payload: PayloadType, **_: Any) -> None:
+    """Callback to check org_unit_hierarchy.
 
-    logger.info(f"Recieved call with {str(mo_routing_key)} {payload.object_uuid=}")
-    if mo_routing_key.object_type == ObjectType.ASSOCIATION:
+    Listens to changes on org_units and it-accounts on org_units.
+    """
+    org_units = {payload.uuid}
+    logger.info("Changes to org_unit or its it-accounts", org_unit=org_units)
+    await update(context, org_units)
 
-        org_units = await get_orgunit_from_association(gql_client, payload.object_uuid)
-        logger.info("Changes to association. Checking org_units", org_unit=org_units)
-    elif mo_routing_key.object_type == ObjectType.ENGAGEMENT:
-        org_units = await get_orgunit_from_engagement(gql_client, payload.object_uuid)
-        logger.info("Changes to engagement. Checking org_units", org_unit=org_units)
-    else:
-        org_units = {payload.uuid}
 
-    await gather(*[update_line_management(**context, uuid=uuid) for uuid in org_units])
+@router.register("*.association.*")
+async def association_callback(context: dict, payload: PayloadType, **_: Any) -> None:
+    """Callback to check org_unit_hierarchy on changes to associations."""
+    org_units = await get_orgunit_from_association(
+        context["gql_client"], payload.object_uuid
+    )
+    logger.info("Changes to association. Checking org_units", org_unit=org_units)
+    await update(context, org_units)
+
+
+@router.register("*.engagement.*")
+async def engagement_callback(context: dict, payload: PayloadType, **_: Any) -> None:
+    """Callback to check org_unit_hierarchy on changes to engagements."""
+    org_units = await get_orgunit_from_engagement(
+        context["gql_client"], payload.object_uuid
+    )
+    logger.info("Changes to engagement. Checking org_units", org_unit=org_units)
+
+    await update(context, org_units)
