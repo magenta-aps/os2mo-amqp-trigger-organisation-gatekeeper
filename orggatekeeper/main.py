@@ -18,7 +18,6 @@ import sentry_sdk
 import structlog
 from fastapi import BackgroundTasks
 from fastapi import FastAPI
-from fastapi import Query
 from fastapi import Response
 from gql import gql
 from more_itertools import one
@@ -260,11 +259,7 @@ def create_app(  # pylint: disable=too-many-statements
     @app.post(
         "/trigger/{uuid}",
     )
-    async def update_org_unit(
-        uuid: UUID = Query(
-            ..., description="UUID of the organisation unit to recalculate"
-        )
-    ) -> dict[str, str]:
+    async def update_org_unit(uuid: UUID) -> dict[str, str]:
         """Call update_line_management on the provided org unit."""
         logger.info("Manually triggered recalculation", uuids=[uuid])
         await update_line_management(**context, uuid=uuid)
