@@ -19,7 +19,7 @@ pydantic = "^1.10.6"
 raclients = "^3.0.5"
 gql = "^3.2.0"
 more-itertools = "^9.1.0"
-ra-utils = "^1.11.11"
+ra-utils = "^1.12.10"
 uvicorn = {extras = ["standard"], version = "^0.21.0"}
 prometheus-fastapi-instrumentator = "^5.11.1"
 fastapi = "^0.94.1"

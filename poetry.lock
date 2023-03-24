@@ -910,7 +910,7 @@ pyyaml = "*"
 
 [[package]]
 name = "ra-utils"
-version = "1.12.5"
+version = "1.12.10"
 description = "Utilities for OS2mo/LoRa"
 category = "main"
 optional = false
@@ -1301,7 +1301,7 @@ testing = ["big-O", "flake8 (<5)", "jaraco.functools", "jaraco.itertools", "more
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.10"
-content-hash = "e2d2bca32521c46740a643a3ff7f45ce49fc5b54a954bc37621576b2b178a56e"
+content-hash = "c3f8bcfee854217af715547120fe8d9a7e2ae8f488ca827ccc87381e616548e6"
 
 [metadata.files]
 aio-pika = [
@@ -2113,8 +2113,8 @@ pyyaml-env-tag = [
     {file = "pyyaml_env_tag-0.1.tar.gz", hash = "sha256:70092675bda14fdec33b31ba77e7543de9ddc88f2e5b99160396572d11525bdb"},
 ]
 ra-utils = [
-    {file = "ra_utils-1.12.5-py3-none-any.whl", hash = "sha256:961f9994a4fed07af7de0affc231a464171f7712e00018341f05034e6867178b"},
-    {file = "ra_utils-1.12.5.tar.gz", hash = "sha256:ab4aa8600d4bc22ec70d49f474acc890f3a53033cdb45bf6b4d44be8d64e4b65"},
+    {file = "ra_utils-1.12.10-py3-none-any.whl", hash = "sha256:7c4374cd8d2434542da77f86f46049f6353fef7ebc8aa3c6313fa53398b53e16"},
+    {file = "ra_utils-1.12.10.tar.gz", hash = "sha256:1d73aa29bfa440d773b2d04be022255ed0a470cea050e9555453739dd6ee6d4c"},
 ]
 raclients = [
     {file = "raclients-3.0.5-py3-none-any.whl", hash = "sha256:844f89f7903eb4bd297a51635542f8789985a56974d8a8034860e2c1c8a43ec5"},
