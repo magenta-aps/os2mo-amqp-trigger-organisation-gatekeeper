@@ -450,9 +450,9 @@ async def update(context: dict[str, Any], org_units: set[UUID]) -> None:
     await gather(*[update_line_management(**context, uuid=uuid) for uuid in org_units])
 
 
-@sleep_on_error()
 @router.register("org_unit.org_unit.*")
 @router.register("org_unit.it.*")
+@sleep_on_error()
 async def org_unit_callback(context: dict, payload: PayloadType, **_: Any) -> None:
     """Callback to check org_unit_hierarchy.
 
@@ -463,8 +463,8 @@ async def org_unit_callback(context: dict, payload: PayloadType, **_: Any) -> No
     await update(context, org_units)
 
 
-@sleep_on_error()
 @router.register("*.association.*")
+@sleep_on_error()
 async def association_callback(context: dict, payload: PayloadType, **_: Any) -> None:
     """Callback to check org_unit_hierarchy on changes to associations."""
     try:
@@ -479,8 +479,8 @@ async def association_callback(context: dict, payload: PayloadType, **_: Any) ->
     await update(context, org_units)
 
 
-@sleep_on_error()
 @router.register("*.engagement.*")
+@sleep_on_error()
 async def engagement_callback(context: dict, payload: PayloadType, **_: Any) -> None:
     """Callback to check org_unit_hierarchy on changes to engagements."""
     try:
