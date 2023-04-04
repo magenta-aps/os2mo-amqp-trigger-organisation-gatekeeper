@@ -15,7 +15,7 @@ from pydantic import BaseSettings
 from pydantic import Field
 from pydantic import parse_obj_as
 from pydantic import SecretStr
-from ramqp.config import ConnectionSettings
+from ramqp.config import AMQPConnectionSettings
 
 
 class LogLevel(Enum):
@@ -32,11 +32,11 @@ class LogLevel(Enum):
 logger = structlog.get_logger()
 
 
-class OrgGatekeeperConnectionSettings(ConnectionSettings):
+class OrgGatekeeperConnectionSettings(AMQPConnectionSettings):
     """Organisation Gatekeeper-specific connection settings."""
 
     queue_prefix = "os2mo-amqp-trigger-organisation-gatekeeper"
-
+    AMQP_URL: AnyHttpUrl = "amqp://guest:guest@rabbitmq:5672"
     # TODO: Ensure we don't crash MO when running somewhat concurrently
     prefetch_count = 1
 

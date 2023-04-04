@@ -5,19 +5,22 @@
 import datetime
 import re
 from asyncio import gather
+from typing import Annotated
 from typing import Any
 from uuid import UUID
 
 import structlog
+from fastapi import Depends
 from gql import gql
 from more_itertools import one
 from raclients.graph.client import PersistentGraphQLClient
 from raclients.modelclient.mo import ModelClient
 from ramodels.mo import Validity
 from ramodels.mo._shared import OrgUnitHierarchy
+from ramqp.depends import Context
+from ramqp.depends import sleep_on_error
 from ramqp.mo import MORouter
-from ramqp.mo.models import PayloadType
-from ramqp.utils import sleep_on_error
+from ramqp.mo import PayloadType
 
 from .config import Settings
 from .mo import fetch_org_unit
@@ -25,7 +28,7 @@ from .mo import get_class_uuid
 from .mo import get_it_system_uuid
 
 router = MORouter()
-
+SleepOnError = Annotated[None, Depends(sleep_on_error(delay=10))]
 logger = structlog.get_logger()
 ny_regex = re.compile(r"NY\d-niveau")
 
@@ -445,15 +448,16 @@ async def get_orgunit_from_association(
     return {UUID(e["org_unit_uuid"]) for e in objects}
 
 
-async def update(context: dict[str, Any], org_units: set[UUID]) -> None:
+async def update(context: Context, org_units: set[UUID]) -> None:
     """Call update_line_management for each uuid in the given set"""
     await gather(*[update_line_management(**context, uuid=uuid) for uuid in org_units])
 
 
 @router.register("org_unit.org_unit.*")
 @router.register("org_unit.it.*")
-@sleep_on_error()
-async def org_unit_callback(context: dict, payload: PayloadType, **_: Any) -> None:
+async def org_unit_callback(
+    context: Context, payload: PayloadType, _: SleepOnError
+) -> None:
     """Callback to check org_unit_hierarchy.
 
     Listens to changes on org_units and it-accounts on org_units.
@@ -464,8 +468,9 @@ async def org_unit_callback(context: dict, payload: PayloadType, **_: Any) -> No
 
 
 @router.register("*.association.*")
-@sleep_on_error()
-async def association_callback(context: dict, payload: PayloadType, **_: Any) -> None:
+async def association_callback(
+    context: Context, payload: PayloadType, _: SleepOnError
+) -> None:
     """Callback to check org_unit_hierarchy on changes to associations."""
     try:
         org_units = await get_orgunit_from_association(
@@ -480,8 +485,9 @@ async def association_callback(context: dict, payload: PayloadType, **_: Any) ->
 
 
 @router.register("*.engagement.*")
-@sleep_on_error()
-async def engagement_callback(context: dict, payload: PayloadType, **_: Any) -> None:
+async def engagement_callback(
+    context: Context, payload: PayloadType, _: SleepOnError
+) -> None:
     """Callback to check org_unit_hierarchy on changes to engagements."""
     try:
         org_units = await get_orgunit_from_engagement(

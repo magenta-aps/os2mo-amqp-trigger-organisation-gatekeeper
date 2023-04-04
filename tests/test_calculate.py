@@ -22,7 +22,7 @@ from more_itertools import one
 from ramodels.mo import OrganisationUnit
 from ramodels.mo import Validity
 from ramodels.mo._shared import OrgUnitHierarchy
-from ramqp.mo.models import PayloadType
+from ramqp.mo import PayloadType
 
 from orggatekeeper.calculate import association_callback
 from orggatekeeper.calculate import below_uuid
@@ -889,7 +889,7 @@ async def test_callback_engagement(
         "orggatekeeper.calculate.get_orgunit_from_engagement",
         return_value={org_unit_uuid},
     ):
-        await engagement_callback(context, payload=payload)
+        await engagement_callback(context, payload=payload, _=None)
     update_line_management_mock.assert_called_once_with(**context, uuid=org_unit_uuid)
 
 
@@ -905,7 +905,7 @@ async def test_callback_engagement_missing_uuid(
         "orggatekeeper.calculate.get_orgunit_from_engagement",
         side_effect=ValueError,
     ):
-        await engagement_callback(context, payload=payload)
+        await engagement_callback(context, payload=payload, _=None)
     update_line_management_mock.assert_not_called()
 
 
@@ -920,7 +920,7 @@ async def test_callback_association(
     with patch(
         "orggatekeeper.calculate.get_orgunit_from_association", return_value={uuid4()}
     ):
-        await association_callback(context, payload=payload)
+        await association_callback(context, payload=payload, _=None)
     update_line_management_mock.assert_called_once()
 
 
@@ -935,7 +935,7 @@ async def test_callback_association_missing_uuid(
     with patch(
         "orggatekeeper.calculate.get_orgunit_from_association", side_effect=ValueError
     ):
-        await association_callback(context, payload=payload)
+        await association_callback(context, payload=payload, _=None)
     update_line_management_mock.assert_not_called()
 
 
@@ -945,6 +945,7 @@ async def test_callback_org_unit(
     context: dict[str, Any],
 ) -> None:
     """Test that changes calls update line management with an org_units uuid"""
-    payload = PayloadType(uuid=uuid4(), object_uuid=uuid4(), time=datetime.now())
-    await org_unit_callback(context, payload=payload)
-    update_line_management_mock.assert_called_once_with(**context, uuid=payload.uuid)
+    uuid = uuid4()
+    payload = PayloadType(uuid=uuid, object_uuid=uuid4(), time=datetime.now())
+    await org_unit_callback(context, payload=payload, _=None)
+    update_line_management_mock.assert_called_once_with(**context, uuid=uuid)
