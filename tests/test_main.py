@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: MPL-2.0
 # pylint: disable=redefined-outer-name
 # pylint: disable=too-many-arguments
+# pylint: disable=unused-argument
 """Test the fetch_org_unit function."""
 import asyncio
 from time import monotonic
@@ -118,8 +119,10 @@ def fastapi_app(
 
 @pytest.fixture
 def test_client_builder(
-    fastapi_app_builder: Callable[..., FastAPI]
+    fastapi_app_builder: Callable[..., FastAPI],
+    mock_amqp_settings: pytest.MonkeyPatch,
 ) -> Generator[Callable[..., TestClient], None, None]:
+
     """Fixture for the FastAPI test client builder."""
 
     def builder(*args: Any, **kwargs: Any) -> TestClient:
@@ -358,7 +361,9 @@ async def test_readiness_endpoint_exception(
 
 
 @patch("orggatekeeper.main.PersistentGraphQLClient")
-def test_gql_client_created_with_timeout(mock_gql_client: MagicMock) -> None:
+def test_gql_client_created_with_timeout(
+    mock_gql_client: MagicMock, mock_amqp_settings: pytest.MonkeyPatch
+) -> None:
     """Test that PersistentGraphQLClient is called with timeout setting"""
 
     # Arrange

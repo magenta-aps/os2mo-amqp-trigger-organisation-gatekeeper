@@ -32,15 +32,6 @@ class LogLevel(Enum):
 logger = structlog.get_logger()
 
 
-class OrgGatekeeperConnectionSettings(AMQPConnectionSettings):
-    """Organisation Gatekeeper-specific connection settings."""
-
-    queue_prefix = "os2mo-amqp-trigger-organisation-gatekeeper"
-    AMQP_URL: AnyHttpUrl = "amqp://guest:guest@rabbitmq:5672"
-    # TODO: Ensure we don't crash MO when running somewhat concurrently
-    prefetch_count = 1
-
-
 class Settings(BaseSettings):
     """Settings for organisation gatekeeper.
 
@@ -48,9 +39,10 @@ class Settings(BaseSettings):
     * https://git.magenta.dk/rammearkitektur/ramqp/-/blob/master/ramqp/config.py
     """
 
-    amqp: OrgGatekeeperConnectionSettings = Field(
-        default_factory=OrgGatekeeperConnectionSettings
-    )
+    amqp: AMQPConnectionSettings
+
+    # TODO: Ensure we don't crash MO when running somewhat concurrently
+    prefetch_count = 1
 
     commit_tag: str = Field("HEAD", description="Git commit tag.")
     commit_sha: str = Field("HEAD", description="Git commit SHA.")

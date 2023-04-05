@@ -399,7 +399,9 @@ def model_client() -> Generator[AsyncMock, None, None]:
 
 
 @pytest.fixture()
-def set_settings() -> Generator[Callable[..., Settings], None, None]:
+def set_settings(
+    mock_amqp_settings: pytest.MonkeyPatch,
+) -> Generator[Callable[..., Settings], None, None]:
     """Fixture to mock get_settings."""
 
     def setup_mock_settings(*args: Any, **kwargs: Any) -> Settings:
@@ -735,7 +737,7 @@ async def test_update_line_management_line_for_root_org_unit(
     ]
 
 
-async def test_get_class_uuid_preseed() -> None:
+async def test_get_class_uuid_preseed(mock_amqp_settings: pytest.MonkeyPatch) -> None:
     """Test get_class_uuid with pre-seeded uuid."""
     uuid = uuid4()
     settings = get_settings(
