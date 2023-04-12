@@ -22,7 +22,7 @@ from asgi_lifespan import LifespanManager
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from orggatekeeper.config import get_settings
+from orggatekeeper.config import Settings
 from orggatekeeper.main import build_information
 from orggatekeeper.main import construct_clients
 from orggatekeeper.main import create_app
@@ -362,19 +362,19 @@ async def test_readiness_endpoint_exception(
 
 @patch("orggatekeeper.main.PersistentGraphQLClient")
 def test_gql_client_created_with_timeout(
-    mock_gql_client: MagicMock, mock_amqp_settings: pytest.MonkeyPatch
+    gql_client: MagicMock, settings: Settings
 ) -> None:
     """Test that PersistentGraphQLClient is called with timeout setting"""
 
     # Arrange
-    settings = get_settings(client_secret="not used", graphql_timeout=15)
+    settings.graphql_timeout = 15
 
     # Act
     construct_clients(settings)
 
     # Assert
-    assert 15 == mock_gql_client.call_args.kwargs["httpx_client_kwargs"]["timeout"]
-    assert 15 == mock_gql_client.call_args.kwargs["execute_timeout"]
+    assert 15 == gql_client.call_args.kwargs["httpx_client_kwargs"]["timeout"]
+    assert 15 == gql_client.call_args.kwargs["execute_timeout"]
 
 
 @patch("orggatekeeper.calculate.update_line_management", return_value=AsyncMock())

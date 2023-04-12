@@ -5,7 +5,6 @@
 """This module contains pytest specific code, fixtures and helpers."""
 from datetime import datetime
 from typing import Any
-from typing import Callable
 from typing import Generator
 from unittest.mock import AsyncMock
 from unittest.mock import MagicMock
@@ -69,7 +68,7 @@ def model_client() -> Generator[AsyncMock, None, None]:
 
 
 @pytest.fixture()
-def settings() -> Generator[Callable[..., Settings], None, None]:
+def settings() -> Generator:
     """Fixture to mock get_settings."""
 
     def setup_mock_settings(*args: Any, **kwargs: Any) -> Settings:
@@ -81,7 +80,7 @@ def settings() -> Generator[Callable[..., Settings], None, None]:
         )
         return sett
 
-    yield setup_mock_settings
+    yield setup_mock_settings()
 
 
 @pytest.fixture()

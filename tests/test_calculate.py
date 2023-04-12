@@ -7,7 +7,6 @@
 # pylint: disable=too-many-arguments
 from datetime import datetime
 from typing import Any
-from typing import Callable
 from unittest.mock import AsyncMock
 from unittest.mock import call
 from unittest.mock import MagicMock
@@ -36,7 +35,6 @@ from orggatekeeper.calculate import is_self_owned
 from orggatekeeper.calculate import org_unit_callback
 from orggatekeeper.calculate import should_hide
 from orggatekeeper.calculate import update_line_management
-from orggatekeeper.config import get_settings
 from orggatekeeper.config import Settings
 from orggatekeeper.mo import fetch_class_uuid
 from tests import ORG_UUID
@@ -413,12 +411,12 @@ async def test_update_line_management_dry_run(
     should_hide: MagicMock,
     gql_client: MagicMock,
     model_client: AsyncMock,
-    set_settings: Callable[..., Settings],
+    settings: Settings,
     class_uuid: MagicMock,
     org_unit: OrganisationUnit,
 ) -> None:
     """Test that update_line_management can set class_uuid."""
-    settings = set_settings(dry_run=True)
+    settings.dry_run = True
 
     should_hide.return_value = True
     fetch_org_unit.return_value = org_unit
@@ -664,13 +662,10 @@ async def test_update_line_management_line_for_root_org_unit(
     ]
 
 
-async def test_get_class_uuid_preseed(mock_amqp_settings: pytest.MonkeyPatch) -> None:
+async def test_get_class_uuid_preseed(settings: Settings) -> None:
     """Test get_class_uuid with pre-seeded uuid."""
     uuid = uuid4()
-    settings = get_settings(
-        client_secret="hunter2",
-        hidden_uuid=uuid,
-    )
+    settings.hidden_uuid = uuid
     session = MagicMock()
     class_uuid = await get_class_uuid(
         session,
