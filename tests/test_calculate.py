@@ -8,7 +8,6 @@
 from datetime import datetime
 from typing import Any
 from typing import Callable
-from typing import Generator
 from unittest.mock import AsyncMock
 from unittest.mock import call
 from unittest.mock import MagicMock
@@ -369,78 +368,6 @@ async def test_below_uuid_parent(
     assert result == expected
 
 
-@pytest.fixture()
-def org_unit() -> Generator[OrganisationUnit, None, None]:
-    """Construct a dummy OrganisationUnit.
-
-    Return:
-        Dummy OrganisationUnit.
-    """
-    yield OrganisationUnit.from_simplified_fields(
-        user_key="AAAA",
-        name="Test",
-        org_unit_type_uuid=uuid4(),
-        org_unit_level_uuid=uuid4(),
-        parent_uuid=uuid4(),
-        from_date=datetime.now().isoformat(),
-    )
-
-
-@pytest.fixture()
-def gql_client() -> Generator[MagicMock, None, None]:
-    """Fixture to mock GraphQLClient."""
-    yield MagicMock()
-
-
-@pytest.fixture()
-def model_client() -> Generator[AsyncMock, None, None]:
-    """Fixture to mock ModelClient."""
-    yield AsyncMock()
-
-
-@pytest.fixture()
-def set_settings(
-    mock_amqp_settings: pytest.MonkeyPatch,
-) -> Generator[Callable[..., Settings], None, None]:
-    """Fixture to mock get_settings."""
-
-    def setup_mock_settings(*args: Any, **kwargs: Any) -> Settings:
-        settings = get_settings(client_secret="hunter2", *args, **kwargs)
-        return settings
-
-    yield setup_mock_settings
-
-
-@pytest.fixture()
-def settings(set_settings: Callable[..., Settings]) -> Generator[Settings, None, None]:
-    """Fixture to mock get_settings."""
-    yield set_settings()
-
-
-@pytest.fixture()
-def class_uuid(
-    gql_client: MagicMock, settings: Settings
-) -> Generator[UUID, None, None]:
-    """Fixture to mock get_class_uuid."""
-    with patch("orggatekeeper.calculate.get_class_uuid") as get_class_uuid:
-        class_uuid = uuid4()
-        get_class_uuid.return_value = class_uuid
-        yield class_uuid
-
-
-@pytest.fixture()
-def context(
-    gql_client: MagicMock, model_client: AsyncMock, settings: Settings
-) -> dict[str, Any]:
-    """Fixture to generate context"""
-    return {
-        "gql_client": gql_client,
-        "model_client": model_client,
-        "settings": settings,
-        "org_uuid": ORG_UUID,
-    }
-
-
 @patch("orggatekeeper.calculate.is_line_management")
 @patch("orggatekeeper.calculate.should_hide")
 @patch("orggatekeeper.calculate.fetch_org_unit")
@@ -757,14 +684,11 @@ async def test_get_class_uuid_preseed(mock_amqp_settings: pytest.MonkeyPatch) ->
     "orggatekeeper.mo.fetch_class_uuid",
     new_callable=AsyncMock,
 )
-async def test_get_class_uuid(
-    fetch_class_uuid: MagicMock,
-) -> None:
+async def test_get_class_uuid(fetch_class_uuid: MagicMock, settings: MagicMock) -> None:
     """Test get_class_uuid with pre-seeded uuid."""
     uuid = uuid4()
     fetch_class_uuid.return_value = uuid
 
-    settings = get_settings(client_secret="hunter2")
     session = MagicMock()
     class_uuid = await get_class_uuid(
         session,

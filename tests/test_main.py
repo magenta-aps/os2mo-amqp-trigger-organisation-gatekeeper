@@ -136,7 +136,7 @@ def test_client(
     test_client_builder: Callable[..., TestClient]
 ) -> Generator[TestClient, None, None]:
     """Fixture for the FastAPI test client."""
-    yield test_client_builder(client_secret="hunter2", expose_metrics=False)
+    yield test_client_builder()
 
 
 async def test_root_endpoint(test_client: TestClient) -> None:
