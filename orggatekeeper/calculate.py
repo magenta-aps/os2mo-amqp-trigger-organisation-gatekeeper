@@ -5,12 +5,10 @@
 import datetime
 import re
 from asyncio import gather
-from typing import Annotated
 from typing import Any
 from uuid import UUID
 
 import structlog
-from fastapi import Depends
 from gql import gql
 from more_itertools import one
 from raclients.graph.client import PersistentGraphQLClient
@@ -18,7 +16,7 @@ from raclients.modelclient.mo import ModelClient
 from ramodels.mo import Validity
 from ramodels.mo._shared import OrgUnitHierarchy
 from ramqp.depends import Context
-from ramqp.depends import sleep_on_error
+from ramqp.depends import SleepOnError
 from ramqp.mo import MORouter
 from ramqp.mo import PayloadType
 
@@ -28,7 +26,7 @@ from .mo import get_class_uuid
 from .mo import get_it_system_uuid
 
 router = MORouter()
-SleepOnError = Annotated[None, Depends(sleep_on_error(delay=10))]
+
 logger = structlog.get_logger()
 ny_regex = re.compile(r"NY\d-niveau")
 
