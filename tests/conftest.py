@@ -15,7 +15,7 @@ from uuid import uuid4
 import pytest
 from ramodels.mo import OrganisationUnit
 
-from orggatekeeper.config import ConnectionSettings
+from orggatekeeper.config import OrgGatekeeperConnectionSettings
 from orggatekeeper.config import Settings
 from tests import ORG_UUID
 
@@ -35,7 +35,9 @@ def mock_amqp_settings(monkeypatch: pytest.MonkeyPatch) -> None:
 @pytest.fixture
 def mock_connection_settings() -> Generator:
     """Patch environment variable for amqp url."""
-    yield ConnectionSettings(url="amqp://guest:guest@msg_broker:5672/os2mo")
+    yield OrgGatekeeperConnectionSettings(
+        url="amqp://guest:guest@msg_broker:5672/os2mo"
+    )
 
 
 @pytest.fixture()
@@ -73,7 +75,9 @@ def settings() -> Generator:
 
     def setup_mock_settings(*args: Any, **kwargs: Any) -> Settings:
         sett = Settings(
-            amqp=ConnectionSettings(url="amqp://guest:guest@msg_broker:5672/os2mo"),
+            amqp=OrgGatekeeperConnectionSettings(
+                url="amqp://guest:guest@msg_broker:5672/os2mo"
+            ),
             client_secret="hunter2",
             *args,
             **kwargs
