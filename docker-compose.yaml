@@ -9,7 +9,6 @@ services:
     command: ["uvicorn", "--factory", "app.main:create_app", "--host", "0.0.0.0", "--reload"]
     environment:
       AMQP__URL: "amqp://guest:guest@msg_broker:5672/"
-      AMQP__QUEUE_PREFIX: "os2mo-amqp-trigger-organisation-gatekeeper"
 
       AUTH_SERVER: "http://keycloak:8080/auth"
 
