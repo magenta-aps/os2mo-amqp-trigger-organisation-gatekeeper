@@ -36,6 +36,7 @@ from orggatekeeper.calculate import is_self_owned
 from orggatekeeper.calculate import org_unit_callback
 from orggatekeeper.calculate import should_hide
 from orggatekeeper.calculate import update_line_management
+from orggatekeeper.config import Settings
 from orggatekeeper.mo import fetch_class_uuid
 from tests import ORG_UUID
 
@@ -411,7 +412,7 @@ async def test_update_line_management_dry_run(
     should_hide: MagicMock,
     gql_client: MagicMock,
     model_client: AsyncMock,
-    set_settings: Callable,
+    set_settings: Callable[..., Settings],
     class_uuid: MagicMock,
     org_unit: OrganisationUnit,
 ) -> None:
@@ -662,7 +663,7 @@ async def test_update_line_management_line_for_root_org_unit(
     ]
 
 
-async def test_get_class_uuid_preseed(set_settings: Callable) -> None:
+async def test_get_class_uuid_preseed(set_settings: Callable[..., Settings]) -> None:
     """Test get_class_uuid with pre-seeded uuid."""
     uuid = uuid4()
 

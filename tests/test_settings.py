@@ -22,7 +22,7 @@ def test_missing_client_secret(mock_amqp_settings: pytest.MonkeyPatch) -> None:
     assert "client_secret\n  field required" in str(excinfo.value)
 
 
-def test_happy_path(set_settings: Callable) -> None:
+def test_happy_path(set_settings: Callable[..., Settings]) -> None:
     """Test that we can construct and edit settings."""
     get_settings.cache_clear()
 
@@ -42,7 +42,7 @@ def test_graphql_timeout_default(mock_settings: Settings) -> None:
     assert 120 == mock_settings.graphql_timeout
 
 
-def test_graphql_timeout_override(set_settings: Callable) -> None:
+def test_graphql_timeout_override(set_settings: Callable[..., Settings]) -> None:
     """Test that default GraphQL client timeout is set correctly"""
     settings = set_settings(graphql_timeout=121)
 
