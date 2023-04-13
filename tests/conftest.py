@@ -70,21 +70,15 @@ def model_client() -> Generator[AsyncMock, None, None]:
 
 
 @pytest.fixture()
-def settings() -> Generator:
+def settings() -> Generator:  # type: ignore
     """Fixture to mock get_settings."""
 
-    def setup_mock_settings(*args: Any, **kwargs: Any) -> Settings:
-        sett = Settings(
-            amqp=OrgGatekeeperConnectionSettings(
-                url="amqp://guest:guest@msg_broker:5672/os2mo"
-            ),
-            client_secret="hunter2",
-            *args,
-            **kwargs
-        )
-        return sett
-
-    yield setup_mock_settings()
+    yield Settings(
+        amqp=OrgGatekeeperConnectionSettings(
+            url="amqp://guest:guest@msg_broker:5672/os2mo"
+        ),
+        client_secret="hunter2",
+    )
 
 
 @pytest.fixture()

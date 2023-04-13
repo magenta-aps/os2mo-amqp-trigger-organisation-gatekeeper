@@ -45,9 +45,7 @@ class Settings(BaseSettings):
     * https://git.magenta.dk/rammearkitektur/ramqp/-/blob/master/ramqp/config.py
     """
 
-    amqp: OrgGatekeeperConnectionSettings = Field(
-        default_factory=OrgGatekeeperConnectionSettings  # type: ignore
-    )
+    amqp: OrgGatekeeperConnectionSettings
 
     commit_tag: str = Field("HEAD", description="Git commit tag.")
     commit_sha: str = Field("HEAD", description="Git commit SHA.")
