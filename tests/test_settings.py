@@ -42,8 +42,8 @@ def test_graphql_timeout_default(mock_settings: Settings) -> None:
     assert 120 == mock_settings.graphql_timeout
 
 
-def test_graphql_timeout_override(set_settings: Callable[..., Settings]) -> None:
-    """Test that default GraphQL client timeout is set correctly"""
-    settings = set_settings(graphql_timeout=121)
+def test_graphql_timeout_non_default(set_settings: Callable[..., Settings]) -> None:
+    """Test that GraphQL client timeout is set to overridden value"""
 
-    assert 121 == settings.graphql_timeout
+    settings = set_settings(graphql_timeout=10)
+    assert 10 == settings.graphql_timeout
