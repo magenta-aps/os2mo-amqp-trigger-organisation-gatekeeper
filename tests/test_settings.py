@@ -30,8 +30,7 @@ def test_happy_path(set_settings: Callable[..., Settings]) -> None:
     assert isinstance(settings.client_secret, SecretStr)
     assert settings.client_secret.get_secret_value() == "AzureDiamond"
 
-    settings = set_settings()
-    settings.client_secret = SecretStr("hunter2")
+    settings = set_settings(client_secret="hunter2")
     assert isinstance(settings.client_secret, SecretStr)
     assert settings.client_secret.get_secret_value() == "hunter2"
 
