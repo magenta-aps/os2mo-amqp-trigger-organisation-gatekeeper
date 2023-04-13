@@ -69,15 +69,13 @@ async def healthcheck_gql(gql_client: PersistentGraphQLClient) -> bool:
     Returns:
         Whether the client is healthy or not.
     """
-    query = gql(
-        """
+    query = gql("""
         query HealthcheckQuery {
             org {
                 uuid
             }
         }
-        """
-    )
+        """)
     try:
         result = await gql_client.execute(query)
         if result["org"]["uuid"]:

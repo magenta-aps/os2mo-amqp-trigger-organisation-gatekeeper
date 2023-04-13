@@ -28,15 +28,13 @@ async def fetch_class_uuid(
         The UUID of class.
     """
 
-    query = gql(
-        """
+    query = gql("""
         query ClassQuery($user_keys: [String!]) {
             classes(user_keys: $user_keys) {
                 uuid
             }
         }
-        """
-    )
+        """)
     result = await gql_client.execute(query, {"user_keys": [class_user_key]})
     class_uuid = one(result["classes"])["uuid"]
     return UUID(class_uuid)
@@ -52,15 +50,13 @@ async def fetch_org_uuid(gql_client: PersistentGraphQLClient) -> UUID:
     Returns:
         The UUID of the LoRa organisation.
     """
-    query = gql(
-        """
+    query = gql("""
         query OrganisationUuidQuery {
             org {
                 uuid
             }
         }
-        """
-    )
+        """)
     result = await gql_client.execute(query)
     return UUID(result["org"]["uuid"])
 
@@ -77,8 +73,7 @@ async def fetch_org_unit(
     Returns:
         The organisation unit object.
     """
-    query = gql(
-        """
+    query = gql("""
         query OrgUnitQuery($uuids: [UUID!]) {
             org_units(uuids: $uuids) {
                 objects {
@@ -96,8 +91,7 @@ async def fetch_org_unit(
                 }
             }
         }
-        """
-    )
+        """)
     logger.debug("Fetching org-unit via GraphQL", uuid=uuid)
     result = await gql_client.execute(query, {"uuids": [str(uuid)]})
     obj = one(one(result["org_units"])["objects"])
@@ -155,15 +149,13 @@ async def get_it_system_uuid(
     Returns:
         UUID of the it-system
     """
-    query = gql(
-        """
+    query = gql("""
         query ITSystemQuery($user_keys: [String!]) {
           itsystems(user_keys: $user_keys) {
             uuid
           }
         }
-        """
-    )
+        """)
 
     result = await gql_client.execute(query, {"user_keys": [user_key]})
     it_system = one(result["itsystems"])
