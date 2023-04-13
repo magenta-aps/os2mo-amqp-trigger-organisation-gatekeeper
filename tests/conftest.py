@@ -5,6 +5,7 @@
 """This module contains pytest specific code, fixtures and helpers."""
 from datetime import datetime
 from typing import Any
+from typing import Callable
 from typing import Generator
 from unittest.mock import AsyncMock
 from unittest.mock import MagicMock
@@ -15,29 +16,15 @@ from uuid import uuid4
 import pytest
 from ramodels.mo import OrganisationUnit
 
-from orggatekeeper.config import OrgGatekeeperConnectionSettings
 from orggatekeeper.config import Settings
+from tests import DEFAULT_AMQP_URL
 from tests import ORG_UUID
-
-
-@pytest.fixture
-def mock_client_secret(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Patch environment variable for client secret"""
-    monkeypatch.setenv("CLIENT_SECRET", "AzureDiamond")
 
 
 @pytest.fixture
 def mock_amqp_settings(monkeypatch: pytest.MonkeyPatch) -> None:
     """Patch environment variable for amqp url."""
-    monkeypatch.setenv("AMQP__URL", "amqp://guest:guest@msg_broker:5672/os2mo")
-
-
-@pytest.fixture
-def mock_connection_settings() -> Generator:
-    """Patch environment variable for amqp url."""
-    yield OrgGatekeeperConnectionSettings(
-        url="amqp://guest:guest@msg_broker:5672/os2mo"
-    )
+    monkeypatch.setenv("AMQP__URL", DEFAULT_AMQP_URL)
 
 
 @pytest.fixture()
@@ -70,15 +57,29 @@ def model_client() -> Generator[AsyncMock, None, None]:
 
 
 @pytest.fixture()
-def settings() -> Generator:  # type: ignore
+def set_settings() -> Generator[Callable[..., Settings], None, None]:
     """Fixture to mock get_settings."""
 
-    yield Settings(
-        amqp=OrgGatekeeperConnectionSettings(
-            url="amqp://guest:guest@msg_broker:5672/os2mo"
-        ),
-        client_secret="hunter2",
-    )
+    def setup_mock_settings(
+        *args: Any,
+        amqp_url: str = DEFAULT_AMQP_URL,
+        client_secret: str = "hunter2",
+        **kwargs: Any
+    ) -> Settings:
+        settings = Settings(
+            *args, amqp={"url": amqp_url}, client_secret=client_secret, **kwargs
+        )
+        return settings
+
+    yield setup_mock_settings
+
+
+@pytest.fixture()
+def mock_settings(
+    set_settings: Callable[..., Settings]
+) -> Generator[Settings, None, None]:
+    """Fixture to mock get_settings."""
+    yield set_settings()
 
 
 @pytest.fixture()
@@ -92,12 +93,12 @@ def class_uuid() -> Generator[UUID, None, None]:
 
 @pytest.fixture()
 def context(
-    gql_client: MagicMock, model_client: AsyncMock, settings: Settings
+    gql_client: MagicMock, model_client: AsyncMock, mock_settings: Settings
 ) -> dict[str, Any]:
     """Fixture to generate context"""
     return {
         "gql_client": gql_client,
         "model_client": model_client,
-        "settings": settings,
+        "settings": mock_settings,
         "org_uuid": ORG_UUID,
     }

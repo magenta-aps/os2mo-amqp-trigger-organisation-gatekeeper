@@ -7,6 +7,7 @@
 # pylint: disable=too-many-arguments
 from datetime import datetime
 from typing import Any
+from typing import Callable
 from unittest.mock import AsyncMock
 from unittest.mock import call
 from unittest.mock import MagicMock
@@ -35,7 +36,6 @@ from orggatekeeper.calculate import is_self_owned
 from orggatekeeper.calculate import org_unit_callback
 from orggatekeeper.calculate import should_hide
 from orggatekeeper.calculate import update_line_management
-from orggatekeeper.config import Settings
 from orggatekeeper.mo import fetch_class_uuid
 from tests import ORG_UUID
 
@@ -411,12 +411,12 @@ async def test_update_line_management_dry_run(
     should_hide: MagicMock,
     gql_client: MagicMock,
     model_client: AsyncMock,
-    settings: Settings,
+    set_settings: Callable,
     class_uuid: MagicMock,
     org_unit: OrganisationUnit,
 ) -> None:
     """Test that update_line_management can set class_uuid."""
-    settings.dry_run = True
+    settings = set_settings(dry_run=True)
 
     should_hide.return_value = True
     fetch_org_unit.return_value = org_unit
@@ -662,10 +662,11 @@ async def test_update_line_management_line_for_root_org_unit(
     ]
 
 
-async def test_get_class_uuid_preseed(settings: Settings) -> None:
+async def test_get_class_uuid_preseed(set_settings: Callable) -> None:
     """Test get_class_uuid with pre-seeded uuid."""
     uuid = uuid4()
-    settings.hidden_uuid = uuid
+
+    settings = set_settings(hidden_uuid=uuid)
     session = MagicMock()
     class_uuid = await get_class_uuid(
         session,
@@ -679,7 +680,9 @@ async def test_get_class_uuid_preseed(settings: Settings) -> None:
     "orggatekeeper.mo.fetch_class_uuid",
     new_callable=AsyncMock,
 )
-async def test_get_class_uuid(fetch_class_uuid: MagicMock, settings: MagicMock) -> None:
+async def test_get_class_uuid(
+    fetch_class_uuid: MagicMock, mock_settings: MagicMock
+) -> None:
     """Test get_class_uuid with pre-seeded uuid."""
     uuid = uuid4()
     fetch_class_uuid.return_value = uuid
@@ -687,8 +690,8 @@ async def test_get_class_uuid(fetch_class_uuid: MagicMock, settings: MagicMock) 
     session = MagicMock()
     class_uuid = await get_class_uuid(
         session,
-        class_uuid=settings.hidden_uuid,
-        class_user_key=settings.hidden_user_key,
+        class_uuid=mock_settings.hidden_uuid,
+        class_user_key=mock_settings.hidden_user_key,
     )
     assert class_uuid == uuid
 
