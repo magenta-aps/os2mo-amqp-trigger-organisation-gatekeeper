@@ -41,7 +41,7 @@ trio = ["trio (>=0.16,<0.22)"]
 
 [[package]]
 name = "asgi-lifespan"
-version = "2.0.0"
+version = "2.1.0"
 description = "Programmatic startup/shutdown of ASGI apps."
 category = "dev"
 optional = false
@@ -1274,7 +1274,7 @@ multidict = ">=4.0"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.10"
-content-hash = "891933ae62debcbbe970bf09c2936e809d9abb35e4641f70811fe9f608415186"
+content-hash = "9efa50dae51800cff86e01f9086da491708519a191a7194593dacf7b2e9afa39"
 
 [metadata.files]
 aio-pika = [
@@ -1290,8 +1290,8 @@ anyio = [
     {file = "anyio-3.6.2.tar.gz", hash = "sha256:25ea0d673ae30af41a0c442f81cf3b38c7e79fdc7b60335a4c14e05eb0947421"},
 ]
 asgi-lifespan = [
-    {file = "asgi-lifespan-2.0.0.tar.gz", hash = "sha256:d46a31ff681e9edf1f776c9f61cf8fa6274cc66fca8cb4f11e940b1183e18842"},
-    {file = "asgi_lifespan-2.0.0-py3-none-any.whl", hash = "sha256:420582b1786b238d035244415dc11536acdbcb24762cba1c5e9bddc565960277"},
+    {file = "asgi-lifespan-2.1.0.tar.gz", hash = "sha256:5e2effaf0bfe39829cf2d64e7ecc47c7d86d676a6599f7afba378c31f5e3a308"},
+    {file = "asgi_lifespan-2.1.0-py3-none-any.whl", hash = "sha256:ed840706680e28428c01e14afb3875d7d76d3206f3d5b2f2294e059b5c23804f"},
 ]
 astroid = [
     {file = "astroid-2.15.0-py3-none-any.whl", hash = "sha256:e3e4d0ffc2d15d954065579689c36aac57a339a4679a679579af6401db4d3fdb"},
