@@ -8,7 +8,6 @@
 from datetime import datetime
 from typing import Any
 from typing import Callable
-from typing import Generator
 from unittest.mock import AsyncMock
 from unittest.mock import call
 from unittest.mock import MagicMock
@@ -22,7 +21,7 @@ from more_itertools import one
 from ramodels.mo import OrganisationUnit
 from ramodels.mo import Validity
 from ramodels.mo._shared import OrgUnitHierarchy
-from ramqp.mo.models import PayloadType
+from ramqp.mo import PayloadType
 
 from orggatekeeper.calculate import association_callback
 from orggatekeeper.calculate import below_uuid
@@ -37,7 +36,6 @@ from orggatekeeper.calculate import is_self_owned
 from orggatekeeper.calculate import org_unit_callback
 from orggatekeeper.calculate import should_hide
 from orggatekeeper.calculate import update_line_management
-from orggatekeeper.config import get_settings
 from orggatekeeper.config import Settings
 from orggatekeeper.mo import fetch_class_uuid
 from tests import ORG_UUID
@@ -369,76 +367,6 @@ async def test_below_uuid_parent(
     assert result == expected
 
 
-@pytest.fixture()
-def org_unit() -> Generator[OrganisationUnit, None, None]:
-    """Construct a dummy OrganisationUnit.
-
-    Return:
-        Dummy OrganisationUnit.
-    """
-    yield OrganisationUnit.from_simplified_fields(
-        user_key="AAAA",
-        name="Test",
-        org_unit_type_uuid=uuid4(),
-        org_unit_level_uuid=uuid4(),
-        parent_uuid=uuid4(),
-        from_date=datetime.now().isoformat(),
-    )
-
-
-@pytest.fixture()
-def gql_client() -> Generator[MagicMock, None, None]:
-    """Fixture to mock GraphQLClient."""
-    yield MagicMock()
-
-
-@pytest.fixture()
-def model_client() -> Generator[AsyncMock, None, None]:
-    """Fixture to mock ModelClient."""
-    yield AsyncMock()
-
-
-@pytest.fixture()
-def set_settings() -> Generator[Callable[..., Settings], None, None]:
-    """Fixture to mock get_settings."""
-
-    def setup_mock_settings(*args: Any, **kwargs: Any) -> Settings:
-        settings = get_settings(client_secret="hunter2", *args, **kwargs)
-        return settings
-
-    yield setup_mock_settings
-
-
-@pytest.fixture()
-def settings(set_settings: Callable[..., Settings]) -> Generator[Settings, None, None]:
-    """Fixture to mock get_settings."""
-    yield set_settings()
-
-
-@pytest.fixture()
-def class_uuid(
-    gql_client: MagicMock, settings: Settings
-) -> Generator[UUID, None, None]:
-    """Fixture to mock get_class_uuid."""
-    with patch("orggatekeeper.calculate.get_class_uuid") as get_class_uuid:
-        class_uuid = uuid4()
-        get_class_uuid.return_value = class_uuid
-        yield class_uuid
-
-
-@pytest.fixture()
-def context(
-    gql_client: MagicMock, model_client: AsyncMock, settings: Settings
-) -> dict[str, Any]:
-    """Fixture to generate context"""
-    return {
-        "gql_client": gql_client,
-        "model_client": model_client,
-        "settings": settings,
-        "org_uuid": ORG_UUID,
-    }
-
-
 @patch("orggatekeeper.calculate.is_line_management")
 @patch("orggatekeeper.calculate.should_hide")
 @patch("orggatekeeper.calculate.fetch_org_unit")
@@ -735,13 +663,11 @@ async def test_update_line_management_line_for_root_org_unit(
     ]
 
 
-async def test_get_class_uuid_preseed() -> None:
+async def test_get_class_uuid_preseed(set_settings: Callable[..., Settings]) -> None:
     """Test get_class_uuid with pre-seeded uuid."""
     uuid = uuid4()
-    settings = get_settings(
-        client_secret="hunter2",
-        hidden_uuid=uuid,
-    )
+
+    settings = set_settings(hidden_uuid=uuid)
     session = MagicMock()
     class_uuid = await get_class_uuid(
         session,
@@ -756,18 +682,17 @@ async def test_get_class_uuid_preseed() -> None:
     new_callable=AsyncMock,
 )
 async def test_get_class_uuid(
-    fetch_class_uuid: MagicMock,
+    fetch_class_uuid: MagicMock, mock_settings: MagicMock
 ) -> None:
     """Test get_class_uuid with pre-seeded uuid."""
     uuid = uuid4()
     fetch_class_uuid.return_value = uuid
 
-    settings = get_settings(client_secret="hunter2")
     session = MagicMock()
     class_uuid = await get_class_uuid(
         session,
-        class_uuid=settings.hidden_uuid,
-        class_user_key=settings.hidden_user_key,
+        class_uuid=mock_settings.hidden_uuid,
+        class_user_key=mock_settings.hidden_user_key,
     )
     assert class_uuid == uuid
 
@@ -889,7 +814,7 @@ async def test_callback_engagement(
         "orggatekeeper.calculate.get_orgunit_from_engagement",
         return_value={org_unit_uuid},
     ):
-        await engagement_callback(context, payload=payload)
+        await engagement_callback(context, payload=payload, _=None)
     update_line_management_mock.assert_called_once_with(**context, uuid=org_unit_uuid)
 
 
@@ -905,7 +830,7 @@ async def test_callback_engagement_missing_uuid(
         "orggatekeeper.calculate.get_orgunit_from_engagement",
         side_effect=ValueError,
     ):
-        await engagement_callback(context, payload=payload)
+        await engagement_callback(context, payload=payload, _=None)
     update_line_management_mock.assert_not_called()
 
 
@@ -920,7 +845,7 @@ async def test_callback_association(
     with patch(
         "orggatekeeper.calculate.get_orgunit_from_association", return_value={uuid4()}
     ):
-        await association_callback(context, payload=payload)
+        await association_callback(context, payload=payload, _=None)
     update_line_management_mock.assert_called_once()
 
 
@@ -935,7 +860,7 @@ async def test_callback_association_missing_uuid(
     with patch(
         "orggatekeeper.calculate.get_orgunit_from_association", side_effect=ValueError
     ):
-        await association_callback(context, payload=payload)
+        await association_callback(context, payload=payload, _=None)
     update_line_management_mock.assert_not_called()
 
 
@@ -945,6 +870,7 @@ async def test_callback_org_unit(
     context: dict[str, Any],
 ) -> None:
     """Test that changes calls update line management with an org_units uuid"""
-    payload = PayloadType(uuid=uuid4(), object_uuid=uuid4(), time=datetime.now())
-    await org_unit_callback(context, payload=payload)
-    update_line_management_mock.assert_called_once_with(**context, uuid=payload.uuid)
+    uuid = uuid4()
+    payload = PayloadType(uuid=uuid, object_uuid=uuid4(), time=datetime.now())
+    await org_unit_callback(context, payload=payload, _=None)
+    update_line_management_mock.assert_called_once_with(**context, uuid=uuid)

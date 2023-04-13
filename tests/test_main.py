@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: MPL-2.0
 # pylint: disable=redefined-outer-name
 # pylint: disable=too-many-arguments
+# pylint: disable=unused-argument
 """Test the fetch_org_unit function."""
 import asyncio
 from time import monotonic
@@ -21,7 +22,7 @@ from asgi_lifespan import LifespanManager
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from orggatekeeper.config import get_settings
+from orggatekeeper.config import Settings
 from orggatekeeper.main import build_information
 from orggatekeeper.main import construct_clients
 from orggatekeeper.main import create_app
@@ -118,8 +119,10 @@ def fastapi_app(
 
 @pytest.fixture
 def test_client_builder(
-    fastapi_app_builder: Callable[..., FastAPI]
+    fastapi_app_builder: Callable[..., FastAPI],
+    mock_amqp_settings: pytest.MonkeyPatch,
 ) -> Generator[Callable[..., TestClient], None, None]:
+
     """Fixture for the FastAPI test client builder."""
 
     def builder(*args: Any, **kwargs: Any) -> TestClient:
@@ -133,7 +136,7 @@ def test_client(
     test_client_builder: Callable[..., TestClient]
 ) -> Generator[TestClient, None, None]:
     """Fixture for the FastAPI test client."""
-    yield test_client_builder(client_secret="hunter2", expose_metrics=False)
+    yield test_client_builder()
 
 
 async def test_root_endpoint(test_client: TestClient) -> None:
@@ -358,18 +361,21 @@ async def test_readiness_endpoint_exception(
 
 
 @patch("orggatekeeper.main.PersistentGraphQLClient")
-def test_gql_client_created_with_timeout(mock_gql_client: MagicMock) -> None:
+def test_gql_client_created_with_timeout(
+    gql_client: MagicMock,
+    set_settings: Callable[..., Settings],
+) -> None:
     """Test that PersistentGraphQLClient is called with timeout setting"""
 
     # Arrange
-    settings = get_settings(client_secret="not used", graphql_timeout=15)
+    settings = set_settings(graphql_timeout=15)
 
     # Act
     construct_clients(settings)
 
     # Assert
-    assert 15 == mock_gql_client.call_args.kwargs["httpx_client_kwargs"]["timeout"]
-    assert 15 == mock_gql_client.call_args.kwargs["execute_timeout"]
+    assert 15 == gql_client.call_args.kwargs["httpx_client_kwargs"]["timeout"]
+    assert 15 == gql_client.call_args.kwargs["execute_timeout"]
 
 
 @patch("orggatekeeper.calculate.update_line_management", return_value=AsyncMock())
