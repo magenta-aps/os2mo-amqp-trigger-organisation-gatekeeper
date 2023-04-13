@@ -250,9 +250,11 @@ async def test_is_self_owned(expected: bool) -> None:
                         {
                             "itusers": [
                                 {
-                                    "itsystem_uuid": str(it_system_uuid)
-                                    if expected
-                                    else str(uuid4())
+                                    "itsystem_uuid": (
+                                        str(it_system_uuid)
+                                        if expected
+                                        else str(uuid4())
+                                    )
                                 }
                             ]
                         }
@@ -585,7 +587,6 @@ async def test_update_line_management_line(
 
     # If there are changes to org_unit_hierarchy, test that the parent is also checked
     else:
-
         assert should_hide_mock.call_count == 2
         if not should_hide_return:
             assert is_line_management_mock.call_count == 2

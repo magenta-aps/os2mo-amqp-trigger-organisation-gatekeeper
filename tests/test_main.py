@@ -122,7 +122,6 @@ def test_client_builder(
     fastapi_app_builder: Callable[..., FastAPI],
     mock_amqp_settings: pytest.MonkeyPatch,
 ) -> Generator[Callable[..., TestClient], None, None]:
-
     """Fixture for the FastAPI test client builder."""
 
     def builder(*args: Any, **kwargs: Any) -> TestClient:
@@ -224,7 +223,6 @@ async def test_lifespan(
 
     # Fire startup event on entry, and shutdown on exit
     async with LifespanManager(fastapi_app):
-
         assert len(router.mock_calls) == 0
 
         # Clean mock to only capture shutdown changes
