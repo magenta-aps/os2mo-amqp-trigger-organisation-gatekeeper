@@ -20,7 +20,7 @@ raclients = "^3.1.4"
 gql = "^3.2.0"
 more-itertools = "^9.1.0"
 ra-utils = "^1.13.3"
-uvicorn = {extras = ["standard"], version = "^0.21.0"}
+uvicorn = {extras = ["standard"], version = "^0.22.0"}
 prometheus-fastapi-instrumentator = "^6.0.0"
 fastapi = "^0.95.1"
 pytest-asyncio = "^0.21.0"
