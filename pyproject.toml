@@ -13,8 +13,8 @@ keywords = ["os2mo", "amqp"]
 
 [tool.poetry.dependencies]
 python = "^3.10"
-structlog = "^22.3.0"
-ramqp = "^8.2.1"
+structlog = "^23.1.0"
+ramqp = "^8.3.1"
 pydantic = "^1.10.7"
 raclients = "^3.1.4"
 gql = "^3.2.0"
