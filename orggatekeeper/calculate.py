@@ -19,6 +19,7 @@ from ramqp.depends import Context
 from ramqp.depends import SleepOnError
 from ramqp.mo import MORouter
 from ramqp.mo import PayloadType
+from ramqp.mo import PayloadUUID
 
 from .config import Settings
 from .mo import fetch_org_unit
@@ -426,7 +427,6 @@ async def get_orgunit_from_association(
             }
         }
         """)
-    logger.warn(associations_uuid)
     result = await gql_client.execute(query, {"uuids": str(associations_uuid)})
 
     objects = one(result["associations"])["objects"]
@@ -453,15 +453,13 @@ async def org_unit_callback(
     await update(context, org_units)
 
 
-@router.register("*.association.*")
+@router.register("association")
 async def association_callback(
-    context: Context, payload: PayloadType, _: SleepOnError
+    context: Context, payload: PayloadUUID, _: SleepOnError
 ) -> None:
     """Callback to check org_unit_hierarchy on changes to associations."""
     try:
-        org_units = await get_orgunit_from_association(
-            context["gql_client"], payload.object_uuid
-        )
+        org_units = await get_orgunit_from_association(context["gql_client"], payload)
     except ValueError:
         logger.debug("Association not found", payload=payload)
         return
@@ -470,15 +468,13 @@ async def association_callback(
     await update(context, org_units)
 
 
-@router.register("*.engagement.*")
+@router.register("engagement")
 async def engagement_callback(
-    context: Context, payload: PayloadType, _: SleepOnError
+    context: Context, payload: PayloadUUID, _: SleepOnError
 ) -> None:
     """Callback to check org_unit_hierarchy on changes to engagements."""
     try:
-        org_units = await get_orgunit_from_engagement(
-            context["gql_client"], payload.object_uuid
-        )
+        org_units = await get_orgunit_from_engagement(context["gql_client"], payload)
     except ValueError:
         logger.debug("Engagement not found", payload=payload)
         return
