@@ -932,7 +932,7 @@ python-dateutil = ">=2.8.2,<3.0.0"
 
 [[package]]
 name = "ramqp"
-version = "8.3.1"
+version = "8.4.0"
 description = "Rammearkitektur AMQP library (aio_pika wrapper)"
 category = "main"
 optional = false
@@ -1246,7 +1246,7 @@ multidict = ">=4.0"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.10"
-content-hash = "6966baa29bad170de84ae7584b698694cf845b63b9629cb02ca089a45c474e9c"
+content-hash = "60d574f23d76aee79bda49c2336d2dd9facc727119838b177e04f5e01faa137c"
 
 [metadata.files]
 aio-pika = [
@@ -2058,8 +2058,8 @@ ramodels = [
     {file = "ramodels-19.5.2.tar.gz", hash = "sha256:867f2ecbf733b97a72168e68df33954fa48c75ea686af27287c80e9eb0badf82"},
 ]
 ramqp = [
-    {file = "ramqp-8.3.1-py3-none-any.whl", hash = "sha256:c84ccd16b864be0f311722c57f46a08c22e3838b5d008207482259998e8a10f0"},
-    {file = "ramqp-8.3.1.tar.gz", hash = "sha256:f72b999baefcebad3b0ef74a27fe2298f179fc26155e68f7d4e29ad45c1f7681"},
+    {file = "ramqp-8.4.0-py3-none-any.whl", hash = "sha256:37a4ee0b5d04b5217b539b0fb622cc12effa90343111cf479d2c3ab56408bd3d"},
+    {file = "ramqp-8.4.0.tar.gz", hash = "sha256:1218e92f552583b97905081dfd34dbd9f1b039d6a7e599e8401fdad3714be4c5"},
 ]
 reorder-python-imports = [
     {file = "reorder_python_imports-3.9.0-py2.py3-none-any.whl", hash = "sha256:3f9c16e8781f54c944756d0d1eb34a8c863554f7a4eb3693f574fe19b1a29b56"},
