@@ -16,7 +16,7 @@ from raclients.modelclient.mo import ModelClient
 from ramodels.mo import Validity
 from ramodels.mo._shared import OrgUnitHierarchy
 from ramqp.depends import Context
-from ramqp.depends import SleepOnError
+from ramqp.depends import RateLimit
 from ramqp.mo import MORouter
 from ramqp.mo import PayloadType
 from ramqp.mo import PayloadUUID
@@ -442,7 +442,7 @@ async def update(context: Context, org_units: set[UUID]) -> None:
 @router.register("org_unit.org_unit.*")
 @router.register("org_unit.it.*")
 async def org_unit_callback(
-    context: Context, payload: PayloadType, _: SleepOnError
+    context: Context, payload: PayloadType, _: RateLimit
 ) -> None:
     """Callback to check org_unit_hierarchy.
 
@@ -455,7 +455,7 @@ async def org_unit_callback(
 
 @router.register("association")
 async def association_callback(
-    context: Context, payload: PayloadUUID, _: SleepOnError
+    context: Context, payload: PayloadUUID, _: RateLimit
 ) -> None:
     """Callback to check org_unit_hierarchy on changes to associations."""
     try:
@@ -470,7 +470,7 @@ async def association_callback(
 
 @router.register("engagement")
 async def engagement_callback(
-    context: Context, payload: PayloadUUID, _: SleepOnError
+    context: Context, payload: PayloadUUID, _: RateLimit
 ) -> None:
     """Callback to check org_unit_hierarchy on changes to engagements."""
     try:
