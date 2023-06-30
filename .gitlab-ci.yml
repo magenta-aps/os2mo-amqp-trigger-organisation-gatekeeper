@@ -56,6 +56,7 @@ include:
     - gitlab-ci-templates/common/docker-build-meta.v2.yml
     - gitlab-ci-templates/common/pre-commit.v1.yml
     - gitlab-ci-templates/common/config-updater-flux.v1.yml
+    - gitlab-ci-templates/common/config-updater-salt.v1.yml
 
 # Build
 ########
