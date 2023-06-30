@@ -654,7 +654,7 @@ testing = ["pytest", "pytest-benchmark"]
 
 [[package]]
 name = "pre-commit"
-version = "3.3.2"
+version = "3.3.3"
 description = "A framework for managing and maintaining multi-language pre-commit hooks."
 category = "dev"
 optional = false
@@ -1245,7 +1245,7 @@ multidict = ">=4.0"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.10"
-content-hash = "0cf459ceea695b90625289c16c3b57f536a6ab25ebd0834a2093bbc7a7064c85"
+content-hash = "5811dc6ae9210eeabcbbd74d10dc41ab18ebb42724dbd52da186f4cb604aab64"
 
 [metadata.files]
 aio-pika = [
@@ -1915,8 +1915,8 @@ pluggy = [
     {file = "pluggy-1.0.0.tar.gz", hash = "sha256:4224373bacce55f955a878bf9cfa763c1e360858e330072059e10bad68531159"},
 ]
 pre-commit = [
-    {file = "pre_commit-3.3.2-py2.py3-none-any.whl", hash = "sha256:8056bc52181efadf4aac792b1f4f255dfd2fb5a350ded7335d251a68561e8cb6"},
-    {file = "pre_commit-3.3.2.tar.gz", hash = "sha256:66e37bec2d882de1f17f88075047ef8962581f83c234ac08da21a0c58953d1f0"},
+    {file = "pre_commit-3.3.3-py2.py3-none-any.whl", hash = "sha256:10badb65d6a38caff29703362271d7dca483d01da88f9d7e05d0b97171c136cb"},
+    {file = "pre_commit-3.3.3.tar.gz", hash = "sha256:a2256f489cd913d575c145132ae196fe335da32d91a8294b7afe6622335dd023"},
 ]
 prometheus-client = [
     {file = "prometheus_client-0.17.0-py3-none-any.whl", hash = "sha256:a77b708cf083f4d1a3fb3ce5c95b4afa32b9c521ae363354a4a910204ea095ce"},
