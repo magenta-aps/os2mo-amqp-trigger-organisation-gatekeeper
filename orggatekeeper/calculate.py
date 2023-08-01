@@ -450,7 +450,10 @@ async def org_unit_callback(
     """
     org_units = {payload.uuid}
     logger.info("Changes to org_unit or its it-accounts", org_unit=org_units)
-    await update(context, org_units)
+    try:
+        await update(context, org_units)
+    except ValueError:
+        logger.info("No org_unit found. Skipping", payload=payload)
 
 
 @router.register("association")
@@ -460,12 +463,11 @@ async def association_callback(
     """Callback to check org_unit_hierarchy on changes to associations."""
     try:
         org_units = await get_orgunit_from_association(context["gql_client"], payload)
+        logger.info("Changes to association. Checking org_units", org_unit=org_units)
+        await update(context, org_units)
     except ValueError:
         logger.debug("Association not found", payload=payload)
         return
-
-    logger.info("Changes to association. Checking org_units", org_unit=org_units)
-    await update(context, org_units)
 
 
 @router.register("engagement")
@@ -475,10 +477,8 @@ async def engagement_callback(
     """Callback to check org_unit_hierarchy on changes to engagements."""
     try:
         org_units = await get_orgunit_from_engagement(context["gql_client"], payload)
+        logger.info("Changes to engagement. Checking org_units", org_unit=org_units)
+        await update(context, org_units)
     except ValueError:
         logger.debug("Engagement not found", payload=payload)
         return
-
-    logger.info("Changes to engagement. Checking org_units", org_unit=org_units)
-
-    await update(context, org_units)
