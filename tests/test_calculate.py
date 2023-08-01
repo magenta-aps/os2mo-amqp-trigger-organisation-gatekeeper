@@ -369,6 +369,18 @@ async def test_below_uuid_parent(
     assert result == expected
 
 
+async def test_below_uuid_unit_not_found() -> None:
+    """Test that below_uuid raises an error if the unit isn't found."""
+
+    async def execute(*args: Any, **kwargs: Any) -> dict[str, Any]:
+        return {"org_units": []}
+
+    session = MagicMock()
+    session.execute = execute
+    with pytest.raises(ValueError):
+        await below_uuid(session, uuid=uuid4(), uuids=set([uuid4()]))
+
+
 @patch("orggatekeeper.calculate.is_line_management")
 @patch("orggatekeeper.calculate.should_hide")
 @patch("orggatekeeper.calculate.fetch_org_unit")
@@ -867,6 +879,18 @@ async def test_callback_association_missing_uuid(
 
 @patch("orggatekeeper.calculate.update_line_management")
 async def test_callback_org_unit(
+    update_line_management_mock: MagicMock,
+    context: dict[str, Any],
+) -> None:
+    """Test that changes calls update line management with an org_units uuid"""
+    uuid = uuid4()
+    payload = PayloadType(uuid=uuid, object_uuid=uuid4(), time=datetime.now())
+    await org_unit_callback(context, payload=payload, _=None)
+    update_line_management_mock.assert_called_once_with(**context, uuid=uuid)
+
+
+@patch("orggatekeeper.calculate.update_line_management", side_effect=ValueError)
+async def test_callback_org_unit_not_found(
     update_line_management_mock: MagicMock,
     context: dict[str, Any],
 ) -> None:
