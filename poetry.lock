@@ -778,7 +778,7 @@ python-dateutil = ">=2.8.2,<3.0.0"
 
 [[package]]
 name = "ramqp"
-version = "9.0.2"
+version = "9.1.0"
 description = "Rammearkitektur AMQP library (aio_pika wrapper)"
 category = "main"
 optional = false
@@ -1046,7 +1046,7 @@ multidict = ">=4.0"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.10"
-content-hash = "488852d4f2b673517a1d15a366b58eebda35fefa9cb765be7c90bdd38e3a79a4"
+content-hash = "ad0a0b528fddc663261df4d70270434900ac35c9d6ad19d0bce4055008a6ffd2"
 
 [metadata.files]
 aio-pika = [
@@ -1704,8 +1704,8 @@ ramodels = [
     {file = "ramodels-19.5.2.tar.gz", hash = "sha256:867f2ecbf733b97a72168e68df33954fa48c75ea686af27287c80e9eb0badf82"},
 ]
 ramqp = [
-    {file = "ramqp-9.0.2-py3-none-any.whl", hash = "sha256:a0f362eceee663e6486ff76b264db8526feea37b5dd9bfce73eb8a0e77af5d34"},
-    {file = "ramqp-9.0.2.tar.gz", hash = "sha256:60dd5cf0915c8c6aa01ebd1e846b85e25181f85ec09e68293e55a76081cfcc47"},
+    {file = "ramqp-9.1.0-py3-none-any.whl", hash = "sha256:ad579673fc9ae1dc8f2b595e096e99f624e4a1bd1a006aca4361933d12294a71"},
+    {file = "ramqp-9.1.0.tar.gz", hash = "sha256:ef77991bbbd040cbe0651fd697cb11a6be60aaf471b4552e53fa87d9b127bbc9"},
 ]
 sentry-sdk = [
     {file = "sentry-sdk-1.29.0.tar.gz", hash = "sha256:5053aa7647533b207417cea5f3ee2d5e13aea7001dbb711f46348d7a72597d60"},
