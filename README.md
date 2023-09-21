@@ -16,8 +16,9 @@ If an organisation unit is not part of line management but has an it-account in 
 
 Any org_units that are configured to be hidden will be marked as such, and the same for each unit below it.
 
-I an organisation unit does not fall into any of the above categories it will be marked as 'outside hierarchy'.
-## configurations
+If an organisation unit does not fall into any of the above categories it will be marked as 'outside hierarchy'.
+
+## Configurations
 
 Adjust the environment variables either;
 * directly in `docker-compose.yml` or
@@ -27,7 +28,7 @@ Adjust the environment variables either;
 * `AMQP__URL`: variable to OS2mo's running message-broker,
 * `SELF_OWNED_IT_SYSTEM_CHECK`: The it-system to check if the unit should be marked as self-owned.
 
-## Usage:
+## Usage
 
 Start the container using `docker-compose` (assuming you already have a running development-instance of os2mo):
 ```
