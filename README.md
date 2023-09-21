@@ -5,23 +5,32 @@ SPDX-License-Identifier: MPL-2.0
 
 # Organisation Gatekeeper
 
-This repository contains an OS2mo AMQP Trigger that updates line management information.
+This repository contains an OS2mo AMQP Trigger that marks organisation units with one of four categories; Line management, self-owned, hidden or outside hierarchy.
 
-An organisation is part of line management iff:
-* The SD unit-level is NY{x}-niveau or
-* The SD unit-level is Afdelings-niveau and people are attached to it.
+An organisation unit is part of line management if:
+* The unit-level is NY{x}-niveau or Afdelings-niveau.
+* There are engagements or associations.
+* The organisation unit is bellow a unit that is defined as root of line management in the configuration of this program. 
 
-Additionally this function also hides organisation units iff:
-* Their user-key is contained within hidden_user_key or a child of it.
+If an organisation unit is not part of line management but has an it-account in a configured it-system it is marked as self-owned. 
 
-If an organisation unit is not part of line management but has an it-account in a chosen it-system it is marked as self-owned. The it-system uuid should be set in the variable `SELF_OWNED_IT_SYSTEM_CHECK`
-## Usage
+Any org_units that are configured to be hidden will be marked as such, and the same for each unit below it.
 
-Adjust the `AMQP__URL` variable to OS2mo's running message-broker, either;
+If an organisation unit does not fall into any of the above categories it will be marked as 'outside hierarchy'.
+
+## Configurations
+
+Adjust the environment variables either;
 * directly in `docker-compose.yml` or
 * by creating a `docker-compose.override.yaml` file.
 
-Now start the container using `docker-compose`:
+
+* `AMQP__URL`: variable to OS2mo's running message-broker,
+* `SELF_OWNED_IT_SYSTEM_CHECK`: The it-system to check if the unit should be marked as self-owned.
+
+## Usage
+
+Start the container using `docker-compose` (assuming you already have a running development-instance of os2mo):
 ```
 docker-compose up -d
 ```
