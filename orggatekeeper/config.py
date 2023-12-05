@@ -120,7 +120,13 @@ class Settings(BaseSettings):
             " self-owned."
         )
     )
-
+    hidden_engagement_types: list[str] = Field(
+        [],
+        description=(
+            "Names of classes of engagement type that are hidden. Engagements of this"
+            " type should be disregarded in calculating line management"
+        ),
+    )
     dry_run: bool = Field(
         False, description="Run in dry-run mode, only printing what would have changed."
     )
