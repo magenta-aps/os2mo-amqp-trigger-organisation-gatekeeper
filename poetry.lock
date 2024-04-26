@@ -800,15 +800,15 @@ structlog = ">=23.1.0,<24.0.0"
 
 [[package]]
 name = "sentry-sdk"
-version = "1.45.0"
+version = "2.0.1"
 description = "Python client for Sentry (https://sentry.io)"
 category = "main"
 optional = false
-python-versions = "*"
+python-versions = ">=3.6"
 
 [package.dependencies]
 certifi = "*"
-urllib3 = {version = ">=1.26.11", markers = "python_version >= \"3.6\""}
+urllib3 = ">=1.26.11"
 
 [package.extras]
 aiohttp = ["aiohttp (>=3.5)"]
@@ -1055,7 +1055,7 @@ multidict = ">=4.0"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.10"
-content-hash = "eec4a308bfd27cc26a8d533ccce46cb991abb05d4ff7ca49571012eb862c6452"
+content-hash = "c777149a2cc3d36c1ba51d553ce713cbf26fa2b84d5a33dff7845b14a7ea072a"
 
 [metadata.files]
 aio-pika = [
@@ -1726,8 +1726,8 @@ ramqp = [
     {file = "ramqp-9.3.0.tar.gz", hash = "sha256:cdac03edb3c712fb7ed0449f71d12b90290e0a67a2223cae6a0175fdcdcccff2"},
 ]
 sentry-sdk = [
-    {file = "sentry-sdk-1.45.0.tar.gz", hash = "sha256:509aa9678c0512344ca886281766c2e538682f8acfa50fd8d405f8c417ad0625"},
-    {file = "sentry_sdk-1.45.0-py2.py3-none-any.whl", hash = "sha256:1ce29e30240cc289a027011103a8c83885b15ef2f316a60bcc7c5300afa144f1"},
+    {file = "sentry_sdk-2.0.1-py2.py3-none-any.whl", hash = "sha256:b54c54a2160f509cf2757260d0cf3885b608c6192c2555a3857e3a4d0f84bdb3"},
+    {file = "sentry_sdk-2.0.1.tar.gz", hash = "sha256:c278e0f523f6f0ee69dc43ad26dcdb1202dffe5ac326ae31472e012d941bee21"},
 ]
 setuptools = [
     {file = "setuptools-68.0.0-py3-none-any.whl", hash = "sha256:11e52c67415a381d10d6b462ced9cfb97066179f0e871399e006c4ab101fc85f"},
