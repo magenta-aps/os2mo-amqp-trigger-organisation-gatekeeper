@@ -51,10 +51,10 @@ async def test_fetch_org_unit() -> None:
         params["kwargs"] = kwargs
 
         return {
-            "org_units": [
-                {
-                    "objects": [
-                        {
+            "org_units": {
+                "objects": [
+                    {
+                        "current": {
                             "uuid": str(uuid),
                             "user_key": "Viuf skole",
                             "validity": {
@@ -71,9 +71,9 @@ async def test_fetch_org_unit() -> None:
                                 "d4c6fb4a-233f-4b85-a77a-6dcdb13ee0db"
                             ),
                         }
-                    ]
-                }
-            ]
+                    }
+                ]
+            }
         }
 
     session = MagicMock()
@@ -103,13 +103,15 @@ async def test_fetch_class_uuid() -> None:
         params["kwargs"] = kwargs
 
         return {
-            "classes": [
-                {
-                    "uuid": value,
-                    "user_key": key,
-                }
+            "classes": {
+                "objects": [
+                    {
+                        "uuid": value,
+                        "user_key": key,
+                    }
+                ]
                 for key, value in classes.items()
-            ]
+            }
         }
 
     for key, uuid in classes.items():
@@ -160,10 +162,10 @@ async def test_is_line_management(
         params["args"] = args
         params["kwargs"] = kwargs
         return_value = {
-            "org_units": [
-                {
-                    "objects": [
-                        {
+            "org_units": {
+                "objects": [
+                    {
+                        "current": {
                             "user_key": "dummy_user_key",
                             "org_unit_level": {"user_key": org_unit_level_user_key},
                             "engagements": [
@@ -174,12 +176,12 @@ async def test_is_line_management(
                             ],
                             "children": [],
                         }
-                    ]
-                }
-            ]
+                    }
+                ]
+            }
         }
         if org_unit_level_user_key is None:
-            del return_value["org_units"][0]["objects"][0]["org_unit_level"]
+            del return_value["org_units"]["objects"][0]["current"]["org_unit_level"]
         return return_value
 
     uuid = uuid4()
@@ -214,10 +216,10 @@ async def test_is_line_management_hidden_engagements(
         params["args"] = args
         params["kwargs"] = kwargs
         return_value = {
-            "org_units": [
-                {
-                    "objects": [
-                        {
+            "org_units": {
+                "objects": [
+                    {
+                        "current": {
                             "user_key": "dummy_user_key",
                             "org_unit_level": {"user_key": "Afdelings-niveau"},
                             "engagements": [
@@ -229,9 +231,9 @@ async def test_is_line_management_hidden_engagements(
                             "associations": [],
                             "children": [],
                         }
-                    ]
-                }
-            ]
+                    }
+                ]
+            }
         }
 
         return return_value
@@ -256,15 +258,15 @@ async def test_is_line_management_recursion(is_children_line_management: bool) -
 
     async def execute(*_: Any, **__: Any) -> dict[str, Any]:
         return {
-            "org_units": [
-                {
-                    "objects": [
-                        {
+            "org_units": {
+                "objects": [
+                    {
+                        "current": {
                             "children": [{"uuid": uuid4()}],
                         }
-                    ]
-                }
-            ]
+                    }
+                ]
+            }
         }
 
     uuid = uuid4()
@@ -297,10 +299,10 @@ async def test_is_self_owned(expected: bool) -> None:
         params["args"] = args
         params["kwargs"] = kwargs
         return {
-            "org_units": [
-                {
-                    "objects": [
-                        {
+            "org_units": {
+                "objects": [
+                    {
+                        "current": {
                             "itusers": [
                                 {
                                     "itsystem_uuid": (
@@ -311,9 +313,9 @@ async def test_is_self_owned(expected: bool) -> None:
                                 }
                             ]
                         }
-                    ]
-                }
-            ]
+                    }
+                ]
+            }
         }
 
     uuid = uuid4()
@@ -410,7 +412,15 @@ async def test_below_uuid_parent(
 
         uuid = UUID(one(args[1]["uuids"]))
 
-        return {"org_units": [{"objects": [parent_map[uuid]]}]}
+        return {
+            "org_units": {
+                "objects": [
+                    {
+                        "current": parent_map[uuid],
+                    }
+                ],
+            },
+        }
 
     session = MagicMock()
     session.execute = execute
@@ -426,7 +436,7 @@ async def test_below_uuid_unit_not_found() -> None:
     """Test that below_uuid raises an error if the unit isn't found."""
 
     async def execute(*args: Any, **kwargs: Any) -> dict[str, Any]:
-        return {"org_units": []}
+        return {"org_units": {"objects": []}}
 
     session = MagicMock()
     session.execute = execute
@@ -810,16 +820,16 @@ async def test_get_org_units_with_no_hierarchy() -> None:
     gql_client = AsyncMock()
     unset_org_unit_uuids = [uuid4(), uuid4(), uuid4()]
     unset_org_units = [
-        {"uuid": uuid, "objects": [{"org_unit_hierarchy": None}]}
+        {"uuid": uuid, "current": {"org_unit_hierarchy": None}}
         for uuid in unset_org_unit_uuids
     ]
     set_org_unit_uuids = [uuid4(), uuid4(), uuid4()]
     set_org_units = [
-        {"uuid": uuid, "objects": [{"org_unit_hierarchy": uuid4()}]}
+        {"uuid": uuid, "current": {"org_unit_hierarchy": uuid4()}}
         for uuid in set_org_unit_uuids
     ]
     gql_client.execute.return_value = gql_client.execute.return_value = {
-        "org_units": unset_org_units + set_org_units
+        "org_units": {"objects": unset_org_units + set_org_units}
     }
     res = await get_org_units_with_no_hierarchy(gql_client)
     assert res == unset_org_unit_uuids
@@ -830,14 +840,16 @@ async def test_get_orgunit_from_engagement() -> None:
     gql_client = AsyncMock()
     expected = uuid4()
     gql_client.execute.return_value = {
-        "engagements": [
-            {
-                "objects": [
-                    {"org_unit_uuid": str(expected)},
-                    {"org_unit_uuid": str(expected)},
-                ]
-            }
-        ]
+        "engagements": {
+            "objects": [
+                {
+                    "validities": [
+                        {"org_unit_uuid": str(expected)},
+                        {"org_unit_uuid": str(expected)},
+                    ]
+                }
+            ]
+        }
     }
     res = await get_orgunit_from_engagement(gql_client, uuid4())
     gql_client.execute.assert_called_once()
@@ -849,14 +861,16 @@ async def test_get_orgunit_from_association() -> None:
     gql_client = AsyncMock()
     expected = uuid4()
     gql_client.execute.return_value = {
-        "associations": [
-            {
-                "objects": [
-                    {"org_unit_uuid": str(expected)},
-                    {"org_unit_uuid": str(expected)},
-                ]
-            }
-        ]
+        "associations": {
+            "objects": [
+                {
+                    "validities": [
+                        {"org_unit_uuid": str(expected)},
+                        {"org_unit_uuid": str(expected)},
+                    ]
+                }
+            ]
+        }
     }
     res = await get_orgunit_from_association(gql_client, uuid4())
     gql_client.execute.assert_called_once()

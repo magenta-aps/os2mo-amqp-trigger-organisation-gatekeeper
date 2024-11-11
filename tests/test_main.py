@@ -163,11 +163,13 @@ async def test_trigger_all_endpoint(
     """Test the trigger all endpoint on our app."""
     gql_client = AsyncMock()
     gql_client.execute.return_value = {
-        "org_units": [
-            {"uuid": str(uuid4())},
-            {"uuid": str(uuid4())},
-            {"uuid": str(uuid4())},
-        ]
+        "org_units": {
+            "objects": [
+                {"uuid": str(uuid4())},
+                {"uuid": str(uuid4())},
+                {"uuid": str(uuid4())},
+            ]
+        }
     }
     construct_context.return_value = {
         "model_client": AsyncMock(),
