@@ -30,13 +30,15 @@ async def fetch_class_uuid(
 
     query = gql("""
         query ClassQuery($user_keys: [String!]) {
-            classes(user_keys: $user_keys) {
-                uuid
+          classes(filter: { user_keys: $user_keys }) {
+            objects {
+              uuid
             }
+          }
         }
         """)
     result = await gql_client.execute(query, {"user_keys": [class_user_key]})
-    class_uuid = one(result["classes"])["uuid"]
+    class_uuid = one(result["classes"]["objects"])["uuid"]
     return UUID(class_uuid)
 
 
@@ -75,26 +77,28 @@ async def fetch_org_unit(
     """
     query = gql("""
         query OrgUnitQuery($uuids: [UUID!]) {
-            org_units(uuids: $uuids) {
-                objects {
-                    uuid
-                    user_key
-                    validity {
-                        from
-                        to
-                    }
-                    name
-                    parent_uuid
-                    org_unit_hierarchy_uuid: org_unit_hierarchy
-                    org_unit_type_uuid: unit_type_uuid
-                    org_unit_level_uuid
+          org_units(filter: { uuids: $uuids }) {
+            objects {
+              current {
+                uuid
+                user_key
+                validity {
+                  from
+                  to
                 }
+                name
+                parent_uuid
+                org_unit_hierarchy_uuid: org_unit_hierarchy
+                org_unit_type_uuid: unit_type_uuid
+                org_unit_level_uuid
+              }
             }
+          }
         }
         """)
     logger.debug("Fetching org-unit via GraphQL", uuid=uuid)
     result = await gql_client.execute(query, {"uuids": [str(uuid)]})
-    obj = one(one(result["org_units"])["objects"])
+    obj = one(result["org_units"]["objects"])["current"]
     logger.debug("GraphQL obj", obj=obj)
     org_unit = OrganisationUnit.from_simplified_fields(
         uuid=obj["uuid"],
@@ -151,14 +155,16 @@ async def get_it_system_uuid(
     """
     query = gql("""
         query ITSystemQuery($user_keys: [String!]) {
-          itsystems(user_keys: $user_keys) {
-            uuid
+          itsystems(filter: { user_keys: $user_keys }) {
+            objects {
+              uuid
+            }
           }
         }
         """)
 
     result = await gql_client.execute(query, {"user_keys": [user_key]})
-    it_system = one(result["itsystems"])
+    it_system = one(result["itsystems"]["objects"])
     logger.debug(
         f"Looked up it_system with user_key={user_key}, found",
         it_system=it_system,

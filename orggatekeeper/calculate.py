@@ -109,30 +109,32 @@ async def is_line_management(
 
     query = gql("""
         query OrgUnitQuery($uuids: [UUID!]) {
-            org_units(uuids: $uuids) {
-                objects {
-                    org_unit_level {
-                        user_key
-                    }
-                    engagements {
-                        uuid
-                        engagement_type {
-                            name
-                        }
-                    }
-                    associations {
-                        uuid
-                    }
-                    children {
-                        uuid
-                    }
+          org_units(filter: { uuids: $uuids }) {
+            objects {
+              current {
+                org_unit_level {
+                  user_key
                 }
+                engagements {
+                  uuid
+                  engagement_type {
+                    name
+                  }
+                }
+                associations {
+                  uuid
+                }
+                children {
+                  uuid
+                }
+              }
             }
+          }
         }
         """)
 
     result = await gql_client.execute(query, {"uuids": [str(uuid)]})
-    obj = one(one(result["org_units"])["objects"])
+    obj = one(result["org_units"]["objects"])["current"]
     if hidden_engagement_types:
         obj["engagements"] = [
             e
@@ -182,17 +184,19 @@ async def is_self_owned(
 
     query = gql("""
         query OrgUnitQuery($uuids: [UUID!]) {
-            org_units(uuids: $uuids) {
-                objects {
-                    itusers {
-                        itsystem_uuid
-                    }
+          org_units(filter: { uuids: $uuids }) {
+            objects {
+              current {
+                itusers {
+                  itsystem_uuid
                 }
+              }
             }
+          }
         }
         """)
     result = await gql_client.execute(query, {"uuids": [str(uuid)]})
-    obj = one(one(result["org_units"])["objects"])
+    obj = one(result["org_units"]["objects"])["current"]
 
     return any(
         UUID(it.get("itsystem_uuid")) == check_it_system_uuid for it in obj["itusers"]
@@ -219,15 +223,19 @@ async def below_uuid(
 
     query = gql("""
         query ParentQuery($uuids: [UUID!]) {
-            org_units(uuids: $uuids) {
-                objects {
-                    parent { uuid }
+          org_units(filter: { uuids: $uuids }) {
+            objects {
+              current {
+                parent {
+                  uuid
                 }
+              }
             }
+          }
         }
         """)
     result = await gql_client.execute(query, {"uuids": [str(uuid)]})
-    obj = one(one(result["org_units"])["objects"])
+    obj = one(result["org_units"]["objects"])["current"]
 
     parent = obj["parent"]
 
@@ -371,9 +379,11 @@ async def get_org_units_with_no_hierarchy(
     query = gql("""
         query GetOrgUnitHierarchy {
           org_units {
-            uuid
             objects {
-              org_unit_hierarchy
+              uuid
+              current {
+                org_unit_hierarchy
+              }
             }
           }
         }
@@ -381,8 +391,8 @@ async def get_org_units_with_no_hierarchy(
     result = await gql_client.execute(query)
     missing = [
         ou["uuid"]
-        for ou in result["org_units"]
-        if one(ou["objects"])["org_unit_hierarchy"] is None
+        for ou in result["org_units"]["objects"]
+        if ou["current"]["org_unit_hierarchy"] is None
     ]
     return missing
 
@@ -403,16 +413,18 @@ async def get_orgunit_from_engagement(
     """
     query = gql("""
         query GetOrgUnit($uuids: [UUID!]) {
-            engagements(uuids: $uuids, to_date: null, from_date: null) {
-                objects {
-                    org_unit_uuid
-                }
+          engagements(filter: { uuids: $uuids, to_date: null, from_date: null }) {
+            objects {
+              validities(start: null, end: null) {
+                org_unit_uuid
+              }
             }
+          }
         }
         """)
     result = await gql_client.execute(query, {"uuids": str(engagement_uuid)})
 
-    objects = one(result["engagements"])["objects"]
+    objects = one(result["engagements"]["objects"])["validities"]
 
     return {UUID(e["org_unit_uuid"]) for e in objects}
 
@@ -433,16 +445,18 @@ async def get_orgunit_from_association(
     """
     query = gql("""
         query GetOrgUnit($uuids: [UUID!]) {
-            associations(uuids: $uuids, to_date: null, from_date: null) {
-                objects {
-                    org_unit_uuid
-                }
+          associations(filter: { uuids: $uuids, to_date: null, from_date: null }) {
+            objects {
+              validities(start: null, end: null) {
+                org_unit_uuid
+              }
             }
+          }
         }
         """)
     result = await gql_client.execute(query, {"uuids": str(associations_uuid)})
 
-    objects = one(result["associations"])["objects"]
+    objects = one(result["associations"]["objects"])["validities"]
 
     return {UUID(e["org_unit_uuid"]) for e in objects}
 

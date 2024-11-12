@@ -6,7 +6,6 @@ from asyncio import gather
 from asyncio import Semaphore
 from contextlib import asynccontextmanager
 from contextlib import AsyncExitStack
-from operator import itemgetter
 from typing import Any
 from typing import AsyncGenerator
 from typing import Awaitable
@@ -116,7 +115,7 @@ def construct_clients(
         Tuple with PersistentGraphQLClient and ModelClient.
     """
     gql_client = PersistentGraphQLClient(
-        url=settings.mo_url + "/graphql/v2",
+        url=settings.mo_url + "/graphql/v22",
         client_id=settings.client_id,
         client_secret=settings.client_secret.get_secret_value(),
         auth_server=settings.auth_server,
@@ -235,10 +234,10 @@ def create_app(  # pylint: disable=too-many-statements
     async def update_all_org_units(background_tasks: BackgroundTasks) -> dict[str, str]:
         """Call update_line_management on all org units."""
         gql_client = context["gql_client"]
-        query = gql("query OrgUnitUUIDQuery { org_units { uuid } }")
+        query = gql("query OrgUnitUUIDQuery { org_units { objects { uuid } } }")
         result = await gql_client.execute(query)
 
-        org_unit_uuids = list(map(UUID, map(itemgetter("uuid"), result["org_units"])))
+        org_unit_uuids = [UUID(o["uuid"]) for o in result["org_units"]["objects"]]
         logger.info("Manually triggered recalculation", uuids=org_unit_uuids)
         org_unit_tasks = [
             update_line_management(**context, uuid=uuid) for uuid in org_unit_uuids

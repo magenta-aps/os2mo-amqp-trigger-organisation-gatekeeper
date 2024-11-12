@@ -38,7 +38,7 @@ async def test_get_it_system() -> None:
     async def execute(
         *args: Any, **kwargs: Any  # pylint: disable=unused-argument
     ) -> dict[str, Any]:
-        return {"itsystems": [{"uuid": str(it_system_uuid)}]}
+        return {"itsystems": {"objects": [{"uuid": str(it_system_uuid)}]}}
 
     mock_gql_client = MagicMock()
     mock_gql_client.execute = execute
