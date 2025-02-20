@@ -13,7 +13,7 @@ keywords = ["os2mo", "amqp"]
 
 [tool.poetry.dependencies]
 python = "^3.10"
-gql = "^3.5.0"
+gql = "^3.5.1"
 prometheus-fastapi-instrumentator = "^7.0.0"
 ra-utils = "^1.14.0"
 raclients = "^3.3.5"
