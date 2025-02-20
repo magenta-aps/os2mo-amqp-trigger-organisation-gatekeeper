@@ -7,7 +7,6 @@
 from collections.abc import Callable
 
 import pytest
-from pydantic import SecretStr
 from pydantic import ValidationError
 
 from orggatekeeper.config import Settings
@@ -28,12 +27,10 @@ def test_happy_path(set_settings: Callable[..., Settings]) -> None:
     get_settings.cache_clear()
 
     settings = set_settings(client_secret="AzureDiamond")
-    assert isinstance(settings.client_secret, SecretStr)
-    assert settings.client_secret.get_secret_value() == "AzureDiamond"
+    assert settings.fastramqpi.client_secret.get_secret_value() == "AzureDiamond"
 
     settings = set_settings(client_secret="hunter2")
-    assert isinstance(settings.client_secret, SecretStr)
-    assert settings.client_secret.get_secret_value() == "hunter2"
+    assert settings.fastramqpi.client_secret.get_secret_value() == "hunter2"
 
 
 def test_graphql_timeout_default(mock_settings: Settings) -> None:

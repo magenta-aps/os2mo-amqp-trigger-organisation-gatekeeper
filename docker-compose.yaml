@@ -8,13 +8,12 @@ services:
     build: .
     command: ["uvicorn", "--factory", "app.main:create_app", "--host", "0.0.0.0", "--reload"]
     environment:
-      AMQP__URL: "amqp://guest:guest@msg-broker:5672/"
+      FASTRAMQPI__AMQP__URL: "amqp://guest:guest@msg-broker:5672/"
+      FASTRAMQPI__AUTH_SERVER: "http://keycloak:8080/auth"
+      FASTRAMQPI__CLIENT_ID: "dipex"
+      FASTRAMQPI__CLIENT_SECRET: "603f1c82-d012-4d04-9382-dbe659c533fb"
+      FASTRAMQPI__MO_URL: "http://mo:5000"
 
-      AUTH_SERVER: "http://keycloak:8080/auth"
-
-      MO_URL: "http://mo:5000"
-      CLIENT_ID: "dipex"
-      CLIENT_SECRET: "603f1c82-d012-4d04-9382-dbe659c533fb"
       SELF_OWNED_IT_SYSTEM_CHECK: "SD_uuid"
       LINE_MANAGEMENT_TOP_LEVEL_UUIDS: '["b6c11152-0645-4712-a207-ba2c53b391ab", "23a2ace2-52ca-458d-bead-d1a42080579f"]'
       HIDDEN: '["a6773531-6c0a-4c7b-b0e2-77992412b610"]'

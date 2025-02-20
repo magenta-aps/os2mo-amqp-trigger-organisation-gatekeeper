@@ -7,15 +7,15 @@ from uuid import UUID
 
 import structlog
 from gql import gql
+from gql.client import AsyncClientSession
 from more_itertools import one
-from raclients.graph.client import PersistentGraphQLClient
 from ramodels.mo import OrganisationUnit
 
 logger = structlog.get_logger()
 
 
 async def fetch_class_uuid(
-    gql_client: PersistentGraphQLClient,
+    gql_client: AsyncClientSession,
     class_user_key: str,
 ) -> UUID:
     """Fetch the UUID of the given class.
@@ -42,7 +42,7 @@ async def fetch_class_uuid(
     return UUID(class_uuid)
 
 
-async def fetch_org_uuid(gql_client: PersistentGraphQLClient) -> UUID:
+async def fetch_org_uuid(gql_client: AsyncClientSession) -> UUID:
     """
     Fetch the UUID of the LoRa organisation.
 
@@ -64,7 +64,7 @@ async def fetch_org_uuid(gql_client: PersistentGraphQLClient) -> UUID:
 
 
 async def fetch_org_unit(
-    gql_client: PersistentGraphQLClient, uuid: UUID
+    gql_client: AsyncClientSession, uuid: UUID
 ) -> OrganisationUnit:
     """Fetch an organisation unit from MO using GraphQL.
 
@@ -116,7 +116,7 @@ async def fetch_org_unit(
 
 
 async def get_class_uuid(
-    gql_client: PersistentGraphQLClient,
+    gql_client: AsyncClientSession,
     class_uuid: UUID | None,
     class_user_key: str,
 ) -> UUID:
@@ -141,9 +141,7 @@ async def get_class_uuid(
     return class_uuid
 
 
-async def get_it_system_uuid(
-    gql_client: PersistentGraphQLClient, user_key: str
-) -> UUID:
+async def get_it_system_uuid(gql_client: AsyncClientSession, user_key: str) -> UUID:
     """Find the uuid of an it-system from its user_key
 
     Args:

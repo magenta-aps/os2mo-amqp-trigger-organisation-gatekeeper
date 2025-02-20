@@ -4,39 +4,29 @@
 # pylint: disable=too-few-public-methods,missing-class-docstring
 """Settings handling."""
 
-import logging
-from enum import Enum
 from functools import cache
 from typing import Any
 from uuid import UUID
 
 import structlog
-from pydantic import AnyHttpUrl
+from fastramqpi.config import Settings as _FastRAMQPISettings
+from fastramqpi.ramqp.config import AMQPConnectionSettings as _AMQPConnectionSettings
 from pydantic import BaseSettings
 from pydantic import Field
-from pydantic import SecretStr
-from pydantic import parse_obj_as
-from ramqp.config import AMQPConnectionSettings
-
-
-class LogLevel(Enum):
-    """Log levels."""
-
-    NOTSET = logging.NOTSET
-    DEBUG = logging.DEBUG
-    INFO = logging.INFO
-    WARNING = logging.WARNING
-    ERROR = logging.ERROR
-    CRITICAL = logging.CRITICAL
-
 
 logger = structlog.get_logger()
 
 
-class OrgGatekeeperConnectionSettings(AMQPConnectionSettings):
+class AMQPConnectionSettings(_AMQPConnectionSettings):
+    upstream_exchange = "os2mo"
+    exchange = "os2mo_orggatekeeper"
     queue_prefix: str = "os2mo-amqp-trigger-organisation-gatekeeper"
     # TODO: Ensure we don't crash MO when running somewhat concurrently
     prefetch_count: int = 1
+
+
+class FastRAMQPISettings(_FastRAMQPISettings):
+    amqp: AMQPConnectionSettings
 
 
 class Settings(BaseSettings):
@@ -46,22 +36,10 @@ class Settings(BaseSettings):
     * https://git.magenta.dk/rammearkitektur/ramqp/-/blob/master/ramqp/config.py
     """
 
-    amqp: OrgGatekeeperConnectionSettings
+    fastramqpi: FastRAMQPISettings
 
     commit_tag: str = Field("HEAD", description="Git commit tag.")
     commit_sha: str = Field("HEAD", description="Git commit SHA.")
-
-    mo_url: AnyHttpUrl = Field(
-        parse_obj_as(AnyHttpUrl, "http://mo-service:5000"),
-        description="Base URL for OS2mo.",
-    )
-    client_id: str = Field("orggatekeeper", description="Client ID for OIDC client.")
-    client_secret: SecretStr = Field(..., description="Client Secret for OIDC client.")
-    auth_server: AnyHttpUrl = Field(
-        parse_obj_as(AnyHttpUrl, "http://keycloak-service:8080/auth"),
-        description="Base URL for OIDC server (Keycloak).",
-    )
-    auth_realm: str = Field("mo", description="Realm to authenticate against")
 
     sentry_dsn: str | None = None
 
@@ -132,7 +110,7 @@ class Settings(BaseSettings):
         False, description="Run in dry-run mode, only printing what would have changed."
     )
 
-    log_level: LogLevel = LogLevel.INFO
+    # log_level: LogLevel = LogLevel.INFO
 
     expose_metrics: bool = Field(True, description="Whether to expose metrics.")
 

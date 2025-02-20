@@ -10,18 +10,20 @@ from typing import Any
 from uuid import UUID
 
 import structlog
+from fastramqpi.depends import LegacyGraphQLSession
+from fastramqpi.depends import LegacyModelClient
+from fastramqpi.ramqp.depends import RateLimit
+from fastramqpi.ramqp.mo import MORouter
+from fastramqpi.ramqp.mo import PayloadUUID
 from gql import gql
+from gql.client import AsyncClientSession
 from more_itertools import one
-from raclients.graph.client import PersistentGraphQLClient
-from raclients.modelclient.mo import ModelClient
 from ramodels.mo import Validity
 from ramodels.mo._shared import OrgUnitHierarchy
-from ramqp.depends import Context
-from ramqp.depends import RateLimit
-from ramqp.mo import MORouter
-from ramqp.mo import PayloadUUID
 
-from .config import Settings
+from .config import Settings as _Settings
+from .depends import OrgUuid
+from .depends import Settings
 from .mo import fetch_org_unit
 from .mo import get_class_uuid
 from .mo import get_it_system_uuid
@@ -33,7 +35,7 @@ ny_regex = re.compile(r"NY\d-niveau")
 
 
 async def should_hide(
-    gql_client: PersistentGraphQLClient,
+    gql_client: AsyncClientSession,
     uuid: UUID,
     enable_hide_logic: bool,
     hidden: set[UUID],
@@ -56,7 +58,7 @@ async def should_hide(
 
 
 async def check_org_unit_line_management(
-    gql_client: PersistentGraphQLClient,
+    gql_client: AsyncClientSession,
     uuid: UUID,
     org_unit: dict,
     line_management_top_level_uuid: set[UUID],
@@ -83,7 +85,7 @@ async def check_org_unit_line_management(
 
 
 async def is_line_management(
-    gql_client: PersistentGraphQLClient,
+    gql_client: AsyncClientSession,
     uuid: UUID,
     line_management_top_level_uuid: set[UUID],
     hidden_engagement_types: list[str],
@@ -159,7 +161,7 @@ async def is_line_management(
 
 
 async def is_self_owned(
-    gql_client: PersistentGraphQLClient, uuid: UUID, check_it_system_name: str
+    gql_client: AsyncClientSession, uuid: UUID, check_it_system_name: str
 ) -> bool:
     """Determine whether the organisation unit should be marked as self-owned.
     A unit is marked as self-owned if it is not in line-management but has an it-account
@@ -199,7 +201,7 @@ async def is_self_owned(
 
 
 async def below_uuid(
-    gql_client: PersistentGraphQLClient, uuid: UUID, uuids: set[UUID]
+    gql_client: AsyncClientSession, uuid: UUID, uuids: set[UUID]
 ) -> bool:
     """Determine whether the organisation unit is below one where user_key
     is in the given list
@@ -245,9 +247,9 @@ async def below_uuid(
 
 
 async def update_line_management(
-    gql_client: PersistentGraphQLClient,
-    model_client: ModelClient,
-    settings: Settings,
+    gql_client: AsyncClientSession,
+    model_client: LegacyModelClient,
+    settings: _Settings,
     org_uuid: UUID,
     uuid: UUID,
     **_: Any,
@@ -361,7 +363,7 @@ async def update_line_management(
 
 
 async def get_org_units_with_no_hierarchy(
-    gql_client: PersistentGraphQLClient,
+    gql_client: AsyncClientSession,
 ) -> list[UUID]:
     """Get all org_units that have no org_unit_hierarchy set.
 
@@ -393,7 +395,7 @@ async def get_org_units_with_no_hierarchy(
 
 
 async def get_orgunit_from_engagement(
-    gql_client: PersistentGraphQLClient, engagement_uuid: UUID
+    gql_client: AsyncClientSession, engagement_uuid: UUID
 ) -> set[UUID]:
     """Get org_unit uuid from user uuid
 
@@ -425,7 +427,7 @@ async def get_orgunit_from_engagement(
 
 
 async def get_orgunit_from_association(
-    gql_client: PersistentGraphQLClient, associations_uuid: UUID
+    gql_client: AsyncClientSession, associations_uuid: UUID
 ) -> set[UUID]:
     """Get org_unit uuid from user uuid
 
@@ -457,13 +459,13 @@ async def get_orgunit_from_association(
 
 
 async def get_orgunit_from_ituser(
-    gql_client: PersistentGraphQLClient, ituser_uuid: UUID
+    gql_client: AsyncClientSession, ituser_uuid: UUID
 ) -> set[UUID]:
     """Get org_unit uuid from ituser uuid
 
     Args:
         gql_client: The GraphQL client to use.
-        ituser_uuid: UUID of an engagement
+        ituser_uuid: UUID of an ituser
 
     Returns:
         Set of org_unit uuids connected to the ituser
@@ -488,57 +490,110 @@ async def get_orgunit_from_ituser(
     return {UUID(e["org_unit_uuid"]) for e in objects}
 
 
-async def update(context: Context, org_units: set[UUID]) -> None:
+async def update(
+    gql_client: AsyncClientSession,
+    model_client: LegacyModelClient,
+    settings: _Settings,
+    org_uuid: UUID,
+    org_units: set[UUID],
+) -> None:
     """Call update_line_management for each uuid in the given set"""
-    await gather(*[update_line_management(**context, uuid=uuid) for uuid in org_units])
+    await gather(
+        *[
+            update_line_management(gql_client, model_client, settings, org_uuid, uuid)
+            for uuid in org_units
+        ]
+    )
 
 
 @router.register("org_unit")
-async def org_unit_handler(context: Context, uuid: PayloadUUID, _: RateLimit) -> None:
+async def org_unit_handler(
+    gql_client: LegacyGraphQLSession,
+    model_client: LegacyModelClient,
+    settings: Settings,
+    org_uuid: OrgUuid,
+    uuid: PayloadUUID,
+    _: RateLimit,
+) -> None:
     """Callback to check org_unit_hierarchy.
 
     Listens to changes on org_units and it-accounts on org_units.
     """
 
     logger.info("Changes to org_unit or its it-accounts", org_unit=uuid)
-    await update_line_management(**context, uuid=uuid)
+    await update_line_management(gql_client, model_client, settings, org_uuid, uuid)
 
 
 @router.register("ituser")
-async def ituser_callback(context: Context, payload: PayloadUUID, _: RateLimit) -> None:
-    """Callback to check org_unit_hierarchy on changes to associations."""
+async def ituser_callback(
+    gql_client: LegacyGraphQLSession,
+    model_client: LegacyModelClient,
+    settings: Settings,
+    org_uuid: OrgUuid,
+    uuid: PayloadUUID,
+    _: RateLimit,
+) -> None:
+    """Callback to check org_unit_hierarchy on changes to itusers."""
     try:
-        org_units = await get_orgunit_from_ituser(context["gql_client"], payload)
+        org_units = await get_orgunit_from_ituser(gql_client, uuid)
     except ValueError:
-        logger.debug("Association not found", payload=payload)
+        logger.debug("ituser not found", uuid=uuid)
         return
-    logger.info("Changes to association. Checking org_units", org_unit=org_units)
-    await update(context, org_units)
+    logger.info("Changes to ituser. Checking org_units", org_unit=org_units)
+    await update(
+        gql_client=gql_client,
+        model_client=model_client,
+        settings=settings,
+        org_uuid=org_uuid,
+        org_units=org_units,
+    )
 
 
 @router.register("association")
 async def association_callback(
-    context: Context, payload: PayloadUUID, _: RateLimit
+    gql_client: LegacyGraphQLSession,
+    model_client: LegacyModelClient,
+    settings: Settings,
+    org_uuid: OrgUuid,
+    uuid: PayloadUUID,
+    _: RateLimit,
 ) -> None:
     """Callback to check org_unit_hierarchy on changes to associations."""
     try:
-        org_units = await get_orgunit_from_association(context["gql_client"], payload)
+        org_units = await get_orgunit_from_association(gql_client, uuid)
     except ValueError:
-        logger.debug("Association not found", payload=payload)
+        logger.debug("Association not found", uuid=uuid)
         return
     logger.info("Changes to association. Checking org_units", org_unit=org_units)
-    await update(context, org_units)
+    await update(
+        gql_client=gql_client,
+        model_client=model_client,
+        settings=settings,
+        org_uuid=org_uuid,
+        org_units=org_units,
+    )
 
 
 @router.register("engagement")
 async def engagement_callback(
-    context: Context, payload: PayloadUUID, _: RateLimit
+    gql_client: LegacyGraphQLSession,
+    model_client: LegacyModelClient,
+    settings: Settings,
+    org_uuid: OrgUuid,
+    uuid: PayloadUUID,
+    _: RateLimit,
 ) -> None:
     """Callback to check org_unit_hierarchy on changes to engagements."""
     try:
-        org_units = await get_orgunit_from_engagement(context["gql_client"], payload)
+        org_units = await get_orgunit_from_engagement(gql_client, uuid)
     except ValueError:
-        logger.debug("Engagement not found", payload=payload)
+        logger.debug("Engagement not found", uuid=uuid)
         return
     logger.info("Changes to engagement. Checking org_units", org_unit=org_units)
-    await update(context, org_units)
+    await update(
+        gql_client=gql_client,
+        model_client=model_client,
+        settings=settings,
+        org_uuid=org_uuid,
+        org_units=org_units,
+    )

@@ -68,7 +68,9 @@ def set_settings() -> Generator[Callable[..., Settings], None, None]:
         **kwargs: Any,
     ) -> Settings:
         settings = Settings(
-            *args, amqp={"url": amqp_url}, client_secret=client_secret, **kwargs
+            *args,
+            fastramqpi={"amqp": {"url": amqp_url}, "client_secret": client_secret, "client_id": "orggatekeeper_test"},
+            **kwargs,
         )
         return settings
 

@@ -22,7 +22,6 @@ from more_itertools import one
 from ramodels.mo import OrganisationUnit
 from ramodels.mo import Validity
 from ramodels.mo._shared import OrgUnitHierarchy
-from ramqp.mo import PayloadType
 
 from orggatekeeper.calculate import association_callback
 from orggatekeeper.calculate import below_uuid
@@ -913,12 +912,11 @@ async def test_callback_engagement(
     with the org_unit_uuid of an engagement.
     """
     org_unit_uuid = uuid4()
-    payload = PayloadType(uuid=uuid4(), object_uuid=uuid4(), time=datetime.now())
     with patch(
         "orggatekeeper.calculate.get_orgunit_from_engagement",
         return_value={org_unit_uuid},
     ):
-        await engagement_callback(context, payload=payload, _=None)
+        await engagement_callback(**context, uuid=org_unit_uuid, _=None)
     update_line_management_mock.assert_called_once_with(**context, uuid=org_unit_uuid)
 
 
@@ -929,12 +927,12 @@ async def test_callback_engagement_missing_uuid(
     """Test that changes to engagements results in calls to update_line_management
     with the org_unit_uuid of an engagement.
     """
-    payload = PayloadType(uuid=uuid4(), object_uuid=uuid4(), time=datetime.now())
+
     with patch(
         "orggatekeeper.calculate.get_orgunit_from_engagement",
         side_effect=ValueError,
     ):
-        await engagement_callback(context, payload=payload, _=None)
+        await engagement_callback(context, uuid=uuid4(), _=None)
     update_line_management_mock.assert_not_called()
 
 
