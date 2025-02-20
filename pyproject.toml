@@ -12,7 +12,7 @@ repository = "https://git.magenta.dk/rammearkitektur/os2mo-triggers/os2mo-amqp-t
 keywords = ["os2mo", "amqp"]
 
 [tool.poetry.dependencies]
-python = "^3.10"
+python = "^3.11"
 gql = "^3.5.0"
 prometheus-fastapi-instrumentator = "^7.0.0"
 ra-utils = "^1.14.0"
