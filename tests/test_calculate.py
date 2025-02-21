@@ -17,6 +17,7 @@ from uuid import UUID
 from uuid import uuid4
 
 import pytest
+from fastramqpi.ramqp.mo import PayloadType
 from graphql import DocumentNode
 from more_itertools import one
 from ramodels.mo import OrganisationUnit
@@ -927,12 +928,11 @@ async def test_callback_engagement_missing_uuid(
     """Test that changes to engagements results in calls to update_line_management
     with the org_unit_uuid of an engagement.
     """
-
     with patch(
         "orggatekeeper.calculate.get_orgunit_from_engagement",
         side_effect=ValueError,
     ):
-        await engagement_callback(context, uuid=uuid4(), _=None)
+        await engagement_callback(**context, uuid=uuid4(), _=None)
     update_line_management_mock.assert_not_called()
 
 
@@ -947,7 +947,7 @@ async def test_callback_association(
     with patch(
         "orggatekeeper.calculate.get_orgunit_from_association", return_value={uuid4()}
     ):
-        await association_callback(context, payload=payload, _=None)
+        await association_callback(**context, uuid=payload.uuid, _=None)
     update_line_management_mock.assert_called_once()
 
 
@@ -962,7 +962,7 @@ async def test_callback_association_missing_uuid(
     with patch(
         "orggatekeeper.calculate.get_orgunit_from_association", side_effect=ValueError
     ):
-        await association_callback(context, payload=payload, _=None)
+        await association_callback(**context, uuid=payload.uuid, _=None)
     update_line_management_mock.assert_not_called()
 
 

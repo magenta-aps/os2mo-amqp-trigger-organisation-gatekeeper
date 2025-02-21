@@ -38,9 +38,6 @@ class Settings(BaseSettings):
 
     fastramqpi: FastRAMQPISettings
 
-    commit_tag: str = Field("HEAD", description="Git commit tag.")
-    commit_sha: str = Field("HEAD", description="Git commit SHA.")
-
     sentry_dsn: str | None = None
 
     enable_hide_logic: bool = Field(

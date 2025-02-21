@@ -133,7 +133,9 @@ async def test_root_endpoint(test_client: TestClient) -> None:
 
 async def test_metrics_endpoint(test_client_builder: Callable[..., TestClient]) -> None:
     """Test the metrics endpoint on our app."""
-    test_client = test_client_builder(default_args=False, client_secret="hunter2")
+    test_client = test_client_builder(
+        default_args=False, fastramqpi={"client_secret": "hunter2"}
+    )
     response = test_client.get("/metrics")
     assert response.status_code == 200
     assert "# TYPE build_information_info gauge" in response.text
