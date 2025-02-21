@@ -461,13 +461,44 @@ async def get_orgunit_from_association(
     return {UUID(e["org_unit_uuid"]) for e in objects}
 
 
+async def get_orgunit_from_ituser(
+    gql_client: PersistentGraphQLClient, ituser_uuid: UUID
+) -> set[UUID]:
+    """Get org_unit uuid from ituser uuid
+
+    Args:
+        gql_client: The GraphQL client to use.
+        ituser_uuid: UUID of an engagement
+
+    Returns:
+        Set of org_unit uuids connected to the ituser
+
+
+    """
+    query = gql("""
+        query GetOrgUnit($uuids: [UUID!]) {
+          itusers(filter: { uuids: $uuids, to_date: null, from_date: null }) {
+            objects {
+              validities(start: null, end: null) {
+                org_unit_uuid
+              }
+            }
+          }
+        }
+        """)
+    result = await gql_client.execute(query, {"uuids": str(ituser_uuid)})
+
+    objects = one(result["itusers"]["objects"])["validities"]
+
+    return {UUID(e["org_unit_uuid"]) for e in objects}
+
+
 async def update(context: Context, org_units: set[UUID]) -> None:
     """Call update_line_management for each uuid in the given set"""
     await gather(*[update_line_management(**context, uuid=uuid) for uuid in org_units])
 
 
 @router.register("org_unit.org_unit.*")
-@router.register("org_unit.it.*")
 async def org_unit_callback(
     context: Context, payload: PayloadType, _: RateLimit
 ) -> None:
@@ -481,6 +512,18 @@ async def org_unit_callback(
         await update(context, org_units)
     except ValueError:
         logger.info("No org_unit found. Skipping", payload=payload)
+
+
+@router.register("ituser")
+async def ituser_callback(context: Context, payload: PayloadUUID, _: RateLimit) -> None:
+    """Callback to check org_unit_hierarchy on changes to associations."""
+    try:
+        org_units = await get_orgunit_from_ituser(context["gql_client"], payload)
+        logger.info("Changes to association. Checking org_units", org_unit=org_units)
+        await update(context, org_units)
+    except ValueError:
+        logger.debug("Association not found", payload=payload)
+        return
 
 
 @router.register("association")

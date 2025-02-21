@@ -31,8 +31,10 @@ from orggatekeeper.calculate import get_class_uuid
 from orggatekeeper.calculate import get_org_units_with_no_hierarchy
 from orggatekeeper.calculate import get_orgunit_from_association
 from orggatekeeper.calculate import get_orgunit_from_engagement
+from orggatekeeper.calculate import get_orgunit_from_ituser
 from orggatekeeper.calculate import is_line_management
 from orggatekeeper.calculate import is_self_owned
+from orggatekeeper.calculate import ituser_callback
 from orggatekeeper.calculate import org_unit_callback
 from orggatekeeper.calculate import should_hide
 from orggatekeeper.calculate import update_line_management
@@ -877,6 +879,27 @@ async def test_get_orgunit_from_association() -> None:
     assert res == {expected}
 
 
+async def test_get_orgunit_from_ituser() -> None:
+    """Test graphql call to return org_unit from an ituser"""
+    gql_client = AsyncMock()
+    expected = uuid4()
+    gql_client.execute.return_value = {
+        "itusers": {
+            "objects": [
+                {
+                    "validities": [
+                        {"org_unit_uuid": str(expected)},
+                        {"org_unit_uuid": str(expected)},
+                    ]
+                }
+            ]
+        }
+    }
+    res = await get_orgunit_from_ituser(gql_client, uuid4())
+    gql_client.execute.assert_called_once()
+    assert res == {expected}
+
+
 @patch("orggatekeeper.calculate.update_line_management")
 async def test_callback_engagement(
     update_line_management_mock: MagicMock, context: dict[str, Any]
@@ -937,6 +960,36 @@ async def test_callback_association_missing_uuid(
         "orggatekeeper.calculate.get_orgunit_from_association", side_effect=ValueError
     ):
         await association_callback(context, payload=payload, _=None)
+    update_line_management_mock.assert_not_called()
+
+
+@patch("orggatekeeper.calculate.update_line_management")
+async def test_callback_ituser(
+    update_line_management_mock: MagicMock, context: dict[str, Any]
+) -> None:
+    """Test that changes to itusers results in calls to update_line_management
+    with the org_unit_uuid of an ituser.
+    """
+    payload = PayloadType(uuid=uuid4(), object_uuid=uuid4(), time=datetime.now())
+    with patch(
+        "orggatekeeper.calculate.get_orgunit_from_ituser", return_value={uuid4()}
+    ):
+        await ituser_callback(context, payload=payload, _=None)
+    update_line_management_mock.assert_called_once()
+
+
+@patch("orggatekeeper.calculate.update_line_management")
+async def test_callback_ituser_missing_uuid(
+    update_line_management_mock: MagicMock, context: dict[str, Any]
+) -> None:
+    """Test that changes to associations results in calls to update_line_management
+    with the org_unit_uuid of an association.
+    """
+    payload = PayloadType(uuid=uuid4(), object_uuid=uuid4(), time=datetime.now())
+    with patch(
+        "orggatekeeper.calculate.get_orgunit_from_ituser", side_effect=ValueError
+    ):
+        await ituser_callback(context, payload=payload, _=None)
     update_line_management_mock.assert_not_called()
 
 
