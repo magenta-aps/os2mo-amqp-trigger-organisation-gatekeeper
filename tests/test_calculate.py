@@ -1000,8 +1000,7 @@ async def test_callback_org_unit(
 ) -> None:
     """Test that changes calls update line management with an org_units uuid"""
     uuid = uuid4()
-    payload = PayloadType(uuid=uuid, object_uuid=uuid4(), time=datetime.now())
-    await org_unit_callback(context, payload=payload, _=None)
+    await org_unit_callback(context, uuid=uuid, _=None)
     update_line_management_mock.assert_called_once_with(**context, uuid=uuid)
 
 
@@ -1012,6 +1011,5 @@ async def test_callback_org_unit_not_found(
 ) -> None:
     """Test that changes calls update line management with an org_units uuid"""
     uuid = uuid4()
-    payload = PayloadType(uuid=uuid, object_uuid=uuid4(), time=datetime.now())
-    await org_unit_callback(context, payload=payload, _=None)
+    await org_unit_callback(context, uuid=uuid, _=None)
     update_line_management_mock.assert_called_once_with(**context, uuid=uuid)

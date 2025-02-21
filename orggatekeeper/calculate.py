@@ -18,7 +18,6 @@ from ramodels.mo._shared import OrgUnitHierarchy
 from ramqp.depends import Context
 from ramqp.depends import RateLimit
 from ramqp.mo import MORouter
-from ramqp.mo import PayloadType
 from ramqp.mo import PayloadUUID
 
 from .config import Settings
@@ -498,20 +497,18 @@ async def update(context: Context, org_units: set[UUID]) -> None:
     await gather(*[update_line_management(**context, uuid=uuid) for uuid in org_units])
 
 
-@router.register("org_unit.org_unit.*")
-async def org_unit_callback(
-    context: Context, payload: PayloadType, _: RateLimit
-) -> None:
+@router.register("org_unit")
+async def org_unit_callback(context: Context, uuid: PayloadUUID, _: RateLimit) -> None:
     """Callback to check org_unit_hierarchy.
 
     Listens to changes on org_units and it-accounts on org_units.
     """
-    org_units = {payload.uuid}
-    logger.info("Changes to org_unit or its it-accounts", org_unit=org_units)
+
+    logger.info("Changes to org_unit or its it-accounts", org_unit=uuid)
     try:
-        await update(context, org_units)
+        await update_line_management(**context, uuid=uuid)
     except ValueError:
-        logger.info("No org_unit found. Skipping", payload=payload)
+        logger.info("No org_unit found. Skipping", payload=uuid)
 
 
 @router.register("ituser")
