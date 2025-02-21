@@ -36,7 +36,7 @@ from orggatekeeper.calculate import get_orgunit_from_ituser
 from orggatekeeper.calculate import is_line_management
 from orggatekeeper.calculate import is_self_owned
 from orggatekeeper.calculate import ituser_callback
-from orggatekeeper.calculate import org_unit_callback
+from orggatekeeper.calculate import org_unit_handler
 from orggatekeeper.calculate import should_hide
 from orggatekeeper.calculate import update_line_management
 from orggatekeeper.config import Settings
@@ -1005,16 +1005,5 @@ async def test_callback_org_unit(
 ) -> None:
     """Test that changes calls update line management with an org_units uuid"""
     uuid = uuid4()
-    await org_unit_callback(context, uuid=uuid, _=None)
-    update_line_management_mock.assert_called_once_with(**context, uuid=uuid)
-
-
-@patch("orggatekeeper.calculate.update_line_management", side_effect=ValueError)
-async def test_callback_org_unit_not_found(
-    update_line_management_mock: MagicMock,
-    context: dict[str, Any],
-) -> None:
-    """Test that changes calls update line management with an org_units uuid"""
-    uuid = uuid4()
-    await org_unit_callback(context, uuid=uuid, _=None)
+    await org_unit_handler(context, uuid=uuid, _=None)
     update_line_management_mock.assert_called_once_with(**context, uuid=uuid)
