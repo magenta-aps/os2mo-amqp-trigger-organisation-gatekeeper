@@ -125,4 +125,3 @@ CHANGELOG
 ------------------
 
 [#46148] Added FastAPI handles
-

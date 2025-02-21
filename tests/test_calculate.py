@@ -2,15 +2,16 @@
 #
 # SPDX-License-Identifier: MPL-2.0
 """Test the fetch_org_unit function."""
+
 # pylint: disable=redefined-outer-name
 # pylint: disable=unused-argument
 # pylint: disable=too-many-arguments
+from collections.abc import Callable
 from datetime import datetime
 from typing import Any
-from typing import Callable
 from unittest.mock import AsyncMock
-from unittest.mock import call
 from unittest.mock import MagicMock
+from unittest.mock import call
 from unittest.mock import patch
 from uuid import UUID
 from uuid import uuid4
@@ -111,8 +112,8 @@ async def test_fetch_class_uuid() -> None:
                         "uuid": value,
                         "user_key": key,
                     }
+                    for key, value in classes.items()
                 ]
-                for key, value in classes.items()
             }
         }
 
@@ -275,20 +276,22 @@ async def test_is_line_management_recursion(is_children_line_management: bool) -
     session = MagicMock()
     session.execute = execute
 
-    with patch(
-        "orggatekeeper.calculate.check_org_unit_line_management", return_value=False
-    ):
-        with patch(
+    with (
+        patch(
+            "orggatekeeper.calculate.check_org_unit_line_management", return_value=False
+        ),
+        patch(
             "orggatekeeper.calculate.is_line_management",
             return_value=is_children_line_management,
-        ):
-            result = await is_line_management(
-                gql_client=session,
-                uuid=uuid,
-                line_management_top_level_uuid=set(),
-                hidden_engagement_types=[],
-            )
-            assert result is is_children_line_management
+        ),
+    ):
+        result = await is_line_management(
+            gql_client=session,
+            uuid=uuid,
+            line_management_top_level_uuid=set(),
+            hidden_engagement_types=[],
+        )
+        assert result is is_children_line_management
 
 
 @pytest.mark.parametrize("expected", [True, False])
@@ -623,21 +626,23 @@ async def test_update_line_management_line(
     settings = context["settings"]
     settings.self_owned_it_system_check = self_owned_it_system_check
 
-    with patch(
-        "orggatekeeper.calculate.is_line_management",
-        return_value=is_line_management_return,
-    ) as is_line_management_mock:
-        with patch(
+    with (
+        patch(
+            "orggatekeeper.calculate.is_line_management",
+            return_value=is_line_management_return,
+        ) as is_line_management_mock,
+        patch(
             "orggatekeeper.calculate.is_self_owned", return_value=is_self_owned_return
-        ) as is_self_owned_mock:
-            with patch(
-                "orggatekeeper.calculate.should_hide", return_value=should_hide_return
-            ) as should_hide_mock:
-                with patch(
-                    "orggatekeeper.calculate.should_hide",
-                    return_value=should_hide_return,
-                ) as should_hide_mock:
-                    result = await update_line_management(**context, uuid=uuid)
+        ) as is_self_owned_mock,
+        patch(
+            "orggatekeeper.calculate.should_hide", return_value=should_hide_return
+        ) as should_hide_mock,
+        patch(
+            "orggatekeeper.calculate.should_hide",
+            return_value=should_hide_return,
+        ) as should_hide_mock,
+    ):
+        result = await update_line_management(**context, uuid=uuid)
 
     assert result == changes
 

@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: MPL-2.0
 """Test the mo.py module"""
+
 from typing import Any
 from unittest.mock import MagicMock
 from uuid import uuid4
@@ -16,7 +17,8 @@ async def test_fetch_org_uuid() -> None:
 
     # Arrange
     async def execute(
-        *args: Any, **kwargs: Any  # pylint: disable=unused-argument
+        *args: Any,
+        **kwargs: Any,  # pylint: disable=unused-argument
     ) -> dict[str, Any]:
         return {"org": {"uuid": str(ORG_UUID)}}
 
@@ -27,7 +29,7 @@ async def test_fetch_org_uuid() -> None:
     uuid = await fetch_org_uuid(mock_gql_client)
 
     # Assert
-    assert ORG_UUID == uuid
+    assert uuid == ORG_UUID
 
 
 async def test_get_it_system() -> None:
@@ -36,7 +38,8 @@ async def test_get_it_system() -> None:
     # Arrange
 
     async def execute(
-        *args: Any, **kwargs: Any  # pylint: disable=unused-argument
+        *args: Any,
+        **kwargs: Any,  # pylint: disable=unused-argument
     ) -> dict[str, Any]:
         return {"itsystems": {"objects": [{"uuid": str(it_system_uuid)}]}}
 

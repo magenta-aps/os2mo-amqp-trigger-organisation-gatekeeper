@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: MPL-2.0
 """Module for fetching information (e.g. facet and class UUIDs) from MO"""
-from typing import Optional
+
 from uuid import UUID
 
 import structlog
@@ -117,7 +117,7 @@ async def fetch_org_unit(
 
 async def get_class_uuid(
     gql_client: PersistentGraphQLClient,
-    class_uuid: Optional[UUID],
+    class_uuid: UUID | None,
     class_user_key: str,
 ) -> UUID:
     """Get the UUID of the org_unit_hierarchy class.

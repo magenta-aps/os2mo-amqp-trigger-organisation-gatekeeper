@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: MPL-2.0
 # pylint: disable=too-few-public-methods,missing-class-docstring
 """Settings handling."""
+
 import logging
 from enum import Enum
 from functools import cache
@@ -13,8 +14,8 @@ import structlog
 from pydantic import AnyHttpUrl
 from pydantic import BaseSettings
 from pydantic import Field
-from pydantic import parse_obj_as
 from pydantic import SecretStr
+from pydantic import parse_obj_as
 from ramqp.config import AMQPConnectionSettings
 
 

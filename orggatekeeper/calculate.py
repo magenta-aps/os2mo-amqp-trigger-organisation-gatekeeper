@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: MPL-2.0
 """Update logic."""
+
 import datetime
 import re
 from asyncio import gather
@@ -78,12 +79,7 @@ async def check_org_unit_line_management(
     if not has_engagements and not has_associations:
         return False
     # AND it needs to be below an orgunit that is explicitly line management
-    if not await below_uuid(
-        gql_client, uuid=uuid, uuids=line_management_top_level_uuid
-    ):
-        return False
-    # If all above checks passes it is line management.
-    return True
+    return await below_uuid(gql_client, uuid=uuid, uuids=line_management_top_level_uuid)
 
 
 async def is_line_management(

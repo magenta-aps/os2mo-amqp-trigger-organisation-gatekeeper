@@ -3,10 +3,11 @@
 # SPDX-License-Identifier: MPL-2.0
 # pylint: disable=redefined-outer-name
 """This module contains pytest specific code, fixtures and helpers."""
+
+from collections.abc import Callable
+from collections.abc import Generator
 from datetime import datetime
 from typing import Any
-from typing import Callable
-from typing import Generator
 from unittest.mock import AsyncMock
 from unittest.mock import MagicMock
 from unittest.mock import patch
@@ -64,7 +65,7 @@ def set_settings() -> Generator[Callable[..., Settings], None, None]:
         *args: Any,
         amqp_url: str = DEFAULT_AMQP_URL,
         client_secret: str = "hunter2",
-        **kwargs: Any
+        **kwargs: Any,
     ) -> Settings:
         settings = Settings(
             *args, amqp={"url": amqp_url}, client_secret=client_secret, **kwargs
@@ -76,7 +77,7 @@ def set_settings() -> Generator[Callable[..., Settings], None, None]:
 
 @pytest.fixture()
 def mock_settings(
-    set_settings: Callable[..., Settings]
+    set_settings: Callable[..., Settings],
 ) -> Generator[Settings, None, None]:
     """Fixture to mock get_settings."""
     yield set_settings()
