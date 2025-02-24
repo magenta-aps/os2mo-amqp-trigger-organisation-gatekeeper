@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: MPL-2.0
 """Update logic."""
+
 import datetime
 import re
 from asyncio import gather
@@ -18,7 +19,6 @@ from ramodels.mo._shared import OrgUnitHierarchy
 from ramqp.depends import Context
 from ramqp.depends import RateLimit
 from ramqp.mo import MORouter
-from ramqp.mo import PayloadType
 from ramqp.mo import PayloadUUID
 
 from .config import Settings
@@ -79,12 +79,7 @@ async def check_org_unit_line_management(
     if not has_engagements and not has_associations:
         return False
     # AND it needs to be below an orgunit that is explicitly line management
-    if not await below_uuid(
-        gql_client, uuid=uuid, uuids=line_management_top_level_uuid
-    ):
-        return False
-    # If all above checks passes it is line management.
-    return True
+    return await below_uuid(gql_client, uuid=uuid, uuids=line_management_top_level_uuid)
 
 
 async def is_line_management(
@@ -461,26 +456,64 @@ async def get_orgunit_from_association(
     return {UUID(e["org_unit_uuid"]) for e in objects}
 
 
+async def get_orgunit_from_ituser(
+    gql_client: PersistentGraphQLClient, ituser_uuid: UUID
+) -> set[UUID]:
+    """Get org_unit uuid from ituser uuid
+
+    Args:
+        gql_client: The GraphQL client to use.
+        ituser_uuid: UUID of an engagement
+
+    Returns:
+        Set of org_unit uuids connected to the ituser
+
+
+    """
+    query = gql("""
+        query GetOrgUnit($uuids: [UUID!]) {
+          itusers(filter: { uuids: $uuids, to_date: null, from_date: null }) {
+            objects {
+              validities(start: null, end: null) {
+                org_unit_uuid
+              }
+            }
+          }
+        }
+        """)
+    result = await gql_client.execute(query, {"uuids": str(ituser_uuid)})
+
+    objects = one(result["itusers"]["objects"])["validities"]
+
+    return {UUID(e["org_unit_uuid"]) for e in objects}
+
+
 async def update(context: Context, org_units: set[UUID]) -> None:
     """Call update_line_management for each uuid in the given set"""
     await gather(*[update_line_management(**context, uuid=uuid) for uuid in org_units])
 
 
-@router.register("org_unit.org_unit.*")
-@router.register("org_unit.it.*")
-async def org_unit_callback(
-    context: Context, payload: PayloadType, _: RateLimit
-) -> None:
+@router.register("org_unit")
+async def org_unit_handler(context: Context, uuid: PayloadUUID, _: RateLimit) -> None:
     """Callback to check org_unit_hierarchy.
 
     Listens to changes on org_units and it-accounts on org_units.
     """
-    org_units = {payload.uuid}
-    logger.info("Changes to org_unit or its it-accounts", org_unit=org_units)
+
+    logger.info("Changes to org_unit or its it-accounts", org_unit=uuid)
+    await update_line_management(**context, uuid=uuid)
+
+
+@router.register("ituser")
+async def ituser_callback(context: Context, payload: PayloadUUID, _: RateLimit) -> None:
+    """Callback to check org_unit_hierarchy on changes to associations."""
     try:
-        await update(context, org_units)
+        org_units = await get_orgunit_from_ituser(context["gql_client"], payload)
     except ValueError:
-        logger.info("No org_unit found. Skipping", payload=payload)
+        logger.debug("Association not found", payload=payload)
+        return
+    logger.info("Changes to association. Checking org_units", org_unit=org_units)
+    await update(context, org_units)
 
 
 @router.register("association")
@@ -490,11 +523,11 @@ async def association_callback(
     """Callback to check org_unit_hierarchy on changes to associations."""
     try:
         org_units = await get_orgunit_from_association(context["gql_client"], payload)
-        logger.info("Changes to association. Checking org_units", org_unit=org_units)
-        await update(context, org_units)
     except ValueError:
         logger.debug("Association not found", payload=payload)
         return
+    logger.info("Changes to association. Checking org_units", org_unit=org_units)
+    await update(context, org_units)
 
 
 @router.register("engagement")
@@ -504,8 +537,8 @@ async def engagement_callback(
     """Callback to check org_unit_hierarchy on changes to engagements."""
     try:
         org_units = await get_orgunit_from_engagement(context["gql_client"], payload)
-        logger.info("Changes to engagement. Checking org_units", org_unit=org_units)
-        await update(context, org_units)
     except ValueError:
         logger.debug("Engagement not found", payload=payload)
         return
+    logger.info("Changes to engagement. Checking org_units", org_unit=org_units)
+    await update(context, org_units)

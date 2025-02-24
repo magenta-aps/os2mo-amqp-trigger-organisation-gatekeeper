@@ -2,15 +2,16 @@
 #
 # SPDX-License-Identifier: MPL-2.0
 """Test the fetch_org_unit function."""
+
 # pylint: disable=redefined-outer-name
 # pylint: disable=unused-argument
 # pylint: disable=too-many-arguments
+from collections.abc import Callable
 from datetime import datetime
 from typing import Any
-from typing import Callable
 from unittest.mock import AsyncMock
-from unittest.mock import call
 from unittest.mock import MagicMock
+from unittest.mock import call
 from unittest.mock import patch
 from uuid import UUID
 from uuid import uuid4
@@ -31,9 +32,11 @@ from orggatekeeper.calculate import get_class_uuid
 from orggatekeeper.calculate import get_org_units_with_no_hierarchy
 from orggatekeeper.calculate import get_orgunit_from_association
 from orggatekeeper.calculate import get_orgunit_from_engagement
+from orggatekeeper.calculate import get_orgunit_from_ituser
 from orggatekeeper.calculate import is_line_management
 from orggatekeeper.calculate import is_self_owned
-from orggatekeeper.calculate import org_unit_callback
+from orggatekeeper.calculate import ituser_callback
+from orggatekeeper.calculate import org_unit_handler
 from orggatekeeper.calculate import should_hide
 from orggatekeeper.calculate import update_line_management
 from orggatekeeper.config import Settings
@@ -109,8 +112,8 @@ async def test_fetch_class_uuid() -> None:
                         "uuid": value,
                         "user_key": key,
                     }
+                    for key, value in classes.items()
                 ]
-                for key, value in classes.items()
             }
         }
 
@@ -273,20 +276,22 @@ async def test_is_line_management_recursion(is_children_line_management: bool) -
     session = MagicMock()
     session.execute = execute
 
-    with patch(
-        "orggatekeeper.calculate.check_org_unit_line_management", return_value=False
-    ):
-        with patch(
+    with (
+        patch(
+            "orggatekeeper.calculate.check_org_unit_line_management", return_value=False
+        ),
+        patch(
             "orggatekeeper.calculate.is_line_management",
             return_value=is_children_line_management,
-        ):
-            result = await is_line_management(
-                gql_client=session,
-                uuid=uuid,
-                line_management_top_level_uuid=set(),
-                hidden_engagement_types=[],
-            )
-            assert result is is_children_line_management
+        ),
+    ):
+        result = await is_line_management(
+            gql_client=session,
+            uuid=uuid,
+            line_management_top_level_uuid=set(),
+            hidden_engagement_types=[],
+        )
+        assert result is is_children_line_management
 
 
 @pytest.mark.parametrize("expected", [True, False])
@@ -621,21 +626,23 @@ async def test_update_line_management_line(
     settings = context["settings"]
     settings.self_owned_it_system_check = self_owned_it_system_check
 
-    with patch(
-        "orggatekeeper.calculate.is_line_management",
-        return_value=is_line_management_return,
-    ) as is_line_management_mock:
-        with patch(
+    with (
+        patch(
+            "orggatekeeper.calculate.is_line_management",
+            return_value=is_line_management_return,
+        ) as is_line_management_mock,
+        patch(
             "orggatekeeper.calculate.is_self_owned", return_value=is_self_owned_return
-        ) as is_self_owned_mock:
-            with patch(
-                "orggatekeeper.calculate.should_hide", return_value=should_hide_return
-            ) as should_hide_mock:
-                with patch(
-                    "orggatekeeper.calculate.should_hide",
-                    return_value=should_hide_return,
-                ) as should_hide_mock:
-                    result = await update_line_management(**context, uuid=uuid)
+        ) as is_self_owned_mock,
+        patch(
+            "orggatekeeper.calculate.should_hide", return_value=should_hide_return
+        ) as should_hide_mock,
+        patch(
+            "orggatekeeper.calculate.should_hide",
+            return_value=should_hide_return,
+        ) as should_hide_mock,
+    ):
+        result = await update_line_management(**context, uuid=uuid)
 
     assert result == changes
 
@@ -877,6 +884,27 @@ async def test_get_orgunit_from_association() -> None:
     assert res == {expected}
 
 
+async def test_get_orgunit_from_ituser() -> None:
+    """Test graphql call to return org_unit from an ituser"""
+    gql_client = AsyncMock()
+    expected = uuid4()
+    gql_client.execute.return_value = {
+        "itusers": {
+            "objects": [
+                {
+                    "validities": [
+                        {"org_unit_uuid": str(expected)},
+                        {"org_unit_uuid": str(expected)},
+                    ]
+                }
+            ]
+        }
+    }
+    res = await get_orgunit_from_ituser(gql_client, uuid4())
+    gql_client.execute.assert_called_once()
+    assert res == {expected}
+
+
 @patch("orggatekeeper.calculate.update_line_management")
 async def test_callback_engagement(
     update_line_management_mock: MagicMock, context: dict[str, Any]
@@ -941,24 +969,41 @@ async def test_callback_association_missing_uuid(
 
 
 @patch("orggatekeeper.calculate.update_line_management")
+async def test_callback_ituser(
+    update_line_management_mock: MagicMock, context: dict[str, Any]
+) -> None:
+    """Test that changes to itusers results in calls to update_line_management
+    with the org_unit_uuid of an ituser.
+    """
+    payload = PayloadType(uuid=uuid4(), object_uuid=uuid4(), time=datetime.now())
+    with patch(
+        "orggatekeeper.calculate.get_orgunit_from_ituser", return_value={uuid4()}
+    ):
+        await ituser_callback(context, payload=payload, _=None)
+    update_line_management_mock.assert_called_once()
+
+
+@patch("orggatekeeper.calculate.update_line_management")
+async def test_callback_ituser_missing_uuid(
+    update_line_management_mock: MagicMock, context: dict[str, Any]
+) -> None:
+    """Test that changes to associations results in calls to update_line_management
+    with the org_unit_uuid of an association.
+    """
+    payload = PayloadType(uuid=uuid4(), object_uuid=uuid4(), time=datetime.now())
+    with patch(
+        "orggatekeeper.calculate.get_orgunit_from_ituser", side_effect=ValueError
+    ):
+        await ituser_callback(context, payload=payload, _=None)
+    update_line_management_mock.assert_not_called()
+
+
+@patch("orggatekeeper.calculate.update_line_management")
 async def test_callback_org_unit(
     update_line_management_mock: MagicMock,
     context: dict[str, Any],
 ) -> None:
     """Test that changes calls update line management with an org_units uuid"""
     uuid = uuid4()
-    payload = PayloadType(uuid=uuid, object_uuid=uuid4(), time=datetime.now())
-    await org_unit_callback(context, payload=payload, _=None)
-    update_line_management_mock.assert_called_once_with(**context, uuid=uuid)
-
-
-@patch("orggatekeeper.calculate.update_line_management", side_effect=ValueError)
-async def test_callback_org_unit_not_found(
-    update_line_management_mock: MagicMock,
-    context: dict[str, Any],
-) -> None:
-    """Test that changes calls update line management with an org_units uuid"""
-    uuid = uuid4()
-    payload = PayloadType(uuid=uuid, object_uuid=uuid4(), time=datetime.now())
-    await org_unit_callback(context, payload=payload, _=None)
+    await org_unit_handler(context, uuid=uuid, _=None)
     update_line_management_mock.assert_called_once_with(**context, uuid=uuid)

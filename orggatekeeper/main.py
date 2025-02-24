@@ -2,14 +2,14 @@
 #
 # SPDX-License-Identifier: MPL-2.0
 """Event handling."""
-from asyncio import gather
+
 from asyncio import Semaphore
-from contextlib import asynccontextmanager
+from asyncio import gather
+from collections.abc import AsyncGenerator
+from collections.abc import Awaitable
 from contextlib import AsyncExitStack
+from contextlib import asynccontextmanager
 from typing import Any
-from typing import AsyncGenerator
-from typing import Awaitable
-from typing import Tuple
 from typing import TypeVar
 from uuid import UUID
 
@@ -31,8 +31,8 @@ from starlette.status import HTTP_503_SERVICE_UNAVAILABLE
 from .calculate import get_org_units_with_no_hierarchy
 from .calculate import router
 from .calculate import update_line_management
-from .config import get_settings
 from .config import Settings
+from .config import get_settings
 from .mo import fetch_org_uuid
 
 logger = structlog.get_logger()
@@ -105,7 +105,7 @@ async def healthcheck_model_client(model_client: ModelClient) -> bool:
 
 def construct_clients(
     settings: Settings,
-) -> Tuple[PersistentGraphQLClient, ModelClient]:
+) -> tuple[PersistentGraphQLClient, ModelClient]:
     """Construct clients froms settings.
 
     Args:
@@ -243,7 +243,9 @@ def create_app(  # pylint: disable=too-many-statements
             update_line_management(**context, uuid=uuid) for uuid in org_unit_uuids
         ]
         background_tasks.add_task(
-            gather_with_concurrency, 5, *org_unit_tasks  # type: ignore
+            gather_with_concurrency,
+            5,
+            *org_unit_tasks,  # type: ignore
         )
         return {"status": "Background job triggered"}
 

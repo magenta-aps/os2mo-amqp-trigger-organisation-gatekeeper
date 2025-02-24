@@ -64,6 +64,3 @@ Build:
   extends: .build-docker
   variables:
     BUILD_DOCKER_EXTRA_FLAGS: "--build-arg=COMMIT_SHA=${CI_COMMIT_SHA} --build-arg=COMMIT_TAG=${CI_COMMIT_TAG}"
-
-
-

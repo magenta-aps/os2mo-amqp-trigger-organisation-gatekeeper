@@ -10,9 +10,9 @@ This repository contains an OS2mo AMQP Trigger that marks organisation units wit
 An organisation unit is part of line management if:
 * The unit-level is NY{x}-niveau or Afdelings-niveau.
 * There are engagements or associations.
-* The organisation unit is bellow a unit that is defined as root of line management in the configuration of this program. 
+* The organisation unit is bellow a unit that is defined as root of line management in the configuration of this program.
 
-If an organisation unit is not part of line management but has an it-account in a configured it-system it is marked as self-owned. 
+If an organisation unit is not part of line management but has an it-account in a configured it-system it is marked as self-owned.
 
 Any org_units that are configured to be hidden will be marked as such, and the same for each unit below it.
 
