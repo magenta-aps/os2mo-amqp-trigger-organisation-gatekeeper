@@ -65,10 +65,15 @@ def set_settings() -> Generator[Callable[..., Settings], None, None]:
         *args: Any,
         amqp_url: str = DEFAULT_AMQP_URL,
         client_secret: str = "hunter2",
+        client_id: str = "orggatekeeper_test",
         **kwargs: Any,
     ) -> Settings:
         settings = Settings(
-            *args, amqp={"url": amqp_url}, client_secret=client_secret, **kwargs
+            *args,
+            amqp={"url": amqp_url},
+            client_secret=client_secret,
+            client_id=client_id,
+            **kwargs,
         )
         return settings
 

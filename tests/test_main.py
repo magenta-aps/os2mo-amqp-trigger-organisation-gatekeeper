@@ -104,6 +104,7 @@ def fastapi_app_builder() -> Generator[Callable[..., FastAPI], None, None]:
     def builder(*args: Any, default_args: bool = True, **kwargs: Any) -> FastAPI:
         if default_args:
             kwargs["client_secret"] = "hunter2"
+            kwargs["client_id"] = "orggatekeeper"
             kwargs["expose_metrics"] = False
         return create_app(*args, **kwargs)
 
@@ -115,7 +116,9 @@ def fastapi_app(
     fastapi_app_builder: Callable[..., FastAPI],
 ) -> Generator[FastAPI, None, None]:
     """Fixture for the FastAPI app."""
-    yield fastapi_app_builder(client_secret="hunter2", expose_metrics=False)
+    yield fastapi_app_builder(
+        client_secret="hunter2", client_id="orggatekeeper", expose_metrics=False
+    )
 
 
 @pytest.fixture
@@ -148,7 +151,9 @@ async def test_root_endpoint(test_client: TestClient) -> None:
 
 async def test_metrics_endpoint(test_client_builder: Callable[..., TestClient]) -> None:
     """Test the metrics endpoint on our app."""
-    test_client = test_client_builder(default_args=False, client_secret="hunter2")
+    test_client = test_client_builder(
+        default_args=False, client_secret="hunter2", client_id="orggatekeeper_test"
+    )
     response = test_client.get("/metrics")
     assert response.status_code == 200
     assert "# TYPE build_information_info gauge" in response.text

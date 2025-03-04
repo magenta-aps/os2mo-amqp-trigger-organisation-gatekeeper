@@ -11,12 +11,9 @@ from typing import Any
 from uuid import UUID
 
 import structlog
-from pydantic import AnyHttpUrl
-from pydantic import BaseSettings
+from fastramqpi.config import Settings as FastRAMQPISettings
+from fastramqpi.ramqp.config import AMQPConnectionSettings
 from pydantic import Field
-from pydantic import SecretStr
-from pydantic import parse_obj_as
-from ramqp.config import AMQPConnectionSettings
 
 
 class LogLevel(Enum):
@@ -39,7 +36,7 @@ class OrgGatekeeperConnectionSettings(AMQPConnectionSettings):
     prefetch_count: int = 1
 
 
-class Settings(BaseSettings):
+class Settings(FastRAMQPISettings):
     """Settings for organisation gatekeeper.
 
     Note that AMQP related settings are taken directly by RAMQP:
@@ -50,19 +47,6 @@ class Settings(BaseSettings):
 
     commit_tag: str = Field("HEAD", description="Git commit tag.")
     commit_sha: str = Field("HEAD", description="Git commit SHA.")
-
-    mo_url: AnyHttpUrl = Field(
-        parse_obj_as(AnyHttpUrl, "http://mo-service:5000"),
-        description="Base URL for OS2mo.",
-    )
-    client_id: str = Field("orggatekeeper", description="Client ID for OIDC client.")
-    client_secret: SecretStr = Field(..., description="Client Secret for OIDC client.")
-    auth_server: AnyHttpUrl = Field(
-        parse_obj_as(AnyHttpUrl, "http://keycloak-service:8080/auth"),
-        description="Base URL for OIDC server (Keycloak).",
-    )
-    auth_realm: str = Field("mo", description="Realm to authenticate against")
-
     sentry_dsn: str | None = None
 
     enable_hide_logic: bool = Field(
@@ -132,7 +116,7 @@ class Settings(BaseSettings):
         False, description="Run in dry-run mode, only printing what would have changed."
     )
 
-    log_level: LogLevel = LogLevel.INFO
+    log_level: LogLevel = LogLevel.INFO  # type: ignore
 
     expose_metrics: bool = Field(True, description="Whether to expose metrics.")
 

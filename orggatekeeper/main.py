@@ -18,13 +18,13 @@ import structlog
 from fastapi import BackgroundTasks
 from fastapi import FastAPI
 from fastapi import Response
+from fastramqpi.raclients.graph.client import PersistentGraphQLClient
+from fastramqpi.raclients.modelclient.mo import ModelClient
+from fastramqpi.ramqp.mo import MOAMQPSystem
 from gql import gql
 from more_itertools import one
 from prometheus_client import Info
 from prometheus_fastapi_instrumentator import Instrumentator
-from raclients.graph.client import PersistentGraphQLClient
-from raclients.modelclient.mo import ModelClient
-from ramqp.mo import MOAMQPSystem
 from starlette.status import HTTP_204_NO_CONTENT
 from starlette.status import HTTP_503_SERVICE_UNAVAILABLE
 
