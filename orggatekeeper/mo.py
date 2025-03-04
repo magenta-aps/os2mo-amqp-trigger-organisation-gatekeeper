@@ -6,9 +6,9 @@
 from uuid import UUID
 
 import structlog
+from fastramqpi.raclients.graph.client import PersistentGraphQLClient
 from gql import gql
 from more_itertools import one
-from raclients.graph.client import PersistentGraphQLClient
 from ramodels.mo import OrganisationUnit
 
 logger = structlog.get_logger()

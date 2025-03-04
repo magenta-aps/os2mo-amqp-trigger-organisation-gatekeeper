@@ -17,12 +17,12 @@ from uuid import UUID
 from uuid import uuid4
 
 import pytest
+from fastramqpi.ramqp.mo import PayloadType
 from graphql import DocumentNode
 from more_itertools import one
 from ramodels.mo import OrganisationUnit
 from ramodels.mo import Validity
 from ramodels.mo._shared import OrgUnitHierarchy
-from ramqp.mo import PayloadType
 
 from orggatekeeper.calculate import association_callback
 from orggatekeeper.calculate import below_uuid
@@ -592,6 +592,7 @@ async def test_update_line_management_line(
     context: dict[str, Any],
     class_uuid: UUID,
     org_unit: OrganisationUnit,
+    set_settings: Callable,
 ) -> None:
     """Test that update_line_management can set line_management_uuid."""
     parent_org_unit = OrganisationUnit.from_simplified_fields(
@@ -623,9 +624,9 @@ async def test_update_line_management_line(
 
     gql_client = context["gql_client"]
     model_client = context["model_client"]
-    settings = context["settings"]
-    settings.self_owned_it_system_check = self_owned_it_system_check
 
+    settings = set_settings(self_owned_it_system_check=self_owned_it_system_check)
+    context["settings"] = settings
     with (
         patch(
             "orggatekeeper.calculate.is_line_management",
