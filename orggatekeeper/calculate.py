@@ -421,7 +421,7 @@ async def get_orgunit_from_engagement(
 
     objects = one(result["engagements"]["objects"])["validities"]
 
-    return {UUID(e["org_unit_uuid"]) for e in objects}
+    return {UUID(e["org_unit_uuid"]) for e in objects if e["org_unit_uuid"]}
 
 
 async def get_orgunit_from_association(
@@ -453,7 +453,7 @@ async def get_orgunit_from_association(
 
     objects = one(result["associations"]["objects"])["validities"]
 
-    return {UUID(e["org_unit_uuid"]) for e in objects}
+    return {UUID(e["org_unit_uuid"]) for e in objects if e["org_unit_uuid"]}
 
 
 async def get_orgunit_from_ituser(
@@ -485,7 +485,7 @@ async def get_orgunit_from_ituser(
 
     objects = one(result["itusers"]["objects"])["validities"]
 
-    return {UUID(e["org_unit_uuid"]) for e in objects}
+    return {UUID(e["org_unit_uuid"]) for e in objects if e["org_unit_uuid"]}
 
 
 async def update(context: Context, org_units: set[UUID]) -> None:
