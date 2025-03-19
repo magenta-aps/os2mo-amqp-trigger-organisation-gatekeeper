@@ -244,6 +244,22 @@ async def below_uuid(
     return await below_uuid(gql_client, uuid=parent["uuid"], uuids=uuids)
 
 
+async def is_unit_active(gql_client: PersistentGraphQLClient, uuid: UUID) -> bool:
+    query = gql("""
+        query ActiveUnit($uuid: UUID!) {
+          org_units(filter: { uuids: [$uuid] }) {
+            objects {
+              current {
+                uuid
+              }
+            }
+          }
+        }
+        """)
+    result = await gql_client.execute(query, {"uuid": str(uuid)})
+    return len(result["org_units"]["objects"]) == 1
+
+
 async def update_line_management(
     gql_client: PersistentGraphQLClient,
     model_client: ModelClient,
@@ -271,6 +287,14 @@ async def update_line_management(
     Returns:
         Whether an update was made.
     """
+    # First check if the unit is active or not:
+    if not await is_unit_active(gql_client=gql_client, uuid=uuid):
+        # Don't handle events for past units.
+        logger.info(
+            "Organisation Unit is inactive and processing is stopped", uuid=uuid
+        )
+        return False
+
     # Determine the desired org_unit_hierarchy class uuid
     new_org_unit_hierarchy: OrgUnitHierarchy | None = None
     # if the orgunit uuid is in settings.hidden or it is below one that is
@@ -420,8 +444,7 @@ async def get_orgunit_from_engagement(
     result = await gql_client.execute(query, {"uuids": str(engagement_uuid)})
 
     objects = one(result["engagements"]["objects"])["validities"]
-
-    return {UUID(e["org_unit_uuid"]) for e in objects if e["org_unit_uuid"]}
+    return {UUID(e["org_unit_uuid"]) for e in objects}
 
 
 async def get_orgunit_from_association(
