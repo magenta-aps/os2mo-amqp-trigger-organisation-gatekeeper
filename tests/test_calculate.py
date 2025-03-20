@@ -452,7 +452,9 @@ async def test_below_uuid_unit_not_found() -> None:
 @patch("orggatekeeper.calculate.is_line_management")
 @patch("orggatekeeper.calculate.should_hide")
 @patch("orggatekeeper.calculate.fetch_org_unit")
+@patch("orggatekeeper.calculate.is_unit_active", return_value=True)
 async def test_update_line_management_no_change(
+    is_unit_active_mock: MagicMock,
     fetch_org_unit: MagicMock,
     should_hide: MagicMock,
     is_line_management: MagicMock,
@@ -488,8 +490,25 @@ async def test_update_line_management_no_change(
 
 
 @patch("orggatekeeper.calculate.should_hide")
+async def test_update_line_management_inactive_unit(
+    should_hide_mock: MagicMock,
+    context: dict[str, Any],
+) -> None:
+    """Test that update_line_management stops if the unit isn't active."""
+    context["gql_client"].execute = AsyncMock(
+        return_value={"org_units": {"objects": []}}
+    )
+
+    result = await update_line_management(**context, uuid=uuid4())
+    assert result is False
+    should_hide_mock.assert_not_awaited()
+
+
+@patch("orggatekeeper.calculate.should_hide")
 @patch("orggatekeeper.calculate.fetch_org_unit")
+@patch("orggatekeeper.calculate.is_unit_active", return_value=True)
 async def test_update_line_management_dry_run(
+    is_unit_active_mock: MagicMock,
     fetch_org_unit: MagicMock,
     should_hide: MagicMock,
     gql_client: MagicMock,
@@ -524,7 +543,9 @@ async def test_update_line_management_dry_run(
 @patch("orggatekeeper.calculate.datetime")
 @patch("orggatekeeper.calculate.should_hide")
 @patch("orggatekeeper.calculate.fetch_org_unit")
+@patch("orggatekeeper.calculate.is_unit_active", return_value=True)
 async def test_update_line_management_hidden(
+    is_unit_active_mock: MagicMock,
     fetch_org_unit: MagicMock,
     should_hide: MagicMock,
     mock_datetime: MagicMock,
@@ -581,7 +602,9 @@ async def test_update_line_management_hidden(
 @patch("orggatekeeper.calculate.datetime")
 @patch("orggatekeeper.calculate.fetch_org_unit")
 @patch("orggatekeeper.calculate.OrgUnitHierarchy")
+@patch("orggatekeeper.calculate.is_unit_active", return_value=True)
 async def test_update_line_management_line(
+    is_unit_active_mock: AsyncMock,
     org_unit_hierarchy_mock: MagicMock,
     fetch_org_unit: MagicMock,
     mock_datetime: MagicMock,
@@ -694,7 +717,9 @@ async def test_update_line_management_line(
 @patch("orggatekeeper.calculate.is_line_management")
 @patch("orggatekeeper.calculate.should_hide")
 @patch("orggatekeeper.calculate.fetch_org_unit")
+@patch("orggatekeeper.calculate.is_unit_active", return_value=True)
 async def test_update_line_management_line_for_root_org_unit(
+    is_unit_active_mock: MagicMock,
     fetch_org_unit: MagicMock,
     should_hide: MagicMock,
     is_line_management: MagicMock,
