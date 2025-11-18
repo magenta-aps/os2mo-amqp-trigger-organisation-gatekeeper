@@ -99,11 +99,11 @@ class Settings(FastRAMQPISettings):
             " self-owned organisation units, only used if self_owned_uuid is not set."
         ),
     )
-    self_owned_it_system_check: str | None = Field(
-        description=(
-            "User_key of the it-system used to check whether to mark the unit as"
-            " self-owned."
-        )
+    self_owned_root_units: list[UUID] = Field(
+        default=[],
+        description=""
+        "List of uuids of self-owned units. "
+        "All units below these units will be considered self-owned",
     )
     hidden_engagement_types: list[str] = Field(
         [],

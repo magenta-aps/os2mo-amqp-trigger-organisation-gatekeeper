@@ -294,11 +294,20 @@ async def test_is_line_management_recursion(is_children_line_management: bool) -
         assert result is is_children_line_management
 
 
+async def test_is_self_owned_root() -> None:
+    """Test check for self-owned"""
+    uuid = self_owned_unit = uuid4()
+    session = MagicMock()
+
+    result = await is_self_owned(session, uuid=uuid, self_owned_units=[self_owned_unit])
+    assert result
+
+
 @pytest.mark.parametrize("expected", [True, False])
 async def test_is_self_owned(expected: bool) -> None:
     """Test check for self-owned"""
     params: dict[str, Any] = {}
-    it_system_uuid = uuid4()
+    self_owned_unit = uuid4()
 
     async def execute(*args: Any, **kwargs: Any) -> dict[str, Any]:
         params["args"] = args
@@ -308,10 +317,10 @@ async def test_is_self_owned(expected: bool) -> None:
                 "objects": [
                     {
                         "current": {
-                            "itusers": [
+                            "ancestors": [
                                 {
-                                    "itsystem_uuid": (
-                                        str(it_system_uuid)
+                                    "uuid": (
+                                        str(self_owned_unit)
                                         if expected
                                         else str(uuid4())
                                     )
@@ -326,10 +335,8 @@ async def test_is_self_owned(expected: bool) -> None:
     uuid = uuid4()
     session = MagicMock()
     session.execute = execute
-    with patch(
-        "orggatekeeper.calculate.get_it_system_uuid", return_value=it_system_uuid
-    ):
-        result = await is_self_owned(session, uuid=uuid, check_it_system_name="test")
+
+    result = await is_self_owned(session, uuid=uuid, self_owned_units=[self_owned_unit])
     assert result == expected
 
 
@@ -639,16 +646,14 @@ async def test_update_line_management_line(
         OrgUnitHierarchy(uuid=class_uuid) if changes else org_unit.org_unit_hierarchy,
         parent_org_unit.org_unit_hierarchy,
     ]
-    self_owned_it_system_check = "IT-system"
-
     now = datetime.now()
     mock_datetime.datetime.now.return_value = now
     uuid = org_unit.uuid
 
     gql_client = context["gql_client"]
     model_client = context["model_client"]
-
-    settings = set_settings(self_owned_it_system_check=self_owned_it_system_check)
+    self_owned_units = [uuid4()]
+    settings = set_settings(self_owned_root_units=self_owned_units)
     context["settings"] = settings
     with (
         patch(
@@ -679,14 +684,14 @@ async def test_update_line_management_line(
 
         # Then check if it is line management
         if not should_hide_return:
-            is_line_management_mock.assert_called_once_with(
-                gql_client, uuid, settings.line_management_top_level_uuids, []
+            is_self_owned_mock.assert_called_once_with(
+                gql_client, uuid, self_owned_units
             )
 
         # Then check for self-owned
-        if not (should_hide_return or is_line_management_return):
-            is_self_owned_mock.assert_called_once_with(
-                gql_client, uuid, self_owned_it_system_check
+        if not (should_hide_return or is_self_owned_return):
+            is_line_management_mock.assert_called_once_with(
+                gql_client, uuid, settings.line_management_top_level_uuids, []
             )
         fetch_org_unit.assert_called_once_with(gql_client, uuid)
         assert model_client.mock_calls == []
@@ -695,9 +700,9 @@ async def test_update_line_management_line(
     else:
         assert should_hide_mock.call_count == 2
         if not should_hide_return:
-            assert is_line_management_mock.call_count == 2
-        if not (should_hide_return or is_line_management_return):
             assert is_self_owned_mock.call_count == 2
+        if not (should_hide_return or is_self_owned_return):
+            assert is_line_management_mock.call_count == 2
         # Only the org_unit, not the parent, is updated
         assert model_client.mock_calls == [
             call.edit(

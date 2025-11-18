@@ -18,6 +18,7 @@ services:
       SELF_OWNED_IT_SYSTEM_CHECK: "SD_uuid"
       LINE_MANAGEMENT_TOP_LEVEL_UUIDS: '["b6c11152-0645-4712-a207-ba2c53b391ab", "23a2ace2-52ca-458d-bead-d1a42080579f"]'
       HIDDEN: '["a6773531-6c0a-4c7b-b0e2-77992412b610"]'
+      SELF_OWNED_UNITS: '["23a2ace2-52ca-458d-bead-d1a42080579f"]'
     networks:
       - os2mo_default
     ports:
