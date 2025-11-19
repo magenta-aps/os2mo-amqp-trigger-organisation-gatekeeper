@@ -14,9 +14,9 @@ keywords = ["os2mo", "amqp"]
 [tool.poetry.dependencies]
 python = "^3.11"
 gql = "^3.5.0"
-uvicorn = {extras = ["standard"], version = "^0.29.0"}
+uvicorn = {extras = ["standard"], version = "^0.34.3"}
 fastapi = "^0.115.11"
-fastramqpi = "^10.1.6"
+fastramqpi = "^12.5.0"
 ramodels = "^44.0.0"
 
 [tool.poetry.group.test.dependencies]

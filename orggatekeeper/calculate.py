@@ -24,7 +24,6 @@ from ramodels.mo._shared import OrgUnitHierarchy
 from .config import Settings
 from .mo import fetch_org_unit
 from .mo import get_class_uuid
-from .mo import get_it_system_uuid
 
 router = MORouter()
 
@@ -159,31 +158,30 @@ async def is_line_management(
 
 
 async def is_self_owned(
-    gql_client: PersistentGraphQLClient, uuid: UUID, check_it_system_name: str
+    gql_client: PersistentGraphQLClient, uuid: UUID, self_owned_units: list[UUID]
 ) -> bool:
-    """Determine whether the organisation unit should be marked as self-owned.
-    A unit is marked as self-owned if it is not in line-management but has an it-account
-    in the it-system with user_key set in check_it_system_name
+    """Determine whether the organisation unit should be marked as self_owned.
+    A unit is marked as self_owned if it has an ancestor that is configured to
+    be self_owned
 
     Args:
         gql_client: The GraphQL client to run our queries on.
         uuid: UUID of the organisation unit.
-        check_it_system_name: user_key of the it-system to check
+        self_owned_units: UUIDs of root self_owned unit(s)
 
     Returns:
-        Whether the organisation unit should be marked as self-owned
+        Whether the organisation unit should be marked as self_owned
     """
-    check_it_system_uuid = await get_it_system_uuid(
-        gql_client=gql_client, user_key=check_it_system_name
-    )
+    if uuid in self_owned_units:
+        return True
 
     query = gql("""
         query OrgUnitQuery($uuids: [UUID!]) {
           org_units(filter: { uuids: $uuids }) {
             objects {
               current {
-                itusers {
-                  itsystem_uuid
+                ancestors {
+                  uuid
                 }
               }
             }
@@ -193,9 +191,7 @@ async def is_self_owned(
     result = await gql_client.execute(query, {"uuids": [str(uuid)]})
     obj = one(result["org_units"]["objects"])["current"]
 
-    return any(
-        UUID(it.get("itsystem_uuid")) == check_it_system_uuid for it in obj["itusers"]
-    )
+    return any(UUID(a["uuid"]) in self_owned_units for a in obj["ancestors"])
 
 
 async def below_uuid(
@@ -312,6 +308,16 @@ async def update_line_management(
             settings.hidden_user_key,
         )
         new_org_unit_hierarchy = OrgUnitHierarchy(uuid=hidden_uuid)
+    elif settings.self_owned_root_units and await is_self_owned(
+        gql_client, uuid, settings.self_owned_root_units
+    ):
+        logger.info("Organisation Unit needs to marked as self_owned", uuid=uuid)
+        self_owned_uuid = await get_class_uuid(
+            gql_client,
+            settings.self_owned_uuid,
+            settings.self_owned_user_key,
+        )
+        new_org_unit_hierarchy = OrgUnitHierarchy(uuid=self_owned_uuid)
     elif await is_line_management(
         gql_client,
         uuid,
@@ -325,16 +331,6 @@ async def update_line_management(
             settings.line_management_user_key,
         )
         new_org_unit_hierarchy = OrgUnitHierarchy(uuid=line_management_uuid)
-    elif settings.self_owned_it_system_check and await is_self_owned(
-        gql_client, uuid, settings.self_owned_it_system_check
-    ):
-        logger.info("Organisation Unit needs to marked as self-owned", uuid=uuid)
-        self_owned_uuid = await get_class_uuid(
-            gql_client,
-            settings.self_owned_uuid,
-            settings.self_owned_user_key,
-        )
-        new_org_unit_hierarchy = OrgUnitHierarchy(uuid=self_owned_uuid)
     else:
         logger.info("Organisation Unit needs to marked as outside hierarchy", uuid=uuid)
         na_uuid = await get_class_uuid(
