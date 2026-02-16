@@ -8,6 +8,7 @@
 # pylint: disable=too-many-arguments
 from collections.abc import Callable
 from datetime import datetime
+from datetime import timedelta
 from typing import Any
 from unittest.mock import AsyncMock
 from unittest.mock import MagicMock
@@ -625,13 +626,16 @@ async def test_update_line_management_line(
     set_settings: Callable,
 ) -> None:
     """Test that update_line_management can set line_management_uuid."""
+    now = datetime.now()
+    in_ten_days = now + timedelta(days=10)
+
     parent_org_unit = OrganisationUnit.from_simplified_fields(
         user_key="AAAB",
         name="Test Parent",
         org_unit_type_uuid=uuid4(),
         org_unit_level_uuid=uuid4(),
         parent_uuid=ORG_UUID,
-        from_date=datetime.now().isoformat(),
+        from_date=now.isoformat(),
     )
     org_unit = OrganisationUnit.from_simplified_fields(
         user_key="AAAA",
@@ -639,14 +643,14 @@ async def test_update_line_management_line(
         org_unit_type_uuid=uuid4(),
         org_unit_level_uuid=uuid4(),
         parent_uuid=parent_org_unit.uuid,
-        from_date=datetime.now().isoformat(),
+        from_date=now.isoformat(),
+        to_date=in_ten_days.isoformat(),
     )
     fetch_org_unit.side_effect = [org_unit, parent_org_unit]
     org_unit_hierarchy_mock.side_effect = [
         OrgUnitHierarchy(uuid=class_uuid) if changes else org_unit.org_unit_hierarchy,
         parent_org_unit.org_unit_hierarchy,
     ]
-    now = datetime.now()
     mock_datetime.datetime.now.return_value = now
     uuid = org_unit.uuid
 
@@ -710,7 +714,10 @@ async def test_update_line_management_line(
                     org_unit.copy(
                         update={
                             "org_unit_hierarchy": OrgUnitHierarchy(uuid=class_uuid),
-                            "validity": Validity(from_date=now.date()),
+                            "validity": Validity(
+                                from_date=now.date(),
+                                to_date=in_ten_days,
+                            ),
                         }
                     )
                 ]

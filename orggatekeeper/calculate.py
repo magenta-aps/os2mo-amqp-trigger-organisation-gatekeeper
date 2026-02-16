@@ -357,7 +357,10 @@ async def update_line_management(
             # to None in the update operation if the parent of the org unit is
             # the LoRa organisation
             "parent": org_unit.parent if org_unit.parent.uuid != org_uuid else None,
-            "validity": Validity(from_date=datetime.datetime.now().date()),
+            "validity": Validity(
+                from_date=datetime.datetime.now().date(),
+                to_date=org_unit.validity.to_date,
+            ),
         }
     )
 
