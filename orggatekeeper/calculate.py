@@ -157,22 +157,21 @@ async def is_line_management(
     return False
 
 
-async def is_self_owned(
-    gql_client: PersistentGraphQLClient, uuid: UUID, self_owned_units: list[UUID]
+async def is_descendant(
+    gql_client: PersistentGraphQLClient, uuid: UUID, roots: list[UUID]
 ) -> bool:
-    """Determine whether the organisation unit should be marked as self_owned.
-    A unit is marked as self_owned if it has an ancestor that is configured to
-    be self_owned
+    """Determine whether the organisation unit is a descendant of one of the
+    specified roots.
 
     Args:
         gql_client: The GraphQL client to run our queries on.
         uuid: UUID of the organisation unit.
-        self_owned_units: UUIDs of root self_owned unit(s)
+        self_owned_units: UUIDs of root unit(s)
 
     Returns:
-        Whether the organisation unit should be marked as self_owned
+        Whether the organisation unit is a descendant of one of the roots.
     """
-    if uuid in self_owned_units:
+    if uuid in roots:
         return True
 
     query = gql("""
@@ -191,7 +190,7 @@ async def is_self_owned(
     result = await gql_client.execute(query, {"uuids": [str(uuid)]})
     obj = one(result["org_units"]["objects"])["current"]
 
-    return any(UUID(a["uuid"]) in self_owned_units for a in obj["ancestors"])
+    return any(UUID(a["uuid"]) in roots for a in obj["ancestors"])
 
 
 async def below_uuid(
@@ -308,7 +307,7 @@ async def update_line_management(
             settings.hidden_user_key,
         )
         new_org_unit_hierarchy = OrgUnitHierarchy(uuid=hidden_uuid)
-    elif settings.self_owned_root_units and await is_self_owned(
+    elif settings.self_owned_root_units and await is_descendant(
         gql_client, uuid, settings.self_owned_root_units
     ):
         logger.info("Organisation Unit needs to marked as self_owned", uuid=uuid)

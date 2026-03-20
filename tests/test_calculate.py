@@ -34,8 +34,8 @@ from orggatekeeper.calculate import get_org_units_with_no_hierarchy
 from orggatekeeper.calculate import get_orgunit_from_association
 from orggatekeeper.calculate import get_orgunit_from_engagement
 from orggatekeeper.calculate import get_orgunit_from_ituser
+from orggatekeeper.calculate import is_descendant
 from orggatekeeper.calculate import is_line_management
-from orggatekeeper.calculate import is_self_owned
 from orggatekeeper.calculate import ituser_callback
 from orggatekeeper.calculate import org_unit_handler
 from orggatekeeper.calculate import should_hide
@@ -295,20 +295,20 @@ async def test_is_line_management_recursion(is_children_line_management: bool) -
         assert result is is_children_line_management
 
 
-async def test_is_self_owned_root() -> None:
-    """Test check for self-owned"""
-    uuid = self_owned_unit = uuid4()
+async def test_is_descendant_root() -> None:
+    """Test check for descendant root special case."""
+    uuid = root = uuid4()
     session = MagicMock()
 
-    result = await is_self_owned(session, uuid=uuid, self_owned_units=[self_owned_unit])
+    result = await is_descendant(session, uuid=uuid, roots=[root])
     assert result
 
 
 @pytest.mark.parametrize("expected", [True, False])
-async def test_is_self_owned(expected: bool) -> None:
-    """Test check for self-owned"""
+async def test_is_descendant(expected: bool) -> None:
+    """Test check for descendant."""
     params: dict[str, Any] = {}
-    self_owned_unit = uuid4()
+    root = uuid4()
 
     async def execute(*args: Any, **kwargs: Any) -> dict[str, Any]:
         params["args"] = args
@@ -319,13 +319,7 @@ async def test_is_self_owned(expected: bool) -> None:
                     {
                         "current": {
                             "ancestors": [
-                                {
-                                    "uuid": (
-                                        str(self_owned_unit)
-                                        if expected
-                                        else str(uuid4())
-                                    )
-                                }
+                                {"uuid": (str(root) if expected else str(uuid4()))}
                             ]
                         }
                     }
@@ -337,7 +331,7 @@ async def test_is_self_owned(expected: bool) -> None:
     session = MagicMock()
     session.execute = execute
 
-    result = await is_self_owned(session, uuid=uuid, self_owned_units=[self_owned_unit])
+    result = await is_descendant(session, uuid=uuid, roots=[root])
     assert result == expected
 
 
@@ -605,7 +599,7 @@ async def test_update_line_management_hidden(
 # pylint: disable=R0914
 @pytest.mark.parametrize("should_hide_return", [True, False])
 @pytest.mark.parametrize("is_line_management_return", [True, False])
-@pytest.mark.parametrize("is_self_owned_return", [True, False])
+@pytest.mark.parametrize("is_descendant_return", [True, False])
 @pytest.mark.parametrize("changes", [True, False])
 @patch("orggatekeeper.calculate.datetime")
 @patch("orggatekeeper.calculate.fetch_org_unit")
@@ -617,7 +611,7 @@ async def test_update_line_management_line(
     fetch_org_unit: MagicMock,
     mock_datetime: MagicMock,
     changes: bool,
-    is_self_owned_return: MagicMock,
+    is_descendant_return: MagicMock,
     should_hide_return: MagicMock,
     is_line_management_return: MagicMock,
     context: dict[str, Any],
@@ -656,8 +650,8 @@ async def test_update_line_management_line(
 
     gql_client = context["gql_client"]
     model_client = context["model_client"]
-    self_owned_units = [uuid4()]
-    settings = set_settings(self_owned_root_units=self_owned_units)
+    roots = [uuid4()]
+    settings = set_settings(self_owned_root_units=roots)
     context["settings"] = settings
     with (
         patch(
@@ -665,8 +659,8 @@ async def test_update_line_management_line(
             return_value=is_line_management_return,
         ) as is_line_management_mock,
         patch(
-            "orggatekeeper.calculate.is_self_owned", return_value=is_self_owned_return
-        ) as is_self_owned_mock,
+            "orggatekeeper.calculate.is_descendant", return_value=is_descendant_return
+        ) as is_descendant_mock,
         patch(
             "orggatekeeper.calculate.should_hide", return_value=should_hide_return
         ) as should_hide_mock,
@@ -688,12 +682,10 @@ async def test_update_line_management_line(
 
         # Then check if it is line management
         if not should_hide_return:
-            is_self_owned_mock.assert_called_once_with(
-                gql_client, uuid, self_owned_units
-            )
+            is_descendant_mock.assert_called_once_with(gql_client, uuid, roots)
 
-        # Then check for self-owned
-        if not (should_hide_return or is_self_owned_return):
+        # Then check for descendant
+        if not (should_hide_return or is_descendant_return):
             is_line_management_mock.assert_called_once_with(
                 gql_client, uuid, settings.line_management_top_level_uuids, []
             )
@@ -704,8 +696,8 @@ async def test_update_line_management_line(
     else:
         assert should_hide_mock.call_count == 2
         if not should_hide_return:
-            assert is_self_owned_mock.call_count == 2
-        if not (should_hide_return or is_self_owned_return):
+            assert is_descendant_mock.call_count == 2
+        if not (should_hide_return or is_descendant_return):
             assert is_line_management_mock.call_count == 2
         # Only the org_unit, not the parent, is updated
         assert model_client.mock_calls == [
