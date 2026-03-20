@@ -601,6 +601,9 @@ async def test_update_line_management_hidden(
 @pytest.mark.parametrize("is_line_management_return", [True, False])
 @pytest.mark.parametrize("is_descendant_return", [True, False])
 @pytest.mark.parametrize("changes", [True, False])
+@pytest.mark.parametrize(
+    "roots_setting", ["self_owned_root_units", "external_root_units"]
+)
 @patch("orggatekeeper.calculate.datetime")
 @patch("orggatekeeper.calculate.fetch_org_unit")
 @patch("orggatekeeper.calculate.OrgUnitHierarchy")
@@ -610,6 +613,7 @@ async def test_update_line_management_line(
     org_unit_hierarchy_mock: MagicMock,
     fetch_org_unit: MagicMock,
     mock_datetime: MagicMock,
+    roots_setting: str,
     changes: bool,
     is_descendant_return: MagicMock,
     should_hide_return: MagicMock,
@@ -651,7 +655,7 @@ async def test_update_line_management_line(
     gql_client = context["gql_client"]
     model_client = context["model_client"]
     roots = [uuid4()]
-    settings = set_settings(self_owned_root_units=roots)
+    settings = set_settings(**{roots_setting: roots})
     context["settings"] = settings
     with (
         patch(

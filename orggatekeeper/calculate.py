@@ -317,6 +317,16 @@ async def update_line_management(
             settings.self_owned_user_key,
         )
         new_org_unit_hierarchy = OrgUnitHierarchy(uuid=self_owned_uuid)
+    elif settings.external_root_units and await is_descendant(
+        gql_client, uuid, settings.external_root_units
+    ):
+        logger.info("Organisation Unit needs to marked as external", uuid=uuid)
+        external_uuid = await get_class_uuid(
+            gql_client,
+            settings.external_uuid,
+            settings.external_user_key,
+        )
+        new_org_unit_hierarchy = OrgUnitHierarchy(uuid=external_uuid)
     elif await is_line_management(
         gql_client,
         uuid,
