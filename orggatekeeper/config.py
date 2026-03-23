@@ -85,6 +85,7 @@ class Settings(FastRAMQPISettings):
             " line management, only used if line_management_uuid is not set."
         ),
     )
+
     self_owned_uuid: UUID | None = Field(
         None,
         description=(
@@ -105,6 +106,28 @@ class Settings(FastRAMQPISettings):
         "List of uuids of self-owned units. "
         "All units below these units will be considered self-owned",
     )
+
+    external_uuid: UUID | None = Field(
+        None,
+        description=(
+            "UUID of the class within the org_unit_hierarchy facet that indicates"
+            " external organisation units"
+        ),
+    )
+    external_user_key: str = Field(
+        "external",
+        description=(
+            "User-key of the class within the org_unit_hierarchy facet that indicates"
+            " external organisation units, only used if external_uuid is not set."
+        ),
+    )
+    external_root_units: list[UUID] = Field(
+        default=[],
+        description=""
+        "List of uuids of external units. "
+        "All units below these units will be considered external",
+    )
+
     hidden_engagement_types: list[str] = Field(
         [],
         description=(
