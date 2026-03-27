@@ -84,21 +84,19 @@ async def check_org_unit_line_management(
 async def is_line_management(
     gql_client: PersistentGraphQLClient,
     uuid: UUID,
-    line_management_top_level_uuid: set[UUID],
-    hidden_engagement_types: list[str],
+    settings: Settings,
 ) -> bool:
     """Determine whether the organisation unit is part of line management.
 
     Args:
         gql_client: The GraphQL client to run our queries on.
         uuid: UUID of the organisation unit.
-        line_management_top_level_uuid: set of user_keys which are always
-        line_management
+        settings: the application settings.
 
     Returns:
         Whether the organisation unit should be part of line management.
     """
-    if uuid in line_management_top_level_uuid:
+    if uuid in settings.line_management_top_level_uuids:
         return True
 
     query = gql("""
@@ -129,18 +127,18 @@ async def is_line_management(
 
     result = await gql_client.execute(query, {"uuids": [str(uuid)]})
     obj = one(result["org_units"]["objects"])["current"]
-    if hidden_engagement_types:
+    if settings.hidden_engagement_types:
         obj["engagements"] = [
             e
             for e in obj["engagements"]
-            if e["engagement_type"]["name"] not in hidden_engagement_types
+            if e["engagement_type"]["name"] not in settings.hidden_engagement_types
         ]
     # Check this unit according to the rules for line-management
     if await check_org_unit_line_management(
         gql_client=gql_client,
         uuid=uuid,
         org_unit=obj,
-        line_management_top_level_uuid=line_management_top_level_uuid,
+        line_management_top_level_uuid=settings.line_management_top_level_uuids,
     ):
         return True
     # If the above check fails we need to check below this org_unit to see if
@@ -150,8 +148,7 @@ async def is_line_management(
         if await is_line_management(
             gql_client=gql_client,
             uuid=child["uuid"],
-            line_management_top_level_uuid=line_management_top_level_uuid,
-            hidden_engagement_types=hidden_engagement_types,
+            settings=settings,
         ):
             return True
     return False
@@ -327,12 +324,7 @@ async def update_line_management(
             settings.external_user_key,
         )
         new_org_unit_hierarchy = OrgUnitHierarchy(uuid=external_uuid)
-    elif await is_line_management(
-        gql_client,
-        uuid,
-        settings.line_management_top_level_uuids,
-        settings.hidden_engagement_types,
-    ):
+    elif await is_line_management(gql_client, uuid, settings):
         logger.info("Organisation Unit needs to be in line management", uuid=uuid)
         line_management_uuid = await get_class_uuid(
             gql_client,

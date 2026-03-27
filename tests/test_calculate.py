@@ -158,9 +158,11 @@ async def test_is_line_management(
     num_engagements: int,
     num_assocations: int,
     expected: bool,
+    set_settings: Callable[..., Settings],
 ) -> None:
     """Test that is_line_management works as expected."""
     params: dict[str, Any] = {}
+    settings = set_settings()
 
     async def execute(*args: Any, **kwargs: Any) -> dict[str, Any]:
         params["args"] = args
@@ -193,7 +195,7 @@ async def test_is_line_management(
     session.execute = execute
     # Assume that the unit is below the uuids given in settings.
     with patch("orggatekeeper.calculate.below_uuid", return_value=True):
-        result = await is_line_management(session, uuid, set(), [])
+        result = await is_line_management(session, uuid, settings)
     assert len(params["args"]) == 2
     assert isinstance(params["args"][0], DocumentNode)
     assert params["args"][1] == {"uuids": [str(uuid)]}
@@ -202,17 +204,20 @@ async def test_is_line_management(
     # If the unit is not below the uuids given in settings it can
     # never be line-management.
     with patch("orggatekeeper.calculate.below_uuid", return_value=False):
-        result = await is_line_management(session, uuid, set(), [])
+        result = await is_line_management(session, uuid, settings)
     assert result is False
 
 
 @pytest.mark.parametrize("all_hidden", (True, False))
 async def test_is_line_management_hidden_engagements(
     all_hidden: bool,
+    set_settings: Callable[..., Settings],
 ) -> None:
     """Test that a unit won't marked as line management if every engagement is hidden"""
     params: dict[str, Any] = {}
     hidden_engagement_type = "Skjult"
+
+    settings = set_settings(hidden_engagement_types=[hidden_engagement_type])
 
     engagement_type = hidden_engagement_type if all_hidden else "Ansat"
 
@@ -247,9 +252,7 @@ async def test_is_line_management_hidden_engagements(
     session.execute = execute
     # Assume that the unit is below the uuids given in settings.
     with patch("orggatekeeper.calculate.below_uuid", return_value=True):
-        result = await is_line_management(
-            session, uuid, set(), hidden_engagement_types=[hidden_engagement_type]
-        )
+        result = await is_line_management(session, uuid, settings)
     assert len(params["args"]) == 2
     assert isinstance(params["args"][0], DocumentNode)
     assert params["args"][1] == {"uuids": [str(uuid)]}
@@ -257,8 +260,12 @@ async def test_is_line_management_hidden_engagements(
 
 
 @pytest.mark.parametrize("is_children_line_management", [True, False])
-async def test_is_line_management_recursion(is_children_line_management: bool) -> None:
+async def test_is_line_management_recursion(
+    is_children_line_management: bool,
+    set_settings: Callable[..., Settings],
+) -> None:
     """Test that is_line_management is called recursively on children."""
+    settings = set_settings()
 
     async def execute(*_: Any, **__: Any) -> dict[str, Any]:
         return {
@@ -289,8 +296,7 @@ async def test_is_line_management_recursion(is_children_line_management: bool) -
         result = await is_line_management(
             gql_client=session,
             uuid=uuid,
-            line_management_top_level_uuid=set(),
-            hidden_engagement_types=[],
+            settings=settings,
         )
         assert result is is_children_line_management
 
@@ -485,7 +491,7 @@ async def test_update_line_management_no_change(
     should_hide.assert_called_once_with(
         gql_client=gql_client, uuid=uuid, enable_hide_logic=True, hidden=set()
     )
-    is_line_management.assert_called_once_with(gql_client, uuid, set(), [])
+    is_line_management.assert_called_once_with(gql_client, uuid, context["settings"])
     fetch_org_unit.assert_called_once_with(gql_client, uuid)
     model_client = context["model_client"]
     model_client.assert_not_called()
@@ -690,9 +696,7 @@ async def test_update_line_management_line(
 
         # Then check for descendant
         if not (should_hide_return or is_descendant_return):
-            is_line_management_mock.assert_called_once_with(
-                gql_client, uuid, settings.line_management_top_level_uuids, []
-            )
+            is_line_management_mock.assert_called_once_with(gql_client, uuid, settings)
         fetch_org_unit.assert_called_once_with(gql_client, uuid)
         assert model_client.mock_calls == []
 
@@ -763,7 +767,7 @@ async def test_update_line_management_line_for_root_org_unit(
     should_hide.assert_called_once_with(
         gql_client=gql_client, uuid=uuid, enable_hide_logic=True, hidden=set()
     )
-    is_line_management.assert_called_once_with(gql_client, uuid, set(), [])
+    is_line_management.assert_called_once_with(gql_client, uuid, context["settings"])
     fetch_org_unit.assert_called_once_with(gql_client, uuid)
     assert model_client.mock_calls == [
         call.edit(
@@ -848,11 +852,16 @@ async def test_should_hide_in_settings() -> None:
     assert result is True
 
 
-async def test_line_management_for_unit_in_settings() -> None:
+async def test_line_management_for_unit_in_settings(
+    set_settings: Callable[..., Settings],
+) -> None:
     """Test that a unit is marked as line management if its uuid is in settings"""
     session = AsyncMock()
     uuid = uuid4()
-    result = await is_line_management(session, uuid, set([uuid]), [])
+
+    settings = set_settings(line_management_top_level_uuids={uuid})
+
+    result = await is_line_management(session, uuid, settings)
     assert result is True
 
 
