@@ -58,7 +58,7 @@ async def check_org_unit_line_management(
     gql_client: PersistentGraphQLClient,
     uuid: UUID,
     org_unit: dict,
-    line_management_top_level_uuid: set[UUID],
+    settings: Settings,
 ) -> bool:
     """Checks if a given org_unit passes the requirements to be in line management"""
     if not org_unit.get("org_unit_level"):
@@ -78,7 +78,9 @@ async def check_org_unit_line_management(
     if not has_engagements and not has_associations:
         return False
     # AND it needs to be below an orgunit that is explicitly line management
-    return await below_uuid(gql_client, uuid=uuid, uuids=line_management_top_level_uuid)
+    return await below_uuid(
+        gql_client, uuid=uuid, uuids=settings.line_management_top_level_uuids
+    )
 
 
 async def is_line_management(
@@ -138,7 +140,7 @@ async def is_line_management(
         gql_client=gql_client,
         uuid=uuid,
         org_unit=obj,
-        line_management_top_level_uuid=settings.line_management_top_level_uuids,
+        settings=settings,
     ):
         return True
     # If the above check fails we need to check below this org_unit to see if
