@@ -15,7 +15,6 @@ from uuid import UUID
 
 import sentry_sdk
 import structlog
-from fastapi import BackgroundTasks
 from fastapi import FastAPI
 from fastapi import Response
 from fastramqpi.raclients.graph.client import PersistentGraphQLClient
@@ -231,7 +230,7 @@ def create_app(  # pylint: disable=too-many-statements
         return {"name": "orggatekeeper"}
 
     @app.post("/trigger/all", status_code=202)
-    async def update_all_org_units(background_tasks: BackgroundTasks) -> dict[str, str]:
+    async def update_all_org_units() -> None:  # pragma: no cover
         """Call update_line_management on all org units."""
         gql_client = context["gql_client"]
         query = gql("query OrgUnitUUIDQuery { org_units { objects { uuid } } }")
@@ -242,12 +241,7 @@ def create_app(  # pylint: disable=too-many-statements
         org_unit_tasks = [
             update_line_management(**context, uuid=uuid) for uuid in org_unit_uuids
         ]
-        background_tasks.add_task(
-            gather_with_concurrency,
-            5,
-            *org_unit_tasks,  # type: ignore
-        )
-        return {"status": "Background job triggered"}
+        await gather_with_concurrency(5, *org_unit_tasks)  # type: ignore
 
     @app.post(
         "/trigger/{uuid}",
