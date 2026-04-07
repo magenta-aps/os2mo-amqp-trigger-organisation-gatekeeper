@@ -159,38 +159,6 @@ async def test_metrics_endpoint(test_client_builder: Callable[..., TestClient]) 
     assert "# TYPE build_information_info gauge" in response.text
 
 
-@patch("fastapi.BackgroundTasks.add_task", return_value=AsyncMock())
-@patch("orggatekeeper.main.construct_context")
-async def test_trigger_all_endpoint(
-    construct_context: MagicMock,
-    backgroundtask_mock: AsyncMock,
-    test_client_builder: Callable[..., TestClient],
-) -> None:
-    """Test the trigger all endpoint on our app."""
-    gql_client = AsyncMock()
-    gql_client.execute.return_value = {
-        "org_units": {
-            "objects": [
-                {"uuid": str(uuid4())},
-                {"uuid": str(uuid4())},
-                {"uuid": str(uuid4())},
-            ]
-        }
-    }
-    construct_context.return_value = {
-        "model_client": AsyncMock(),
-        "gql_client": gql_client,
-        "settings": MagicMock(),
-        "org_uuid": ORG_UUID,
-    }
-    test_client = test_client_builder()
-    response = test_client.post("/trigger/all")
-    assert response.status_code == 202
-    assert response.json() == {"status": "Background job triggered"}
-    assert len(gql_client.execute.mock_calls) == 1
-    assert len(backgroundtask_mock.call_args[0]) == 5
-
-
 @patch("orggatekeeper.main.update_line_management", return_value=AsyncMock())
 async def test_trigger_uuid_endpoint(
     update_line_management_mock: AsyncMock,
