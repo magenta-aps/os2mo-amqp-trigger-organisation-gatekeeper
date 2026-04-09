@@ -75,6 +75,11 @@ async def check_org_unit_line_management(
     # TODO: Check owners, leaders, it?
 
     engagements = org_unit["engagements"]
+    # Introduce proper strategy pattern if more variability than this is needed
+    if settings.line_management_exclude_manager_engagements:
+        engagements = [
+            eng for eng in engagements if not one(eng["person"])["manager_roles"]
+        ]
 
     has_engagements = bool(engagements)
     has_associations = bool(org_unit["associations"])
@@ -116,6 +121,11 @@ async def is_line_management(
                   uuid
                   engagement_type {
                     name
+                  }
+                  person {
+                    manager_roles {
+                      uuid
+                    }
                   }
                 }
                 associations {
