@@ -59,6 +59,7 @@ async def check_org_unit_line_management(
     uuid: UUID,
     org_unit: dict,
     line_management_top_level_uuid: set[UUID],
+    line_management_exclude_manager_engagements: bool,
 ) -> bool:
     """Checks if a given org_unit passes the requirements to be in line management"""
     if not org_unit.get("org_unit_level"):
@@ -75,6 +76,11 @@ async def check_org_unit_line_management(
     # TODO: Check owners, leaders, it?
 
     engagements = org_unit["engagements"]
+    # Introduce proper strategy pattern if more variability than this is needed
+    if line_management_exclude_manager_engagements:
+        engagements = [
+            eng for eng in engagements if not one(eng["person"])["manager_roles"]
+        ]
 
     has_engagements = bool(engagements)
     has_associations = bool(org_unit["associations"])
@@ -89,6 +95,7 @@ async def is_line_management(
     uuid: UUID,
     line_management_top_level_uuid: set[UUID],
     hidden_engagement_types: list[str],
+    line_management_exclude_manager_engagements: bool,
 ) -> bool:
     """Determine whether the organisation unit is part of line management.
 
@@ -96,7 +103,10 @@ async def is_line_management(
         gql_client: The GraphQL client to run our queries on.
         uuid: UUID of the organisation unit.
         line_management_top_level_uuid: set of user_keys which are always
-        line_management
+            line_management
+        hidden_engagement_types: list of hidden engagement types.
+        line_management_exclude_manager_engagements: whether to exclude managers from
+            the engagements list when determining if the unit has engagements.
 
     Returns:
         Whether the organisation unit should be part of line management.
@@ -116,6 +126,11 @@ async def is_line_management(
                   uuid
                   engagement_type {
                     name
+                  }
+                  person {
+                    manager_roles {
+                      uuid
+                    }
                   }
                 }
                 associations {
@@ -144,6 +159,7 @@ async def is_line_management(
         uuid=uuid,
         org_unit=obj,
         line_management_top_level_uuid=line_management_top_level_uuid,
+        line_management_exclude_manager_engagements=line_management_exclude_manager_engagements,
     ):
         return True
     # If the above check fails we need to check below this org_unit to see if
@@ -155,6 +171,7 @@ async def is_line_management(
             uuid=child["uuid"],
             line_management_top_level_uuid=line_management_top_level_uuid,
             hidden_engagement_types=hidden_engagement_types,
+            line_management_exclude_manager_engagements=line_management_exclude_manager_engagements,
         ):
             return True
     return False
@@ -335,6 +352,7 @@ async def update_line_management(
         uuid,
         settings.line_management_top_level_uuids,
         settings.hidden_engagement_types,
+        settings.line_management_exclude_manager_engagements,
     ):
         logger.info("Organisation Unit needs to be in line management", uuid=uuid)
         line_management_uuid = await get_class_uuid(
