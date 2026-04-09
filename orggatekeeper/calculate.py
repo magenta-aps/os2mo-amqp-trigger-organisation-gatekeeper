@@ -73,7 +73,10 @@ async def check_org_unit_line_management(
         return False
     # Also it needs to have people attached to be line managent
     # TODO: Check owners, leaders, it?
-    has_engagements = bool(org_unit["engagements"])
+
+    engagements = org_unit["engagements"]
+
+    has_engagements = bool(engagements)
     has_associations = bool(org_unit["associations"])
     if not has_engagements and not has_associations:
         return False
