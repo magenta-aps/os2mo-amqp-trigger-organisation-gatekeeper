@@ -27,6 +27,7 @@ from ramodels.mo._shared import OrgUnitHierarchy
 
 from orggatekeeper.calculate import association_callback
 from orggatekeeper.calculate import below_uuid
+from orggatekeeper.calculate import check_org_unit_line_management
 from orggatekeeper.calculate import engagement_callback
 from orggatekeeper.calculate import fetch_org_unit
 from orggatekeeper.calculate import get_class_uuid
@@ -40,6 +41,7 @@ from orggatekeeper.calculate import ituser_callback
 from orggatekeeper.calculate import org_unit_handler
 from orggatekeeper.calculate import should_hide
 from orggatekeeper.calculate import update_line_management
+from orggatekeeper.config import OrgGatekeeperConnectionSettings
 from orggatekeeper.config import Settings
 from orggatekeeper.mo import fetch_class_uuid
 from tests import ORG_UUID
@@ -1050,3 +1052,73 @@ async def test_callback_org_unit(
     uuid = uuid4()
     await org_unit_handler(context, uuid=uuid, _=None)
     update_line_management_mock.assert_called_once_with(**context, uuid=uuid)
+
+
+@pytest.mark.parametrize(
+    "manager_roles_person1, expected",
+    [
+        ([], True),
+        ([{"uuid": "339f5780-95d7-449d-a0d6-cb025daaa563"}], False),
+    ],
+)
+@patch("orggatekeeper.calculate.below_uuid")
+async def test_check_org_unit_line_management_exclude_managers(
+    mock_below_uuid: AsyncMock,
+    manager_roles_person1: list[dict[str, str]],
+    expected: bool,
+) -> None:
+    """
+    Test the case where the environment variable
+    LINE_MANAGEMENT_EXCLUDE_MANAGER_ENGAGEMENTS is true.
+
+    The function check_org_unit_line_management should return True, if the
+    OU contains both normal and manager engagements and False if all
+    engagement persons are managers.
+    """
+    # Arrange
+    settings = Settings(
+        client_id="keycloak_client",
+        client_secret="secret",
+        amqp=OrgGatekeeperConnectionSettings(url="amqp://dummy-broker"),
+        # This is the important setting
+        line_management_exclude_manager_engagements=True,
+    )
+
+    org_unit = {
+        "org_unit_level": {
+            "user_key": "NY1-niveau",
+        },
+        "engagements": [
+            {
+                "uuid": "94f04266-f744-4c06-8f4e-9561abfbff75",
+                "engagement_type": {"name": "Ansat"},
+                # Here we control whether all (two) persons are managers or not
+                "person": [{"manager_roles": manager_roles_person1}],
+            },
+            {
+                "uuid": "b7e1ce81-f160-43ee-aac4-e416338e2a92",
+                "engagement_type": {"name": "Ansat"},
+                "person": [
+                    {
+                        "manager_roles": [
+                            {"uuid": "29aaf8f7-4bc2-4d3d-ba8f-ed9fd457c101"}
+                        ]
+                    }
+                ],
+            },
+        ],
+        "associations": [],
+    }
+
+    mock_below_uuid.return_value = True
+
+    # Act
+    result = await check_org_unit_line_management(
+        gql_client=AsyncMock(),
+        uuid=uuid4(),
+        org_unit=org_unit,
+        settings=settings,
+    )
+
+    # Assert
+    assert result is expected
