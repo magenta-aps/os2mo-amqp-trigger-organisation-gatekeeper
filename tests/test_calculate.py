@@ -160,11 +160,10 @@ async def test_is_line_management(
     num_engagements: int,
     num_assocations: int,
     expected: bool,
-    set_settings: Callable[..., Settings],
+    mock_settings: Settings,
 ) -> None:
     """Test that is_line_management works as expected."""
     params: dict[str, Any] = {}
-    settings = set_settings()
 
     async def execute(*args: Any, **kwargs: Any) -> dict[str, Any]:
         params["args"] = args
@@ -197,7 +196,7 @@ async def test_is_line_management(
     session.execute = execute
     # Assume that the unit is below the uuids given in settings.
     with patch("orggatekeeper.calculate.below_uuid", return_value=True):
-        result = await is_line_management(session, uuid, settings)
+        result = await is_line_management(session, uuid, mock_settings)
     assert len(params["args"]) == 2
     assert isinstance(params["args"][0], DocumentNode)
     assert params["args"][1] == {"uuids": [str(uuid)]}
@@ -206,7 +205,7 @@ async def test_is_line_management(
     # If the unit is not below the uuids given in settings it can
     # never be line-management.
     with patch("orggatekeeper.calculate.below_uuid", return_value=False):
-        result = await is_line_management(session, uuid, settings)
+        result = await is_line_management(session, uuid, mock_settings)
     assert result is False
 
 
