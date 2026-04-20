@@ -85,6 +85,14 @@ class Settings(FastRAMQPISettings):
             " line management, only used if line_management_uuid is not set."
         ),
     )
+    line_management_exclude_manager_engagements: bool = Field(
+        False,
+        description=(
+            "If true, exclude manager engagements from the line management "
+            "organisation. This is relevant for filtering out unit which only contains "
+            "manager engagements from the line management organisation."
+        ),
+    )
 
     self_owned_uuid: UUID | None = Field(
         None,

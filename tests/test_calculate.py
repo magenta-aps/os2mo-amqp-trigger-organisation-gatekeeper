@@ -27,6 +27,7 @@ from ramodels.mo._shared import OrgUnitHierarchy
 
 from orggatekeeper.calculate import association_callback
 from orggatekeeper.calculate import below_uuid
+from orggatekeeper.calculate import check_org_unit_line_management
 from orggatekeeper.calculate import engagement_callback
 from orggatekeeper.calculate import fetch_org_unit
 from orggatekeeper.calculate import get_class_uuid
@@ -193,7 +194,13 @@ async def test_is_line_management(
     session.execute = execute
     # Assume that the unit is below the uuids given in settings.
     with patch("orggatekeeper.calculate.below_uuid", return_value=True):
-        result = await is_line_management(session, uuid, set(), [])
+        result = await is_line_management(
+            gql_client=session,
+            uuid=uuid,
+            line_management_top_level_uuid=set(),
+            hidden_engagement_types=[],
+            line_management_exclude_manager_engagements=False,
+        )
     assert len(params["args"]) == 2
     assert isinstance(params["args"][0], DocumentNode)
     assert params["args"][1] == {"uuids": [str(uuid)]}
@@ -202,7 +209,13 @@ async def test_is_line_management(
     # If the unit is not below the uuids given in settings it can
     # never be line-management.
     with patch("orggatekeeper.calculate.below_uuid", return_value=False):
-        result = await is_line_management(session, uuid, set(), [])
+        result = await is_line_management(
+            gql_client=session,
+            uuid=uuid,
+            line_management_top_level_uuid=set(),
+            hidden_engagement_types=[],
+            line_management_exclude_manager_engagements=False,
+        )
     assert result is False
 
 
@@ -248,7 +261,11 @@ async def test_is_line_management_hidden_engagements(
     # Assume that the unit is below the uuids given in settings.
     with patch("orggatekeeper.calculate.below_uuid", return_value=True):
         result = await is_line_management(
-            session, uuid, set(), hidden_engagement_types=[hidden_engagement_type]
+            gql_client=session,
+            uuid=uuid,
+            line_management_top_level_uuid=set(),
+            hidden_engagement_types=[hidden_engagement_type],
+            line_management_exclude_manager_engagements=False,
         )
     assert len(params["args"]) == 2
     assert isinstance(params["args"][0], DocumentNode)
@@ -291,6 +308,7 @@ async def test_is_line_management_recursion(is_children_line_management: bool) -
             uuid=uuid,
             line_management_top_level_uuid=set(),
             hidden_engagement_types=[],
+            line_management_exclude_manager_engagements=False,
         )
         assert result is is_children_line_management
 
@@ -485,7 +503,7 @@ async def test_update_line_management_no_change(
     should_hide.assert_called_once_with(
         gql_client=gql_client, uuid=uuid, enable_hide_logic=True, hidden=set()
     )
-    is_line_management.assert_called_once_with(gql_client, uuid, set(), [])
+    is_line_management.assert_called_once_with(gql_client, uuid, set(), [], False)
     fetch_org_unit.assert_called_once_with(gql_client, uuid)
     model_client = context["model_client"]
     model_client.assert_not_called()
@@ -691,7 +709,7 @@ async def test_update_line_management_line(
         # Then check for descendant
         if not (should_hide_return or is_descendant_return):
             is_line_management_mock.assert_called_once_with(
-                gql_client, uuid, settings.line_management_top_level_uuids, []
+                gql_client, uuid, settings.line_management_top_level_uuids, [], False
             )
         fetch_org_unit.assert_called_once_with(gql_client, uuid)
         assert model_client.mock_calls == []
@@ -763,7 +781,7 @@ async def test_update_line_management_line_for_root_org_unit(
     should_hide.assert_called_once_with(
         gql_client=gql_client, uuid=uuid, enable_hide_logic=True, hidden=set()
     )
-    is_line_management.assert_called_once_with(gql_client, uuid, set(), [])
+    is_line_management.assert_called_once_with(gql_client, uuid, set(), [], False)
     fetch_org_unit.assert_called_once_with(gql_client, uuid)
     assert model_client.mock_calls == [
         call.edit(
@@ -852,7 +870,13 @@ async def test_line_management_for_unit_in_settings() -> None:
     """Test that a unit is marked as line management if its uuid is in settings"""
     session = AsyncMock()
     uuid = uuid4()
-    result = await is_line_management(session, uuid, set([uuid]), [])
+    result = await is_line_management(
+        gql_client=session,
+        uuid=uuid,
+        line_management_top_level_uuid={uuid},
+        hidden_engagement_types=[],
+        line_management_exclude_manager_engagements=False,
+    )
     assert result is True
 
 
@@ -1041,3 +1065,66 @@ async def test_callback_org_unit(
     uuid = uuid4()
     await org_unit_handler(context, uuid=uuid, _=None)
     update_line_management_mock.assert_called_once_with(**context, uuid=uuid)
+
+
+@pytest.mark.parametrize(
+    "manager_roles_person1, expected",
+    [
+        ([], True),
+        ([{"uuid": "339f5780-95d7-449d-a0d6-cb025daaa563"}], False),
+    ],
+)
+@patch("orggatekeeper.calculate.below_uuid")
+async def test_check_org_unit_line_management_exclude_managers(
+    mock_below_uuid: AsyncMock,
+    manager_roles_person1: list[dict[str, str]],
+    expected: bool,
+) -> None:
+    """
+    Test the case where the environment variable
+    LINE_MANAGEMENT_EXCLUDE_MANAGER_ENGAGEMENTS is true.
+
+    The function check_org_unit_line_management should return True, if the
+    OU contains both normal and manager engagements and False if all
+    engagement persons are managers.
+    """
+    # Arrange
+    org_unit = {
+        "org_unit_level": {
+            "user_key": "NY1-niveau",
+        },
+        "engagements": [
+            {
+                "uuid": "94f04266-f744-4c06-8f4e-9561abfbff75",
+                "engagement_type": {"name": "Ansat"},
+                # Here we control whether all (two) persons are managers or not
+                "person": [{"manager_roles": manager_roles_person1}],
+            },
+            {
+                "uuid": "b7e1ce81-f160-43ee-aac4-e416338e2a92",
+                "engagement_type": {"name": "Ansat"},
+                "person": [
+                    {
+                        "manager_roles": [
+                            {"uuid": "29aaf8f7-4bc2-4d3d-ba8f-ed9fd457c101"}
+                        ]
+                    }
+                ],
+            },
+        ],
+        "associations": [],
+    }
+
+    mock_below_uuid.return_value = True
+
+    # Act
+    result = await check_org_unit_line_management(
+        gql_client=AsyncMock(),
+        uuid=uuid4(),
+        org_unit=org_unit,
+        line_management_top_level_uuid=set(),
+        line_management_exclude_manager_engagements=True,
+    )
+
+    # Assert
+    assert result is expected
