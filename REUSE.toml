@@ -14,7 +14,8 @@ path = [
   "**.yml",
   ".gitignore",
   "RELEASE.md",
-  "RELEASE.md.template"
+  "RELEASE.md.template",
+  "AGENTS.md"
 ]
 precedence = "aggregate"
 SPDX-FileCopyrightText = "2021 Magenta ApS <https://magenta.dk>"
