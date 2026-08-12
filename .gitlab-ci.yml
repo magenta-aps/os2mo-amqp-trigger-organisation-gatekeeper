@@ -48,6 +48,9 @@ workflow:
 
 
 include:
+  - project: rammearkitektur/os2mo
+    file:
+    - gitlab-ci-templates/integration-test-meta.v1.yml
   - project: labs/salt-automation
     file:
     - gitlab-ci-templates/common/conventional-commits.v1.yml
@@ -64,3 +67,15 @@ Build:
   extends: .build-docker
   variables:
     BUILD_DOCKER_EXTRA_FLAGS: "--build-arg=COMMIT_SHA=${CI_COMMIT_SHA} --build-arg=COMMIT_TAG=${CI_COMMIT_TAG}"
+
+# Test
+#######
+Test:
+  variables:
+    PYTEST_ADDOPTS: "-m 'not integration_test'"
+
+Integration-test:
+  extends:
+    - .integration-test:mo
+  rules:
+    - <<: *if-merge-request
