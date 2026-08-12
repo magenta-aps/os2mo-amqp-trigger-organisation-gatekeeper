@@ -6,8 +6,18 @@ version: "3.9"
 services:
   orggatekeeper:
     build: .
-    command: ["uvicorn", "--factory", "app.main:create_app", "--host", "0.0.0.0", "--reload"]
+    command: ["uvicorn", "--factory", "orggatekeeper.main:create_app", "--host", "0.0.0.0", "--reload"]
     environment:
+      # TODO(#70974): these are redundant, but are required for test fixtures to
+      #   work. They will replace the unprefixed settings below once this integration
+      #   is ported to FastRAMQPI
+      FASTRAMQPI__MO_URL: "http://mo:5000"
+      FASTRAMQPI__CLIENT_ID: "dipex"
+      FASTRAMQPI__CLIENT_SECRET: "603f1c82-d012-4d04-9382-dbe659c533fb"
+      FASTRAMQPI__AUTH_SERVER: "http://keycloak:8080/auth"
+      FASTRAMQPI__AUTH_REALM: "mo"
+      FASTRAMQPI__AMQP__URL: "amqp://guest:guest@msg-broker:5672/"
+
       AMQP__URL: "amqp://guest:guest@msg-broker:5672/"
 
       AUTH_SERVER: "http://keycloak:8080/auth"
@@ -24,7 +34,7 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      - ./orggatekeeper:/opt/app/
+      - .:/app
     healthcheck:
       test: ["CMD", "curl", "-f", "http://orggatekeeper:8000/metrics"]
       interval: 15s
