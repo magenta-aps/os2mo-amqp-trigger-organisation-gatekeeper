@@ -1,17 +1,23 @@
 from .async_base_client import AsyncBaseClient
+from .create_association import CreateAssociation, CreateAssociationAssociationCreate
 from .create_class import CreateClass, CreateClassClassCreate
 from .create_employee import CreateEmployee, CreateEmployeeEmployeeCreate
 from .create_engagement import CreateEngagement, CreateEngagementEngagementCreate
 from .create_facet import CreateFacet, CreateFacetFacetCreate
+from .create_i_t_system import CreateITSystem, CreateITSystemItsystemCreate
+from .create_i_t_user import CreateITUser, CreateITUserItuserCreate
 from .create_org_unit import CreateOrgUnit, CreateOrgUnitOrgUnitCreate
 from .get_class_by_user_key import GetClassByUserKey, GetClassByUserKeyClasses
 from .get_org_unit_hierarchy import GetOrgUnitHierarchy, GetOrgUnitHierarchyOrgUnits
 from .input_types import (
+    AssociationCreateInput,
     ClassCreateInput,
     ClassFilter,
     EmployeeCreateInput,
     EngagementCreateInput,
     FacetCreateInput,
+    ITSystemCreateInput,
+    ITUserCreateInput,
     OrganisationUnitCreateInput,
     OrganisationUnitFilter,
 )
@@ -135,3 +141,48 @@ class GraphQLClient(AsyncBaseClient):
         response = await self.execute(query=query, variables=variables)
         data = self.get_data(response)
         return CreateEngagement.parse_obj(data).engagement_create
+
+    async def create_association(
+        self, input: AssociationCreateInput
+    ) -> CreateAssociationAssociationCreate:
+        query = gql("""
+            mutation CreateAssociation($input: AssociationCreateInput!) {
+              association_create(input: $input) {
+                uuid
+              }
+            }
+            """)
+        variables: dict[str, object] = {"input": input}
+        response = await self.execute(query=query, variables=variables)
+        data = self.get_data(response)
+        return CreateAssociation.parse_obj(data).association_create
+
+    async def create_i_t_system(
+        self, input: ITSystemCreateInput
+    ) -> CreateITSystemItsystemCreate:
+        query = gql("""
+            mutation CreateITSystem($input: ITSystemCreateInput!) {
+              itsystem_create(input: $input) {
+                uuid
+              }
+            }
+            """)
+        variables: dict[str, object] = {"input": input}
+        response = await self.execute(query=query, variables=variables)
+        data = self.get_data(response)
+        return CreateITSystem.parse_obj(data).itsystem_create
+
+    async def create_i_t_user(
+        self, input: ITUserCreateInput
+    ) -> CreateITUserItuserCreate:
+        query = gql("""
+            mutation CreateITUser($input: ITUserCreateInput!) {
+              ituser_create(input: $input) {
+                uuid
+              }
+            }
+            """)
+        variables: dict[str, object] = {"input": input}
+        response = await self.execute(query=query, variables=variables)
+        data = self.get_data(response)
+        return CreateITUser.parse_obj(data).ituser_create

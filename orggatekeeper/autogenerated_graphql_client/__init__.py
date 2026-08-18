@@ -1,10 +1,13 @@
 from .async_base_client import AsyncBaseClient
 from .base_model import BaseModel
 from .client import GraphQLClient
+from .create_association import CreateAssociation, CreateAssociationAssociationCreate
 from .create_class import CreateClass, CreateClassClassCreate
 from .create_employee import CreateEmployee, CreateEmployeeEmployeeCreate
 from .create_engagement import CreateEngagement, CreateEngagementEngagementCreate
 from .create_facet import CreateFacet, CreateFacetFacetCreate
+from .create_i_t_system import CreateITSystem, CreateITSystemItsystemCreate
+from .create_i_t_user import CreateITUser, CreateITUserItuserCreate
 from .create_org_unit import CreateOrgUnit, CreateOrgUnitOrgUnitCreate
 from .enums import AccessLogModel, FileStore, HardcodedActor, OwnerInferencePriority
 from .exceptions import (
@@ -186,6 +189,8 @@ __all__ = [
     "ClassRegistrationFilter",
     "ClassTerminateInput",
     "ClassUpdateInput",
+    "CreateAssociation",
+    "CreateAssociationAssociationCreate",
     "CreateClass",
     "CreateClassClassCreate",
     "CreateEmployee",
@@ -194,6 +199,10 @@ __all__ = [
     "CreateEngagementEngagementCreate",
     "CreateFacet",
     "CreateFacetFacetCreate",
+    "CreateITSystem",
+    "CreateITSystemItsystemCreate",
+    "CreateITUser",
+    "CreateITUserItuserCreate",
     "CreateOrgUnit",
     "CreateOrgUnitOrgUnitCreate",
     "DescendantParentBoundOrganisationUnitFilter",
