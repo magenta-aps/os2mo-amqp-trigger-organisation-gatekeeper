@@ -1,0 +1,21 @@
+version = 1
+SPDX-PackageName = "OrganisationGatekeeper"
+SPDX-PackageSupplier = "Magenta ApS <info@magenta.dk>"
+
+[[annotations]]
+path = [
+  "flake.lock",
+  ".flake8",
+  "mypy.ini",
+  "poetry.**",
+  "**.toml",
+  "**.json",
+  "**.yaml",
+  "**.yml",
+  ".gitignore",
+  "RELEASE.md",
+  "RELEASE.md.template"
+]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2021 Magenta ApS <https://magenta.dk>"
+SPDX-License-Identifier = "MPL-2.0"
