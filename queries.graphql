@@ -1,8 +1,57 @@
 # SPDX-FileCopyrightText: Magenta ApS <https://magenta.dk>
 # SPDX-License-Identifier: MPL-2.0
 
-query DummyQuery {
-  org {
+query GetOrgUnitHierarchy($filter: OrganisationUnitFilter!) {
+  org_units(filter: $filter) {
+    objects {
+      validities {
+        unit_hierarchy_response {
+          validities {
+            uuid
+          }
+        }
+      }
+    }
+  }
+}
+
+query GetClassByUserKey($filter: ClassFilter!) {
+  classes(filter: $filter) {
+    objects {
+      uuid
+      current {
+        user_key
+      }
+    }
+  }
+}
+
+mutation CreateOrgUnit($input: OrganisationUnitCreateInput!) {
+  org_unit_create(input: $input) {
+    uuid
+  }
+}
+
+mutation CreateFacet($input: FacetCreateInput!) {
+  facet_create(input: $input) {
+    uuid
+  }
+}
+
+mutation CreateClass($input: ClassCreateInput!) {
+  class_create(input: $input) {
+    uuid
+  }
+}
+
+mutation CreateEmployee($input: EmployeeCreateInput!) {
+  employee_create(input: $input) {
+    uuid
+  }
+}
+
+mutation CreateEngagement($input: EngagementCreateInput!) {
+  engagement_create(input: $input) {
     uuid
   }
 }
