@@ -1,9 +1,6 @@
 import enum
 import json
-from collections.abc import AsyncIterator
-from typing import Any
-from typing import TypeVar
-from typing import cast
+from typing import Any, AsyncIterator, Dict, Optional, TypeVar, cast
 from uuid import uuid4
 
 import httpx
@@ -11,17 +8,17 @@ from pydantic import BaseModel
 from pydantic.json import pydantic_encoder
 
 from .base_model import UNSET
-from .exceptions import GraphQLClientGraphQLMultiError
-from .exceptions import GraphQLClientHttpError
-from .exceptions import GraphQLClientInvalidMessageFormat
-from .exceptions import GraphQlClientInvalidResponseError
+from .exceptions import (
+    GraphQLClientGraphQLMultiError,
+    GraphQLClientHttpError,
+    GraphQLClientInvalidMessageFormat,
+    GraphQlClientInvalidResponseError,
+)
 
 try:
     from websockets.client import WebSocketClientProtocol
     from websockets.client import connect as ws_connect
-    from websockets.typing import Data
-    from websockets.typing import Origin
-    from websockets.typing import Subprotocol
+    from websockets.typing import Data, Origin, Subprotocol
 except ImportError:
     from contextlib import asynccontextmanager
 
@@ -56,12 +53,12 @@ class AsyncBaseClient:
     def __init__(
         self,
         url: str = "",
-        headers: dict[str, str] | None = None,
-        http_client: httpx.AsyncClient | None = None,
+        headers: Optional[Dict[str, str]] = None,
+        http_client: Optional[httpx.AsyncClient] = None,
         ws_url: str = "",
-        ws_headers: dict[str, Any] | None = None,
-        ws_origin: str | None = None,
-        ws_connection_init_payload: dict[str, Any] | None = None,
+        ws_headers: Optional[Dict[str, Any]] = None,
+        ws_origin: Optional[str] = None,
+        ws_connection_init_payload: Optional[Dict[str, Any]] = None,
     ) -> None:
         self.url = url
         self.headers = headers
@@ -85,9 +82,9 @@ class AsyncBaseClient:
         await self.http_client.aclose()
 
     async def execute(
-        self, query: str, variables: dict[str, Any] | None = None
+        self, query: str, variables: Optional[Dict[str, Any]] = None
     ) -> httpx.Response:
-        payload: dict[str, Any] = {"query": query}
+        payload: Dict[str, Any] = {"query": query}
         if variables:
             payload["variables"] = self._convert_dict_to_json_serializable(variables)
         content = json.dumps(payload, default=pydantic_encoder)
@@ -95,7 +92,7 @@ class AsyncBaseClient:
             url=self.url, content=content, headers={"Content-Type": "application/json"}
         )
 
-    def get_data(self, response: httpx.Response) -> dict[str, Any]:
+    def get_data(self, response: httpx.Response) -> Dict[str, Any]:
         if not response.is_success:
             raise GraphQLClientHttpError(
                 status_code=response.status_code, response=response
@@ -120,8 +117,8 @@ class AsyncBaseClient:
         return cast(dict[str, Any], data)
 
     async def execute_ws(
-        self, query: str, variables: dict[str, Any] | None = None
-    ) -> AsyncIterator[dict[str, Any]]:
+        self, query: str, variables: Optional[Dict[str, Any]] = None
+    ) -> AsyncIterator[Dict[str, Any]]:
         operation_id = str(uuid4())
         async with ws_connect(
             self.ws_url,
@@ -143,8 +140,8 @@ class AsyncBaseClient:
                     yield data
 
     def _convert_dict_to_json_serializable(
-        self, dict_: dict[str, Any]
-    ) -> dict[str, Any]:
+        self, dict_: Dict[str, Any]
+    ) -> Dict[str, Any]:
         return {
             key: self._convert_value(value)
             for key, value in dict_.items()
@@ -159,7 +156,7 @@ class AsyncBaseClient:
         return value
 
     async def _send_connection_init(self, websocket: WebSocketClientProtocol) -> None:
-        payload: dict[str, Any] = {
+        payload: Dict[str, Any] = {
             "type": GraphQLTransportWSMessageType.CONNECTION_INIT.value
         }
         if self.ws_connection_init_payload:
@@ -171,9 +168,9 @@ class AsyncBaseClient:
         websocket: WebSocketClientProtocol,
         operation_id: str,
         query: str,
-        variables: dict[str, Any] | None = None,
+        variables: Optional[Dict[str, Any]] = None,
     ) -> None:
-        payload: dict[str, Any] = {
+        payload: Dict[str, Any] = {
             "id": operation_id,
             "type": GraphQLTransportWSMessageType.SUBSCRIBE.value,
             "payload": {"query": query},
@@ -186,7 +183,7 @@ class AsyncBaseClient:
 
     async def _handle_ws_message(
         self, message: Data, websocket: WebSocketClientProtocol
-    ) -> dict[str, Any] | None:
+    ) -> Optional[Dict[str, Any]]:
         try:
             message_dict = json.loads(message)
         except json.JSONDecodeError as exc:
@@ -201,7 +198,7 @@ class AsyncBaseClient:
         if type_ == GraphQLTransportWSMessageType.NEXT:
             if "data" not in payload:
                 raise GraphQLClientInvalidMessageFormat(message=message)
-            return cast(dict[str, Any], payload["data"])
+            return cast(Dict[str, Any], payload["data"])
 
         if type_ == GraphQLTransportWSMessageType.COMPLETE:
             await websocket.close()

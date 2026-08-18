@@ -1,5 +1,4 @@
-from collections.abc import Callable
-from typing import Any
+from typing import Any, Callable, Dict
 
-SCALARS_PARSE_FUNCTIONS: dict[Any, Callable[[Any], Any]] = {}
-SCALARS_SERIALIZE_FUNCTIONS: dict[Any, Callable[[Any], Any]] = {}
+SCALARS_PARSE_FUNCTIONS: Dict[Any, Callable[[Any], Any]] = {}
+SCALARS_SERIALIZE_FUNCTIONS: Dict[Any, Callable[[Any], Any]] = {}

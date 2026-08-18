@@ -1,14 +1,12 @@
-from typing import Any
-from typing import Union
-from typing import get_args
-from typing import get_origin
+# This file has been modified by the ForbidExtraBaseModelPlugin
+from typing import Any, Dict, Type, Union, get_args, get_origin
 
 from pydantic import BaseModel as PydanticBaseModel
+from pydantic import Extra
 from pydantic.class_validators import validator
 from pydantic.fields import ModelField
 
-from .scalars import SCALARS_PARSE_FUNCTIONS
-from .scalars import SCALARS_SERIALIZE_FUNCTIONS
+from .scalars import SCALARS_PARSE_FUNCTIONS, SCALARS_SERIALIZE_FUNCTIONS
 
 
 class UnsetType:
@@ -24,6 +22,7 @@ class BaseModel(PydanticBaseModel):
         allow_population_by_field_name = True
         validate_assignment = True
         arbitrary_types_allowed = True
+        extra = Extra.forbid
 
     # pylint: disable=no-self-argument
     @validator("*", pre=True)
@@ -31,7 +30,7 @@ class BaseModel(PydanticBaseModel):
         return cls._parse_custom_scalar_value(value, field.annotation)
 
     @classmethod
-    def _parse_custom_scalar_value(cls, value: Any, type_: type[Any]) -> Any:
+    def _parse_custom_scalar_value(cls, value: Any, type_: Type[Any]) -> Any:
         origin = get_origin(type_)
         args = get_args(type_)
         if origin is list and isinstance(value, list):
@@ -47,7 +46,7 @@ class BaseModel(PydanticBaseModel):
 
         return value
 
-    def dict(self, **kwargs: Any) -> dict[str, Any]:
+    def dict(self, **kwargs: Any) -> Dict[str, Any]:
         dict_ = super().dict(**kwargs)
         return {key: self._serialize_value(value) for key, value in dict_.items()}
 
