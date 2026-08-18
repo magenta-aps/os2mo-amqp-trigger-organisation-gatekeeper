@@ -55,3 +55,21 @@ mutation CreateEngagement($input: EngagementCreateInput!) {
     uuid
   }
 }
+
+mutation CreateAssociation($input: AssociationCreateInput!) {
+  association_create(input: $input) {
+    uuid
+  }
+}
+
+mutation CreateITSystem($input: ITSystemCreateInput!) {
+  itsystem_create(input: $input) {
+    uuid
+  }
+}
+
+mutation CreateITUser($input: ITUserCreateInput!) {
+  ituser_create(input: $input) {
+    uuid
+  }
+}
