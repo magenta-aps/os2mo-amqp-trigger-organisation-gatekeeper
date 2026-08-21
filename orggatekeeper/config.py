@@ -128,8 +128,6 @@ class Settings(FastRAMQPISettings):
         False, description="Run in dry-run mode, only printing what would have changed."
     )
 
-    expose_metrics: bool = Field(True, description="Whether to expose metrics.")
-
     line_management_top_level_uuids: set[UUID] = Field(
         set(),
         description="set of uuids of the top organisation units in line management.",
