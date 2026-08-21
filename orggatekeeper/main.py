@@ -3,14 +3,10 @@
 # SPDX-License-Identifier: MPL-2.0
 """Event handling."""
 
-from asyncio import Semaphore
-from asyncio import gather
 from collections.abc import AsyncGenerator
-from collections.abc import Awaitable
 from contextlib import AsyncExitStack
 from contextlib import asynccontextmanager
 from typing import Any
-from typing import TypeVar
 from uuid import UUID
 
 import structlog
@@ -28,6 +24,7 @@ from prometheus_fastapi_instrumentator import Instrumentator
 from starlette.status import HTTP_204_NO_CONTENT
 from starlette.status import HTTP_503_SERVICE_UNAVAILABLE
 
+from .async_utils import gather_with_concurrency
 from .calculate import get_org_units_with_no_hierarchy
 from .calculate import router
 from .calculate import update_line_management
@@ -38,7 +35,6 @@ from .mo import fetch_org_uuid
 __all__ = ["build_information", "update_build_information"]
 
 logger = structlog.get_logger()
-T = TypeVar("T")
 
 
 async def healthcheck_gql(gql_client: PersistentGraphQLClient) -> bool:
@@ -127,25 +123,6 @@ def configure_logging(settings: Settings) -> None:
     structlog.configure(
         wrapper_class=structlog.make_filtering_bound_logger(settings.log_level.value)
     )
-
-
-async def gather_with_concurrency(parallel: int, *tasks: Awaitable[T]) -> list[T]:
-    """Asyncio gather, but with limited concurrency.
-
-    Args:
-        parallel: The number of concurrent tasks being executed.
-        tasks: List of tasks to execute.
-
-    Returns:
-        List of return values from awaiting the tasks.
-    """
-    semaphore = Semaphore(parallel)
-
-    async def semaphore_task(task: Awaitable[T]) -> T:
-        async with semaphore:
-            return await task
-
-    return await gather(*map(semaphore_task, tasks))
 
 
 def construct_context() -> dict[str, Any]:

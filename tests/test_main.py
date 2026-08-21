@@ -6,10 +6,8 @@
 # pylint: disable=unused-argument
 """Test the fetch_org_unit function."""
 
-import asyncio
 from collections.abc import Callable
 from collections.abc import Generator
-from time import monotonic
 from typing import Any
 from unittest.mock import AsyncMock
 from unittest.mock import MagicMock
@@ -27,7 +25,6 @@ from orggatekeeper.config import Settings
 from orggatekeeper.main import build_information
 from orggatekeeper.main import construct_clients
 from orggatekeeper.main import create_app
-from orggatekeeper.main import gather_with_concurrency
 from orggatekeeper.main import update_build_information
 from tests import ORG_UUID
 
@@ -54,47 +51,6 @@ def test_build_information() -> None:
         "version": "1.0.0",
         "hash": "cafebabe",
     }
-
-
-async def test_gather_with_concurrency() -> None:
-    """Test gather with concurrency."""
-    start = monotonic()
-    await asyncio.gather(
-        *[
-            asyncio.sleep(0.1),
-            asyncio.sleep(0.1),
-            asyncio.sleep(0.1),
-        ]
-    )
-    end = monotonic()
-    duration = end - start
-    assert duration < 0.15
-
-    start = monotonic()
-    await gather_with_concurrency(
-        3,
-        *[
-            asyncio.sleep(0.1),
-            asyncio.sleep(0.1),
-            asyncio.sleep(0.1),
-        ],
-    )
-    end = monotonic()
-    duration = end - start
-    assert duration < 0.15
-
-    start = monotonic()
-    await gather_with_concurrency(
-        1,
-        *[
-            asyncio.sleep(0.1),
-            asyncio.sleep(0.1),
-            asyncio.sleep(0.1),
-        ],
-    )
-    end = monotonic()
-    duration = end - start
-    assert duration > 0.3
 
 
 @pytest.fixture
