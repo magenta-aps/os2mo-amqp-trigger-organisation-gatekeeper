@@ -26,6 +26,7 @@ from orggatekeeper.main import build_information
 from orggatekeeper.main import construct_clients
 from orggatekeeper.main import create_app
 from orggatekeeper.main import update_build_information
+from tests import DEFAULT_AMQP_URL
 from tests import ORG_UUID
 
 
@@ -59,9 +60,15 @@ def fastapi_app_builder() -> Generator[Callable[..., FastAPI], None, None]:
 
     def builder(*args: Any, default_args: bool = True, **kwargs: Any) -> FastAPI:
         if default_args:
-            kwargs["client_secret"] = "hunter2"
-            kwargs["client_id"] = "orggatekeeper"
-            kwargs["expose_metrics"] = False
+            kwargs.setdefault(
+                "fastramqpi",
+                {
+                    "client_secret": "hunter2",
+                    "client_id": "orggatekeeper",
+                    "enable_metrics": False,
+                    "amqp": {"url": DEFAULT_AMQP_URL},
+                },
+            )
         return create_app(*args, **kwargs)
 
     yield builder
@@ -72,9 +79,7 @@ def fastapi_app(
     fastapi_app_builder: Callable[..., FastAPI],
 ) -> Generator[FastAPI, None, None]:
     """Fixture for the FastAPI app."""
-    yield fastapi_app_builder(
-        client_secret="hunter2", client_id="orggatekeeper", expose_metrics=False
-    )
+    yield fastapi_app_builder()
 
 
 @pytest.fixture
@@ -108,7 +113,12 @@ async def test_root_endpoint(test_client: TestClient) -> None:
 async def test_metrics_endpoint(test_client_builder: Callable[..., TestClient]) -> None:
     """Test the metrics endpoint on our app."""
     test_client = test_client_builder(
-        default_args=False, client_secret="hunter2", client_id="orggatekeeper_test"
+        default_args=False,
+        fastramqpi={
+            "client_secret": "hunter2",
+            "client_id": "orggatekeeper_test",
+            "amqp": {"url": DEFAULT_AMQP_URL},
+        },
     )
     response = test_client.get("/metrics")
     assert response.status_code == 200
@@ -298,7 +308,7 @@ def test_gql_client_created_with_timeout(
     """Test that PersistentGraphQLClient is called with timeout setting"""
 
     # Arrange
-    settings = set_settings(graphql_timeout=15)
+    settings = set_settings(fastramqpi={"graphql_timeout": 15})
 
     # Act
     construct_clients(settings)
