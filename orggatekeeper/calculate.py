@@ -403,6 +403,10 @@ async def update_line_management(
         new_org_unit_hierarchy=new_org_unit_hierarchy,
     )
     logger.debug("Sending ModelClient edit request", org_unit=org_unit)
+
+    # FIXME(#71355): this can fail on occasion due to a bug in the service API.
+    #   I didn't fix it because the service API is gonna be deprecated soon
+    #   and the integration will just run again at a later point if it fails
     response = await model_client.edit([org_unit])
     logger.debug("ModelClient response", response=response)
     if org_unit.parent is not None:

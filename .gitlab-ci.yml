@@ -48,6 +48,9 @@ workflow:
 
 
 include:
+  - project: rammearkitektur/os2mo
+    file:
+    - gitlab-ci-templates/integration-test-meta.v1.yml
   - project: labs/salt-automation
     file:
     - gitlab-ci-templates/common/conventional-commits.v1.yml
@@ -64,3 +67,25 @@ Build:
   extends: .build-docker
   variables:
     BUILD_DOCKER_EXTRA_FLAGS: "--build-arg=COMMIT_SHA=${CI_COMMIT_SHA} --build-arg=COMMIT_TAG=${CI_COMMIT_TAG}"
+
+# Test
+#######
+Test:
+  variables:
+    PYTEST_ADDOPTS: "-m 'not integration_test'"
+
+Integration-test:
+  extends:
+    - .integration-test:mo
+  variables:
+    # TODO(#70974): the `.integration-test:mo` template sets the `FASTRAMQPI__`
+    #   prefixed variants of these, but this integration has not yet been ported
+    #   to FastRAMQPI so it expects unprefixed variables. These can be removed
+    #   once the integration is ported.
+    CLIENT_ID: "dipex"
+    CLIENT_SECRET: "603f1c82-d012-4d04-9382-dbe659c533fb"
+    MO_URL: "http://mo:5000"
+    AUTH_SERVER: "http://keycloak:8080/auth"
+    AMQP__URL: "amqp://guest:guest@msg-broker:5672/"
+  rules:
+    - <<: *if-merge-request

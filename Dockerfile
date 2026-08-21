@@ -20,12 +20,11 @@ RUN python -m venv $POETRY_HOME \
 WORKDIR /opt
 RUN python -m venv $VIRTUAL_ENV
 COPY poetry.lock pyproject.toml ./
-RUN poetry install --no-root --only=main
+RUN poetry install --no-root
 
-WORKDIR /opt/app
-COPY orggatekeeper .
-WORKDIR /opt/
-CMD [ "uvicorn", "--factory", "app.main:create_app", "--host", "0.0.0.0" ]
+WORKDIR /app
+COPY orggatekeeper ./orggatekeeper
+CMD [ "uvicorn", "--factory", "orggatekeeper.main:create_app", "--host", "0.0.0.0" ]
 
 # Add build version to the environment last to avoid build cache misses
 ARG COMMIT_TAG

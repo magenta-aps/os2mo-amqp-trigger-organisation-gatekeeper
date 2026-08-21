@@ -16,12 +16,13 @@ from uuid import UUID
 import structlog
 from fastapi import FastAPI
 from fastapi import Response
+from fastramqpi.app import build_information
+from fastramqpi.app import update_build_information
 from fastramqpi.raclients.graph.client import PersistentGraphQLClient
 from fastramqpi.raclients.modelclient.mo import ModelClient
 from fastramqpi.ramqp.mo import MOAMQPSystem
 from gql import gql
 from more_itertools import one
-from prometheus_client import Info
 from prometheus_fastapi_instrumentator import Instrumentator
 from starlette.status import HTTP_204_NO_CONTENT
 from starlette.status import HTTP_503_SERVICE_UNAVAILABLE
@@ -33,28 +34,10 @@ from .config import Settings
 from .config import get_settings
 from .mo import fetch_org_uuid
 
+__all__ = ["build_information", "update_build_information"]
+
 logger = structlog.get_logger()
 T = TypeVar("T")
-
-build_information = Info("build_information", "Build information")
-
-
-def update_build_information(version: str, build_hash: str) -> None:
-    """Update build information.
-
-    Args:
-        version: The version to set.
-        build_hash: The build hash to set.
-
-    Returns:
-        None.
-    """
-    build_information.info(
-        {
-            "version": version,
-            "hash": build_hash,
-        }
-    )
 
 
 async def healthcheck_gql(gql_client: PersistentGraphQLClient) -> bool:
