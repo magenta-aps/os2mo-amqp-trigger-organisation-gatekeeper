@@ -44,9 +44,6 @@ class Settings(FastRAMQPISettings):
 
     amqp: OrgGatekeeperConnectionSettings
 
-    commit_tag: str = Field("HEAD", description="Git commit tag.")
-    commit_sha: str = Field("HEAD", description="Git commit SHA.")
-
     enable_hide_logic: bool = Field(
         True, description="Whether or not to enable hide logic."
     )
@@ -148,8 +145,6 @@ class Settings(FastRAMQPISettings):
     log_level: LogLevel = LogLevel.INFO  # type: ignore
 
     expose_metrics: bool = Field(True, description="Whether to expose metrics.")
-
-    graphql_timeout: int = 120
 
     line_management_top_level_uuids: set[UUID] = Field(
         set(),
