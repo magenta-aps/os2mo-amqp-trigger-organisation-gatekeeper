@@ -15,6 +15,7 @@ from uuid import UUID
 
 import structlog
 from fastapi import FastAPI
+from fastapi import Request
 from fastapi import Response
 from fastramqpi.app import build_information
 from fastramqpi.app import update_build_information
@@ -176,6 +177,10 @@ def create_app(  # pylint: disable=too-many-statements
 
     context = construct_context()
 
+    # TODO(#70974): this is only needed temporarily, to make the git history
+    #   more clean. Context will be handled by FastRAMQPI in a later commit.
+    app.state.context = context
+
     # pylint: disable=unused-argument
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncGenerator:
@@ -209,8 +214,9 @@ def create_app(  # pylint: disable=too-many-statements
         return {"name": "orggatekeeper"}
 
     @app.post("/trigger/all", status_code=202)
-    async def update_all_org_units() -> None:  # pragma: no cover
+    async def update_all_org_units(request: Request) -> None:  # pragma: no cover
         """Call update_line_management on all org units."""
+        context = request.app.state.context
         gql_client = context["gql_client"]
         query = gql("query OrgUnitUUIDQuery { org_units { objects { uuid } } }")
         result = await gql_client.execute(query)
@@ -225,8 +231,9 @@ def create_app(  # pylint: disable=too-many-statements
     @app.post(
         "/trigger/{uuid}",
     )
-    async def update_org_unit(uuid: UUID) -> dict[str, str]:
+    async def update_org_unit(request: Request, uuid: UUID) -> dict[str, str]:
         """Call update_line_management on the provided org unit."""
+        context = request.app.state.context
         logger.info("Manually triggered recalculation", uuids=[uuid])
         await update_line_management(**context, uuid=uuid)
         return {"status": "OK"}
@@ -234,8 +241,9 @@ def create_app(  # pylint: disable=too-many-statements
     @app.post(
         "/ensure-no-unset",
     )
-    async def ensure_no_unset() -> dict[str, str]:
+    async def ensure_no_unset(request: Request) -> dict[str, str]:
         """Check that all orgunits belong to a org_unit_hierarchy."""
+        context = request.app.state.context
         logger.info("Manually triggered check for unset org_unit_hierarchy")
         res = await get_org_units_with_no_hierarchy(context["gql_client"])
         if len(res) == 0:
@@ -261,8 +269,10 @@ def create_app(  # pylint: disable=too-many-statements
             "503": {"description": "Not ready"},
         },
     )
-    async def readiness(response: Response) -> Response:
+    async def readiness(request: Request, response: Response) -> Response:
         """Endpoint to be used as a readiness probe for Kubernetes."""
+        context = request.app.state.context
+
         response.status_code = HTTP_204_NO_CONTENT
 
         healthchecks = {}
