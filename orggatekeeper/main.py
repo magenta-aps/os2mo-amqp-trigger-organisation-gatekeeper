@@ -136,7 +136,7 @@ def create_app(  # pylint: disable=too-many-statements
     update_build_information(
         version=settings.commit_tag, build_hash=settings.commit_sha
     )
-    if settings.expose_metrics:
+    if settings.enable_metrics:
         Instrumentator().instrument(app).expose(app)
 
     context = construct_context()
