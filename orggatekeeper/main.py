@@ -77,6 +77,46 @@ def construct_context() -> dict[str, Any]:
     return {}
 
 
+@asynccontextmanager
+async def _lifespan(
+    settings: Settings, context: dict[str, Any]
+) -> AsyncGenerator[None, None]:
+    """ASGI lifespan context manager.
+
+    Sets up clients, fetches the organisation UUID and starts the AMQP system,
+    populating the provided context. Tears everything down on exit.
+
+    Args:
+        settings: Integration settings.
+        context: The shared context dict to populate.
+
+    Yields:
+        None
+    """
+    async with AsyncExitStack() as stack:
+        logger.info("Settings up clients")
+        gql_client, model_client = construct_clients(settings)
+        context["settings"] = settings
+
+        context["model_client"] = await stack.enter_async_context(model_client)
+        context["gql_client"] = await stack.enter_async_context(gql_client)
+
+        # Get organisation UUID
+        context["org_uuid"] = await fetch_org_uuid(gql_client)
+        amqp_system = MOAMQPSystem(
+            settings=settings.amqp, router=router, context=context
+        )
+
+        context["amqp_system"] = amqp_system
+
+        logger.info("Starting AMQP system")
+        await stack.enter_async_context(amqp_system)
+
+        # Yield to keep the AMQP system open until the ASGI application is closed.
+        # Control will be returned to here when the ASGI application is shut down.
+        yield
+
+
 def create_app(  # pylint: disable=too-many-statements
     *args: Any, **kwargs: Any
 ) -> FastAPI:
@@ -107,31 +147,11 @@ def create_app(  # pylint: disable=too-many-statements
 
     # pylint: disable=unused-argument
     @asynccontextmanager
-    async def lifespan(app: FastAPI) -> AsyncGenerator:
-        async with AsyncExitStack() as stack:
-            logger.info("Settings up clients")
-            gql_client, model_client = construct_clients(settings)
-            context["settings"] = settings
-
-            context["model_client"] = await stack.enter_async_context(model_client)
-            context["gql_client"] = await stack.enter_async_context(gql_client)
-
-            # Get organisation UUID
-            context["org_uuid"] = await fetch_org_uuid(gql_client)
-            amqp_system = MOAMQPSystem(
-                settings=settings.amqp, router=router, context=context
-            )
-
-            context["amqp_system"] = amqp_system
-
-            logger.info("Starting AMQP system")
-            await stack.enter_async_context(amqp_system)
-
-            # Yield to keep the AMQP system open until the ASGI application is closed.
-            # Control will be returned to here when the ASGI application is shut down.
+    async def app_lifespan(app: FastAPI) -> AsyncGenerator:
+        async with _lifespan(settings, context):
             yield
 
-    app.router.lifespan_context = lifespan
+    app.router.lifespan_context = app_lifespan
     app.include_router(api_router)
 
     return app
