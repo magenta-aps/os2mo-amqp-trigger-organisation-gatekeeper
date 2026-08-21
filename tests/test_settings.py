@@ -17,7 +17,6 @@ from orggatekeeper.config import get_settings
 def test_missing_client_secret(mock_amqp_settings: pytest.MonkeyPatch) -> None:
     """Test that we must add client_secret to construct settings."""
 
-    get_settings.cache_clear()
     with pytest.raises(ValidationError) as excinfo:
         get_settings()
     assert "client_secret\n  field required" in str(excinfo.value)
@@ -25,7 +24,6 @@ def test_missing_client_secret(mock_amqp_settings: pytest.MonkeyPatch) -> None:
 
 def test_happy_path(set_settings: Callable[..., Settings]) -> None:
     """Test that we can construct and edit settings."""
-    get_settings.cache_clear()
 
     settings = set_settings(client_secret="AzureDiamond")
     assert isinstance(settings.client_secret, SecretStr)

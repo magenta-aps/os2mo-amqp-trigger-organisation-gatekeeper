@@ -6,7 +6,6 @@
 
 import logging
 from enum import Enum
-from functools import cache
 from typing import Any
 from uuid import UUID
 
@@ -161,7 +160,6 @@ class Settings(FastRAMQPISettings):
         env_nested_delimiter = "__"  # allows setting e.g. AMQP__QUEUE_PREFIX=foo
 
 
-@cache
 def get_settings(*args: Any, **kwargs: Any) -> Settings:
     """Fetch settings object.
 
@@ -170,7 +168,7 @@ def get_settings(*args: Any, **kwargs: Any) -> Settings:
         kwargs: overrides
 
     Return:
-        Cached settings object.
+        Settings object.
     """
     settings = Settings(*args, **kwargs)
     logger.debug("Settings fetched", settings=settings, args=args, kwargs=kwargs)
