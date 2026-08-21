@@ -8,8 +8,9 @@ from typing import Any
 from uuid import UUID
 
 import structlog
-from fastramqpi.config import Settings as FastRAMQPISettings
+from fastramqpi.config import Settings as _FastRAMQPISettings
 from fastramqpi.ramqp.config import AMQPConnectionSettings
+from pydantic import BaseSettings
 from pydantic import Field
 
 logger = structlog.get_logger()
@@ -21,14 +22,18 @@ class OrgGatekeeperConnectionSettings(AMQPConnectionSettings):
     prefetch_count: int = 1
 
 
-class Settings(FastRAMQPISettings):
-    """Settings for organisation gatekeeper.
-
-    Note that AMQP related settings are taken directly by RAMQP:
-    * https://git.magenta.dk/rammearkitektur/ramqp/-/blob/master/ramqp/config.py
-    """
-
+class FastRAMQPISettings(_FastRAMQPISettings):
     amqp: OrgGatekeeperConnectionSettings
+
+
+class Settings(BaseSettings):
+    """Settings for organisation gatekeeper."""
+
+    class Config:
+        frozen = True
+        env_nested_delimiter = "__"
+
+    fastramqpi: FastRAMQPISettings
 
     enable_hide_logic: bool = Field(
         True, description="Whether or not to enable hide logic."
@@ -132,9 +137,6 @@ class Settings(FastRAMQPISettings):
         set(),
         description="set of uuids of the top organisation units in line management.",
     )
-
-    class Config:
-        env_nested_delimiter = "__"  # allows setting e.g. AMQP__QUEUE_PREFIX=foo
 
 
 def get_settings(*args: Any, **kwargs: Any) -> Settings:

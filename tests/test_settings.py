@@ -26,22 +26,22 @@ def test_happy_path(set_settings: Callable[..., Settings]) -> None:
     """Test that we can construct and edit settings."""
 
     settings = set_settings(client_secret="AzureDiamond")
-    assert isinstance(settings.client_secret, SecretStr)
-    assert settings.client_secret.get_secret_value() == "AzureDiamond"
+    assert isinstance(settings.fastramqpi.client_secret, SecretStr)
+    assert settings.fastramqpi.client_secret.get_secret_value() == "AzureDiamond"
 
     settings = set_settings(client_secret="hunter2")
-    assert isinstance(settings.client_secret, SecretStr)
-    assert settings.client_secret.get_secret_value() == "hunter2"
+    assert isinstance(settings.fastramqpi.client_secret, SecretStr)
+    assert settings.fastramqpi.client_secret.get_secret_value() == "hunter2"
 
 
 def test_graphql_timeout_default(mock_settings: Settings) -> None:
     """Test that default GraphQL client timeout is set correctly"""
 
-    assert mock_settings.graphql_timeout == 120
+    assert mock_settings.fastramqpi.graphql_timeout == 120
 
 
 def test_graphql_timeout_non_default(set_settings: Callable[..., Settings]) -> None:
     """Test that GraphQL client timeout is set to overridden value"""
 
-    settings = set_settings(graphql_timeout=10)
-    assert settings.graphql_timeout == 10
+    settings = set_settings(fastramqpi={"graphql_timeout": 10})
+    assert settings.fastramqpi.graphql_timeout == 10

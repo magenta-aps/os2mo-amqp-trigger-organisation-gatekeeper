@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: MPL-2.0
 """Event handling."""
 
+import logging
 from collections.abc import AsyncGenerator
 from contextlib import AsyncExitStack
 from contextlib import asynccontextmanager
@@ -40,20 +41,20 @@ def construct_clients(
         Tuple with PersistentGraphQLClient and ModelClient.
     """
     gql_client = PersistentGraphQLClient(
-        url=settings.mo_url + "/graphql/v22",
-        client_id=settings.client_id,
-        client_secret=settings.client_secret.get_secret_value(),
-        auth_server=settings.auth_server,
-        auth_realm=settings.auth_realm,
-        execute_timeout=settings.graphql_timeout,
-        httpx_client_kwargs={"timeout": settings.graphql_timeout},
+        url=settings.fastramqpi.mo_url + "/graphql/v22",
+        client_id=settings.fastramqpi.client_id,
+        client_secret=settings.fastramqpi.client_secret.get_secret_value(),
+        auth_server=settings.fastramqpi.auth_server,
+        auth_realm=settings.fastramqpi.auth_realm,
+        execute_timeout=settings.fastramqpi.graphql_timeout,
+        httpx_client_kwargs={"timeout": settings.fastramqpi.graphql_timeout},
     )
     model_client = ModelClient(
-        base_url=settings.mo_url,
-        client_id=settings.client_id,
-        client_secret=settings.client_secret.get_secret_value(),
-        auth_server=settings.auth_server,
-        auth_realm=settings.auth_realm,
+        base_url=settings.fastramqpi.mo_url,
+        client_id=settings.fastramqpi.client_id,
+        client_secret=settings.fastramqpi.client_secret.get_secret_value(),
+        auth_server=settings.fastramqpi.auth_server,
+        auth_realm=settings.fastramqpi.auth_realm,
     )
     return gql_client, model_client
 
@@ -67,9 +68,8 @@ def configure_logging(settings: Settings) -> None:
     Returns:
         None
     """
-    structlog.configure(
-        wrapper_class=structlog.make_filtering_bound_logger(settings.log_level)
-    )
+    log_level = getattr(logging, settings.fastramqpi.log_level.upper(), logging.INFO)
+    structlog.configure(wrapper_class=structlog.make_filtering_bound_logger(log_level))
 
 
 def construct_context() -> dict[str, Any]:
@@ -104,7 +104,7 @@ async def _lifespan(
         # Get organisation UUID
         context["org_uuid"] = await fetch_org_uuid(gql_client)
         amqp_system = MOAMQPSystem(
-            settings=settings.amqp, router=router, context=context
+            settings=settings.fastramqpi.amqp, router=router, context=context
         )
 
         context["amqp_system"] = amqp_system
@@ -134,9 +134,10 @@ def create_app(  # pylint: disable=too-many-statements
 
     logger.info("Starting metrics server")
     update_build_information(
-        version=settings.commit_tag, build_hash=settings.commit_sha
+        version=settings.fastramqpi.commit_tag,
+        build_hash=settings.fastramqpi.commit_sha,
     )
-    if settings.enable_metrics:
+    if settings.fastramqpi.enable_metrics:
         Instrumentator().instrument(app).expose(app)
 
     context = construct_context()

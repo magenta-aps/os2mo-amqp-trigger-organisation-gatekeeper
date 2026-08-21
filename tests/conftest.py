@@ -25,7 +25,7 @@ from tests import ORG_UUID
 @pytest.fixture
 def mock_amqp_settings(monkeypatch: pytest.MonkeyPatch) -> None:
     """Patch environment variable for amqp url."""
-    monkeypatch.setenv("AMQP__URL", DEFAULT_AMQP_URL)
+    monkeypatch.setenv("FASTRAMQPI__AMQP__URL", DEFAULT_AMQP_URL)
 
 
 @pytest.fixture()
@@ -68,11 +68,16 @@ def set_settings() -> Generator[Callable[..., Settings], None, None]:
         client_id: str = "orggatekeeper_test",
         **kwargs: Any,
     ) -> Settings:
+        fastramqpi: dict[str, Any] = {
+            "amqp": {"url": amqp_url},
+            "client_secret": client_secret,
+            "client_id": client_id,
+        }
+        if "fastramqpi" in kwargs:
+            fastramqpi.update(kwargs.pop("fastramqpi"))
         settings = Settings(
             *args,
-            amqp={"url": amqp_url},
-            client_secret=client_secret,
-            client_id=client_id,
+            fastramqpi=fastramqpi,
             **kwargs,
         )
         return settings
