@@ -115,7 +115,7 @@ async def test_metrics_endpoint(test_client_builder: Callable[..., TestClient]) 
     assert "# TYPE build_information_info gauge" in response.text
 
 
-@patch("orggatekeeper.main.update_line_management", return_value=AsyncMock())
+@patch("orggatekeeper.api.update_line_management", return_value=AsyncMock())
 async def test_trigger_uuid_endpoint(
     update_line_management_mock: AsyncMock,
     test_client_builder: Callable[..., TestClient],
@@ -308,7 +308,7 @@ def test_gql_client_created_with_timeout(
     assert gql_client.call_args.kwargs["execute_timeout"] == 15
 
 
-@patch("orggatekeeper.calculate.update_line_management", return_value=AsyncMock())
+@patch("orggatekeeper.api.update_line_management", return_value=AsyncMock())
 @patch("orggatekeeper.main.construct_context")
 async def test_ensure_no_unset_endpoint_ok(
     construct_context: MagicMock,
@@ -320,7 +320,7 @@ async def test_ensure_no_unset_endpoint_ok(
     construct_context.return_value = {
         "gql_client": AsyncMock(),
     }
-    with patch("orggatekeeper.main.get_org_units_with_no_hierarchy", return_value=[]):
+    with patch("orggatekeeper.api.get_org_units_with_no_hierarchy", return_value=[]):
         test_client = test_client_builder()
         response = test_client.post("/ensure-no-unset")
     assert response.status_code == 200
@@ -329,7 +329,7 @@ async def test_ensure_no_unset_endpoint_ok(
 
 
 @patch("orggatekeeper.main.construct_context")
-@patch("orggatekeeper.main.update_line_management", return_value=AsyncMock())
+@patch("orggatekeeper.api.update_line_management", return_value=AsyncMock())
 async def test_check_unset_endpoint_updates(
     update_line_management_mock: AsyncMock,
     construct_context: MagicMock,
@@ -345,9 +345,7 @@ async def test_check_unset_endpoint_updates(
     }
     construct_context.return_value = context
 
-    with patch(
-        "orggatekeeper.main.get_org_units_with_no_hierarchy", return_value=uuids
-    ):
+    with patch("orggatekeeper.api.get_org_units_with_no_hierarchy", return_value=uuids):
         test_client = test_client_builder()
         response = test_client.post("/ensure-no-unset")
     assert response.status_code == 200
