@@ -37,7 +37,7 @@ __all__ = ["build_information", "update_build_information"]
 logger = structlog.get_logger()
 
 
-async def healthcheck_gql(gql_client: PersistentGraphQLClient) -> bool:
+async def _healthcheck_gql(gql_client: PersistentGraphQLClient) -> bool:
     """Check that our GraphQL connection is healthy.
 
     Args:
@@ -62,7 +62,7 @@ async def healthcheck_gql(gql_client: PersistentGraphQLClient) -> bool:
     return False
 
 
-async def healthcheck_model_client(model_client: ModelClient) -> bool:
+async def _healthcheck_model_client(model_client: ModelClient) -> bool:
     """Check that our ModelClient connection is healthy.
 
     Args:
@@ -257,9 +257,9 @@ def create_app(  # pylint: disable=too-many-statements
             # Check AMQP connection
             healthchecks["AMQP"] = context["amqp_system"].healthcheck()
             # Check GraphQL connection (gql_client)
-            healthchecks["GraphQL"] = await healthcheck_gql(context["gql_client"])
+            healthchecks["GraphQL"] = await _healthcheck_gql(context["gql_client"])
             # Check Service API connection (model_client)
-            healthchecks["Service API"] = await healthcheck_model_client(
+            healthchecks["Service API"] = await _healthcheck_model_client(
                 context["model_client"]
             )
         except Exception:  # pylint: disable=broad-except
