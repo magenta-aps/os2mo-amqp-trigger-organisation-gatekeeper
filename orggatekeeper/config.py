@@ -4,8 +4,6 @@
 # pylint: disable=too-few-public-methods,missing-class-docstring
 """Settings handling."""
 
-import logging
-from enum import Enum
 from typing import Any
 from uuid import UUID
 
@@ -13,18 +11,6 @@ import structlog
 from fastramqpi.config import Settings as FastRAMQPISettings
 from fastramqpi.ramqp.config import AMQPConnectionSettings
 from pydantic import Field
-
-
-class LogLevel(Enum):
-    """Log levels."""
-
-    NOTSET = logging.NOTSET
-    DEBUG = logging.DEBUG
-    INFO = logging.INFO
-    WARNING = logging.WARNING
-    ERROR = logging.ERROR
-    CRITICAL = logging.CRITICAL
-
 
 logger = structlog.get_logger()
 
@@ -141,8 +127,6 @@ class Settings(FastRAMQPISettings):
     dry_run: bool = Field(
         False, description="Run in dry-run mode, only printing what would have changed."
     )
-
-    log_level: LogLevel = LogLevel.INFO  # type: ignore
 
     expose_metrics: bool = Field(True, description="Whether to expose metrics.")
 

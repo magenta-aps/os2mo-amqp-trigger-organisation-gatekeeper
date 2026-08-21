@@ -68,7 +68,7 @@ def configure_logging(settings: Settings) -> None:
         None
     """
     structlog.configure(
-        wrapper_class=structlog.make_filtering_bound_logger(settings.log_level.value)
+        wrapper_class=structlog.make_filtering_bound_logger(settings.log_level)
     )
 
 
