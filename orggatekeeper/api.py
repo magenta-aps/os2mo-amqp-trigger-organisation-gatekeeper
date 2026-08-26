@@ -23,7 +23,6 @@ logger = structlog.stdlib.get_logger()
 router = APIRouter()
 
 
-@router.get("/")
 async def index() -> dict[str, str]:
     return {"name": "orggatekeeper"}
 
@@ -74,20 +73,11 @@ async def ensure_no_unset(request: Request) -> dict[str, str]:
     return {"status": f"Updated {len(res)} orgunits"}
 
 
-@router.get("/health/live", status_code=HTTP_204_NO_CONTENT)
 async def liveness() -> None:
     """Endpoint to be used as a liveness probe for Kubernetes."""
     return None
 
 
-@router.get(
-    "/health/ready",
-    status_code=HTTP_204_NO_CONTENT,
-    responses={
-        "204": {"description": "Ready"},
-        "503": {"description": "Not ready"},
-    },
-)
 async def readiness(request: Request, response: Response) -> Response:
     """Endpoint to be used as a readiness probe for Kubernetes."""
     context = request.app.state.context
