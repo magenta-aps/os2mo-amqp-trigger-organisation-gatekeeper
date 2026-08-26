@@ -224,8 +224,8 @@ async def test_readiness_endpoint(
     amqp_system.healthcheck.return_value = amqp_ok
 
     construct_context.return_value = {
-        "gql_client": gql_client,
-        "model_client": model_client,
+        "legacy_graphql_session": gql_client,
+        "legacy_model_client": model_client,
         "amqp_system": amqp_system,
     }
     test_client = test_client_builder()
@@ -290,8 +290,8 @@ async def test_readiness_endpoint_exception(
         amqp_system.healthcheck.side_effect = ValueError("BOOM")
 
     construct_context.return_value = {
-        "gql_client": gql_client,
-        "model_client": model_client,
+        "legacy_graphql_session": gql_client,
+        "legacy_model_client": model_client,
         "amqp_system": amqp_system,
     }
     test_client = test_client_builder()
@@ -328,7 +328,7 @@ async def test_ensure_no_unset_endpoint_ok(
     """Test the ensure-no-unset endpoint when no orgunit is unset."""
 
     construct_context.return_value = {
-        "gql_client": AsyncMock(),
+        "legacy_graphql_session": AsyncMock(),
     }
     with patch("orggatekeeper.api.get_org_units_with_no_hierarchy", return_value=[]):
         test_client = test_client_builder()
@@ -348,9 +348,9 @@ async def test_check_unset_endpoint_updates(
     """Test the ensure-no-unset endpoint without org_unit_hierarchy unset"""
     uuids = [uuid4(), uuid4(), uuid4()]
     context = {
-        "model_client": AsyncMock(),
-        "gql_client": AsyncMock(),
-        "settings": MagicMock(),
+        "legacy_model_client": AsyncMock(),
+        "legacy_graphql_session": AsyncMock(),
+        "user_context": {"settings": MagicMock()},
         "org_uuid": ORG_UUID,
     }
     construct_context.return_value = context

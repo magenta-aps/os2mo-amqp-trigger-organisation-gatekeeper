@@ -499,13 +499,13 @@ async def test_update_line_management_no_change(
 
     result = await update_line_management(**context, uuid=uuid)
     assert result is True
-    gql_client = context["gql_client"]
+    gql_client = context["legacy_graphql_session"]
     should_hide.assert_called_once_with(
         gql_client=gql_client, uuid=uuid, enable_hide_logic=True, hidden=set()
     )
     is_line_management.assert_called_once_with(gql_client, uuid, set(), [], False)
     fetch_org_unit.assert_called_once_with(gql_client, uuid)
-    model_client = context["model_client"]
+    model_client = context["legacy_model_client"]
     model_client.assert_not_called()
 
 
@@ -515,7 +515,7 @@ async def test_update_line_management_inactive_unit(
     context: dict[str, Any],
 ) -> None:
     """Test that update_line_management stops if the unit isn't active."""
-    context["gql_client"].execute = AsyncMock(
+    context["legacy_graphql_session"].execute = AsyncMock(
         return_value={"org_units": {"objects": []}}
     )
 
@@ -545,10 +545,9 @@ async def test_update_line_management_dry_run(
 
     uuid = org_unit.uuid
     result = await update_line_management(
-        gql_client=gql_client,
-        model_client=model_client,
-        settings=settings,
-        org_uuid=ORG_UUID,
+        legacy_graphql_session=gql_client,
+        legacy_model_client=model_client,
+        user_context={"settings": settings, "org_uuid": ORG_UUID},
         uuid=uuid,
     )
     assert result is True
@@ -592,13 +591,13 @@ async def test_update_line_management_hidden(
     uuid = org_unit.uuid
     result = await update_line_management(**context, uuid=uuid)
     assert result is True
-    gql_client = context["gql_client"]
+    gql_client = context["legacy_graphql_session"]
 
     should_hide.assert_called_once_with(
         gql_client=gql_client, uuid=uuid, enable_hide_logic=True, hidden=set()
     )
     fetch_org_unit.assert_called_once_with(gql_client, uuid)
-    model_client = context["model_client"]
+    model_client = context["legacy_model_client"]
     assert model_client.mock_calls == [
         call.edit(
             [
@@ -670,11 +669,11 @@ async def test_update_line_management_line(
     mock_datetime.datetime.now.return_value = now
     uuid = org_unit.uuid
 
-    gql_client = context["gql_client"]
-    model_client = context["model_client"]
+    gql_client = context["legacy_graphql_session"]
+    model_client = context["legacy_model_client"]
     roots = [uuid4()]
     settings = set_settings(**{roots_setting: roots})
-    context["settings"] = settings
+    context["user_context"]["settings"] = settings
     with (
         patch(
             "orggatekeeper.calculate.is_line_management",
@@ -775,8 +774,8 @@ async def test_update_line_management_line_for_root_org_unit(
     uuid = org_unit.uuid
     result = await update_line_management(**context, uuid=uuid)
     assert result is True
-    gql_client = context["gql_client"]
-    model_client = context["model_client"]
+    gql_client = context["legacy_graphql_session"]
+    model_client = context["legacy_model_client"]
 
     should_hide.assert_called_once_with(
         gql_client=gql_client, uuid=uuid, enable_hide_logic=True, hidden=set()

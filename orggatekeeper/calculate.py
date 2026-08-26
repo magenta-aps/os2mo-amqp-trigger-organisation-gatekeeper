@@ -7,6 +7,7 @@ import datetime
 import re
 from asyncio import gather
 from typing import Any
+from typing import TypedDict
 from uuid import UUID
 
 import structlog
@@ -21,7 +22,8 @@ from more_itertools import one
 from ramodels.mo import Validity
 from ramodels.mo._shared import OrgUnitHierarchy
 
-from .config import Settings
+from orggatekeeper.config import Settings
+
 from .mo import fetch_org_unit
 from .mo import get_class_uuid
 
@@ -275,11 +277,15 @@ async def is_unit_active(gql_client: PersistentGraphQLClient, uuid: UUID) -> boo
     return len(result["org_units"]["objects"]) == 1
 
 
+class UserContextDict(TypedDict):
+    settings: Settings
+    org_uuid: UUID
+
+
 async def update_line_management(
-    gql_client: PersistentGraphQLClient,
-    model_client: ModelClient,
-    settings: Settings,
-    org_uuid: UUID,
+    legacy_graphql_session: PersistentGraphQLClient,
+    legacy_model_client: ModelClient,
+    user_context: UserContextDict,
     uuid: UUID,
     **_: Any,
 ) -> bool:
@@ -293,17 +299,20 @@ async def update_line_management(
     * Their user-key is contained within hidden_user_key or a child of it.
 
     Args:
-        gql_client: The GraphQL client to run queries on.
-        model_client: The MO Model client to modify MO with.
-        settings: The integration settings module.
+        legacy_graphql_session: The GraphQL client to run queries on.
+        legacy_model_client: The MO Model client to modify MO with.
+        user_context: The integration settings module.
         org_uuid: The UUID of the LoRa organisation
         uuid: UUID of the organisation unit to recalculate.
 
     Returns:
         Whether an update was made.
     """
+    settings = user_context["settings"]
+    org_uuid = user_context["org_uuid"]
+
     # First check if the unit is active or not:
-    if not await is_unit_active(gql_client=gql_client, uuid=uuid):
+    if not await is_unit_active(gql_client=legacy_graphql_session, uuid=uuid):
         # Don't handle events for past units.
         logger.info(
             "Organisation Unit is inactive and processing is stopped", uuid=uuid
@@ -315,40 +324,40 @@ async def update_line_management(
     # if the orgunit uuid is in settings.hidden or it is below one that is
     # it should be hidden
     if await should_hide(
-        gql_client=gql_client,
+        gql_client=legacy_graphql_session,
         uuid=uuid,
         enable_hide_logic=settings.enable_hide_logic,
         hidden=settings.hidden,
     ):
         logger.info("Organisation Unit needs to be hidden", uuid=uuid)
         hidden_uuid = await get_class_uuid(
-            gql_client,
+            legacy_graphql_session,
             settings.hidden_uuid,
             settings.hidden_user_key,
         )
         new_org_unit_hierarchy = OrgUnitHierarchy(uuid=hidden_uuid)
     elif settings.self_owned_root_units and await is_descendant(
-        gql_client, uuid, settings.self_owned_root_units
+        legacy_graphql_session, uuid, settings.self_owned_root_units
     ):
         logger.info("Organisation Unit needs to marked as self_owned", uuid=uuid)
         self_owned_uuid = await get_class_uuid(
-            gql_client,
+            legacy_graphql_session,
             settings.self_owned_uuid,
             settings.self_owned_user_key,
         )
         new_org_unit_hierarchy = OrgUnitHierarchy(uuid=self_owned_uuid)
     elif settings.external_root_units and await is_descendant(
-        gql_client, uuid, settings.external_root_units
+        legacy_graphql_session, uuid, settings.external_root_units
     ):
         logger.info("Organisation Unit needs to marked as external", uuid=uuid)
         external_uuid = await get_class_uuid(
-            gql_client,
+            legacy_graphql_session,
             settings.external_uuid,
             settings.external_user_key,
         )
         new_org_unit_hierarchy = OrgUnitHierarchy(uuid=external_uuid)
     elif await is_line_management(
-        gql_client,
+        legacy_graphql_session,
         uuid,
         settings.line_management_top_level_uuids,
         settings.hidden_engagement_types,
@@ -356,7 +365,7 @@ async def update_line_management(
     ):
         logger.info("Organisation Unit needs to be in line management", uuid=uuid)
         line_management_uuid = await get_class_uuid(
-            gql_client,
+            legacy_graphql_session,
             settings.line_management_uuid,
             settings.line_management_user_key,
         )
@@ -364,14 +373,14 @@ async def update_line_management(
     else:
         logger.info("Organisation Unit needs to marked as outside hierarchy", uuid=uuid)
         na_uuid = await get_class_uuid(
-            gql_client,
+            legacy_graphql_session,
             None,
             "NA",
         )
         new_org_unit_hierarchy = OrgUnitHierarchy(uuid=na_uuid)
 
     # Fetch the current object and see if we need to update it
-    org_unit = await fetch_org_unit(gql_client, uuid)
+    org_unit = await fetch_org_unit(legacy_graphql_session, uuid)
     if org_unit.org_unit_hierarchy == new_org_unit_hierarchy:
         logger.debug("Not updating org_unit_hierarchy, already good", uuid=uuid)
         return False
@@ -407,12 +416,15 @@ async def update_line_management(
     # FIXME(#71355): this can fail on occasion due to a bug in the service API.
     #   I didn't fix it because the service API is gonna be deprecated soon
     #   and the integration will just run again at a later point if it fails
-    response = await model_client.edit([org_unit])
+    response = await legacy_model_client.edit([org_unit])
     logger.debug("ModelClient response", response=response)
     if org_unit.parent is not None:
         # Check if parent org_unit needs to be updated.
         await update_line_management(
-            gql_client, model_client, settings, org_uuid, org_unit.parent.uuid
+            legacy_graphql_session,
+            legacy_model_client,
+            user_context,
+            org_unit.parent.uuid,
         )
     return True
 
@@ -564,7 +576,9 @@ async def org_unit_handler(context: Context, uuid: PayloadUUID, _: RateLimit) ->
 async def ituser_callback(context: Context, payload: PayloadUUID, _: RateLimit) -> None:
     """Callback to check org_unit_hierarchy on changes to associations."""
     try:
-        org_units = await get_orgunit_from_ituser(context["gql_client"], payload)
+        org_units = await get_orgunit_from_ituser(
+            context["legacy_graphql_session"], payload
+        )
     except ValueError:
         logger.debug("Association not found", payload=payload)
         return
@@ -578,7 +592,9 @@ async def association_callback(
 ) -> None:
     """Callback to check org_unit_hierarchy on changes to associations."""
     try:
-        org_units = await get_orgunit_from_association(context["gql_client"], payload)
+        org_units = await get_orgunit_from_association(
+            context["legacy_graphql_session"], payload
+        )
     except ValueError:
         logger.debug("Association not found", payload=payload)
         return
@@ -592,7 +608,9 @@ async def engagement_callback(
 ) -> None:
     """Callback to check org_unit_hierarchy on changes to engagements."""
     try:
-        org_units = await get_orgunit_from_engagement(context["gql_client"], payload)
+        org_units = await get_orgunit_from_engagement(
+            context["legacy_graphql_session"], payload
+        )
     except ValueError:
         logger.debug("Engagement not found", payload=payload)
         return
