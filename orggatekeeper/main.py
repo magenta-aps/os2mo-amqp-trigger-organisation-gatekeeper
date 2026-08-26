@@ -18,6 +18,7 @@ from fastramqpi.ramqp.mo import MOAMQPSystem
 from prometheus_fastapi_instrumentator import Instrumentator
 
 from .api import router as api_router
+from .calculate import UserContextDict
 from .calculate import router
 from .config import Settings
 from .config import get_settings
@@ -95,13 +96,15 @@ async def _lifespan(
     async with AsyncExitStack() as stack:
         logger.info("Settings up clients")
         gql_client, model_client = construct_clients(settings)
-        context["settings"] = settings
 
-        context["model_client"] = await stack.enter_async_context(model_client)
-        context["gql_client"] = await stack.enter_async_context(gql_client)
+        user_context: UserContextDict = {
+            "settings": settings,
+            "org_uuid": await fetch_org_uuid(gql_client),
+        }
+        context["user_context"] = user_context
+        context["legacy_model_client"] = await stack.enter_async_context(model_client)
+        context["legacy_graphql_session"] = await stack.enter_async_context(gql_client)
 
-        # Get organisation UUID
-        context["org_uuid"] = await fetch_org_uuid(gql_client)
         amqp_system = MOAMQPSystem(
             settings=settings.fastramqpi.amqp, router=router, context=context
         )

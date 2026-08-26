@@ -32,7 +32,7 @@ async def index() -> dict[str, str]:
 async def update_all_org_units(request: Request) -> None:  # pragma: no cover
     """Call update_line_management on all org units."""
     context = request.app.state.context
-    gql_client = context["gql_client"]
+    gql_client = context["legacy_graphql_session"]
     query = gql("query OrgUnitUUIDQuery { org_units { objects { uuid } } }")
     result = await gql_client.execute(query)
 
@@ -62,7 +62,7 @@ async def ensure_no_unset(request: Request) -> dict[str, str]:
     """Check that all orgunits belong to a org_unit_hierarchy."""
     context = request.app.state.context
     logger.info("Manually triggered check for unset org_unit_hierarchy")
-    res = await get_org_units_with_no_hierarchy(context["gql_client"])
+    res = await get_org_units_with_no_hierarchy(context["legacy_graphql_session"])
     if len(res) == 0:
         logger.info("No orgunits with unset org_unit_hierarchy found")
         return {"status": "OK"}
@@ -99,10 +99,12 @@ async def readiness(request: Request, response: Response) -> Response:
         # Check AMQP connection
         healthchecks["AMQP"] = context["amqp_system"].healthcheck()
         # Check GraphQL connection (gql_client)
-        healthchecks["GraphQL"] = await _healthcheck_gql(context["gql_client"])
+        healthchecks["GraphQL"] = await _healthcheck_gql(
+            context["legacy_graphql_session"]
+        )
         # Check Service API connection (model_client)
         healthchecks["Service API"] = await _healthcheck_model_client(
-            context["model_client"]
+            context["legacy_model_client"]
         )
     except Exception:  # pylint: disable=broad-except
         logger.exception("Exception occured during readiness probe")

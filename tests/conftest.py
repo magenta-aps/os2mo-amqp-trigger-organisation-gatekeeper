@@ -108,8 +108,7 @@ def context(
 ) -> dict[str, Any]:
     """Fixture to generate context"""
     return {
-        "gql_client": gql_client,
-        "model_client": model_client,
-        "settings": mock_settings,
-        "org_uuid": ORG_UUID,
+        "legacy_graphql_session": gql_client,
+        "legacy_model_client": model_client,
+        "user_context": {"settings": mock_settings, "org_uuid": ORG_UUID},
     }
