@@ -14,6 +14,7 @@ from fastramqpi.app import build_information
 from fastramqpi.app import update_build_information
 from fastramqpi.context import Context
 from fastramqpi.main import FastRAMQPI
+from fastramqpi.raclients.graph.client import PersistentGraphQLClient
 
 from .api import router as api_router
 from .calculate import router as amqp_router
