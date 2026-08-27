@@ -14,6 +14,7 @@ from fastramqpi.app import build_information
 from fastramqpi.app import update_build_information
 from fastramqpi.context import Context
 from fastramqpi.main import FastRAMQPI
+from fastramqpi.raclients.graph.client import PersistentGraphQLClient
 
 from .api import router as api_router
 from .calculate import router as amqp_router
@@ -27,7 +28,9 @@ logger = structlog.get_logger()
 
 @asynccontextmanager
 async def _lifespan(context: Context) -> AsyncGenerator[None, None]:
-    gql_client = cast(PersistentGraphQLClient, ["legacy_graphql_client"])
+    # This lifespan manager runs at priority 350, i.e. after FastRAMQPI has
+    # entered the legacy GraphQL session at priority 300.
+    gql_client = cast(PersistentGraphQLClient, context["legacy_graphql_session"])
 
     assert "user_context" in context
     user_context = context["user_context"]

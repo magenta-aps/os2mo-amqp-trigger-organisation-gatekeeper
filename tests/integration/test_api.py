@@ -48,15 +48,15 @@ async def test_metrics(test_client: AsyncClient) -> None:
 @pytest.mark.integration_test
 async def test_liveness(test_client: AsyncClient) -> None:
     res = await test_client.get("/health/live")
-    assert res.status_code == 204
-    assert res.text == ""
+    assert res.status_code == 200
+    assert res.json() == {"AMQP": True}
 
 
 @pytest.mark.integration_test
 async def test_readiness(test_client: AsyncClient) -> None:
     res = await test_client.get("/health/ready")
-    assert res.status_code == 204
-    assert res.text == ""
+    assert res.status_code == 200
+    assert res.json() == {"AMQP": True}
 
 
 @pytest.mark.usefixtures("disable_amqp")
