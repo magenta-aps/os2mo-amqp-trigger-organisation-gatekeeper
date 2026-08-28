@@ -18,17 +18,14 @@ from uuid import UUID
 from uuid import uuid4
 
 import pytest
-from fastramqpi.ramqp.mo import PayloadType
 from graphql import DocumentNode
 from more_itertools import one
 from ramodels.mo import OrganisationUnit
 from ramodels.mo import Validity
 from ramodels.mo._shared import OrgUnitHierarchy
 
-from orggatekeeper.calculate import association_callback
 from orggatekeeper.calculate import below_uuid
 from orggatekeeper.calculate import check_org_unit_line_management
-from orggatekeeper.calculate import engagement_callback
 from orggatekeeper.calculate import fetch_org_unit
 from orggatekeeper.calculate import get_class_uuid
 from orggatekeeper.calculate import get_org_units_with_no_hierarchy
@@ -37,8 +34,6 @@ from orggatekeeper.calculate import get_orgunit_from_engagement
 from orggatekeeper.calculate import get_orgunit_from_ituser
 from orggatekeeper.calculate import is_descendant
 from orggatekeeper.calculate import is_line_management
-from orggatekeeper.calculate import ituser_callback
-from orggatekeeper.calculate import org_unit_handler
 from orggatekeeper.calculate import should_hide
 from orggatekeeper.calculate import update_line_management
 from orggatekeeper.config import Settings
@@ -960,110 +955,6 @@ async def test_get_orgunit_from_ituser() -> None:
     res = await get_orgunit_from_ituser(gql_client, uuid4())
     gql_client.execute.assert_called_once()
     assert res == {expected}
-
-
-@patch("orggatekeeper.calculate.update_line_management")
-async def test_callback_engagement(
-    update_line_management_mock: MagicMock, context: dict[str, Any]
-) -> None:
-    """Test that changes to engagements results in calls to update_line_management
-    with the org_unit_uuid of an engagement.
-    """
-    org_unit_uuid = uuid4()
-    payload = PayloadType(uuid=uuid4(), object_uuid=uuid4(), time=datetime.now())
-    with patch(
-        "orggatekeeper.calculate.get_orgunit_from_engagement",
-        return_value={org_unit_uuid},
-    ):
-        await engagement_callback(context, payload=payload, _=None)
-    update_line_management_mock.assert_called_once_with(**context, uuid=org_unit_uuid)
-
-
-@patch("orggatekeeper.calculate.update_line_management")
-async def test_callback_engagement_missing_uuid(
-    update_line_management_mock: MagicMock, context: dict[str, Any]
-) -> None:
-    """Test that changes to engagements results in calls to update_line_management
-    with the org_unit_uuid of an engagement.
-    """
-    payload = PayloadType(uuid=uuid4(), object_uuid=uuid4(), time=datetime.now())
-    with patch(
-        "orggatekeeper.calculate.get_orgunit_from_engagement",
-        side_effect=ValueError,
-    ):
-        await engagement_callback(context, payload=payload, _=None)
-    update_line_management_mock.assert_not_called()
-
-
-@patch("orggatekeeper.calculate.update_line_management")
-async def test_callback_association(
-    update_line_management_mock: MagicMock, context: dict[str, Any]
-) -> None:
-    """Test that changes to associations results in calls to update_line_management
-    with the org_unit_uuid of an association.
-    """
-    payload = PayloadType(uuid=uuid4(), object_uuid=uuid4(), time=datetime.now())
-    with patch(
-        "orggatekeeper.calculate.get_orgunit_from_association", return_value={uuid4()}
-    ):
-        await association_callback(context, payload=payload, _=None)
-    update_line_management_mock.assert_called_once()
-
-
-@patch("orggatekeeper.calculate.update_line_management")
-async def test_callback_association_missing_uuid(
-    update_line_management_mock: MagicMock, context: dict[str, Any]
-) -> None:
-    """Test that changes to associations results in calls to update_line_management
-    with the org_unit_uuid of an association.
-    """
-    payload = PayloadType(uuid=uuid4(), object_uuid=uuid4(), time=datetime.now())
-    with patch(
-        "orggatekeeper.calculate.get_orgunit_from_association", side_effect=ValueError
-    ):
-        await association_callback(context, payload=payload, _=None)
-    update_line_management_mock.assert_not_called()
-
-
-@patch("orggatekeeper.calculate.update_line_management")
-async def test_callback_ituser(
-    update_line_management_mock: MagicMock, context: dict[str, Any]
-) -> None:
-    """Test that changes to itusers results in calls to update_line_management
-    with the org_unit_uuid of an ituser.
-    """
-    payload = PayloadType(uuid=uuid4(), object_uuid=uuid4(), time=datetime.now())
-    with patch(
-        "orggatekeeper.calculate.get_orgunit_from_ituser", return_value={uuid4()}
-    ):
-        await ituser_callback(context, payload=payload, _=None)
-    update_line_management_mock.assert_called_once()
-
-
-@patch("orggatekeeper.calculate.update_line_management")
-async def test_callback_ituser_missing_uuid(
-    update_line_management_mock: MagicMock, context: dict[str, Any]
-) -> None:
-    """Test that changes to associations results in calls to update_line_management
-    with the org_unit_uuid of an association.
-    """
-    payload = PayloadType(uuid=uuid4(), object_uuid=uuid4(), time=datetime.now())
-    with patch(
-        "orggatekeeper.calculate.get_orgunit_from_ituser", side_effect=ValueError
-    ):
-        await ituser_callback(context, payload=payload, _=None)
-    update_line_management_mock.assert_not_called()
-
-
-@patch("orggatekeeper.calculate.update_line_management")
-async def test_callback_org_unit(
-    update_line_management_mock: MagicMock,
-    context: dict[str, Any],
-) -> None:
-    """Test that changes calls update line management with an org_units uuid"""
-    uuid = uuid4()
-    await org_unit_handler(context, uuid=uuid, _=None)
-    update_line_management_mock.assert_called_once_with(**context, uuid=uuid)
 
 
 @pytest.mark.parametrize(

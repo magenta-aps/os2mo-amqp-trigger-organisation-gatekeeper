@@ -17,8 +17,8 @@ from fastramqpi.main import FastRAMQPI
 from fastramqpi.raclients.graph.client import PersistentGraphQLClient
 
 from .api import router as api_router
-from .calculate import router as amqp_router
 from .config import get_settings
+from .events import router as amqp_router
 from .mo import fetch_org_uuid
 
 __all__ = ["build_information", "update_build_information"]
