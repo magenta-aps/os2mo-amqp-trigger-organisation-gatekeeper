@@ -14,9 +14,6 @@ import structlog
 from fastramqpi.raclients.graph.client import PersistentGraphQLClient
 from fastramqpi.raclients.modelclient.mo import ModelClient
 from fastramqpi.ramqp.depends import Context
-from fastramqpi.ramqp.depends import RateLimit
-from fastramqpi.ramqp.mo import MORouter
-from fastramqpi.ramqp.mo import PayloadUUID
 from gql import gql
 from more_itertools import one
 from ramodels.mo import Validity
@@ -25,8 +22,6 @@ from ramodels.mo._shared import OrgUnitHierarchy
 from .config import Settings
 from .mo import fetch_org_unit
 from .mo import get_class_uuid
-
-router = MORouter()
 
 logger = structlog.get_logger()
 ny_regex = re.compile(r"NY\d-niveau")
@@ -559,60 +554,3 @@ async def get_orgunit_from_ituser(
 async def update(context: Context, org_units: set[UUID]) -> None:
     """Call update_line_management for each uuid in the given set"""
     await gather(*[update_line_management(**context, uuid=uuid) for uuid in org_units])
-
-
-@router.register("org_unit")
-async def org_unit_handler(context: Context, uuid: PayloadUUID, _: RateLimit) -> None:
-    """Callback to check org_unit_hierarchy.
-
-    Listens to changes on org_units and it-accounts on org_units.
-    """
-
-    logger.info("Changes to org_unit or its it-accounts", org_unit=uuid)
-    await update_line_management(**context, uuid=uuid)
-
-
-@router.register("ituser")
-async def ituser_callback(context: Context, payload: PayloadUUID, _: RateLimit) -> None:
-    """Callback to check org_unit_hierarchy on changes to associations."""
-    try:
-        org_units = await get_orgunit_from_ituser(
-            context["legacy_graphql_session"], payload
-        )
-    except ValueError:
-        logger.debug("Association not found", payload=payload)
-        return
-    logger.info("Changes to association. Checking org_units", org_unit=org_units)
-    await update(context, org_units)
-
-
-@router.register("association")
-async def association_callback(
-    context: Context, payload: PayloadUUID, _: RateLimit
-) -> None:
-    """Callback to check org_unit_hierarchy on changes to associations."""
-    try:
-        org_units = await get_orgunit_from_association(
-            context["legacy_graphql_session"], payload
-        )
-    except ValueError:
-        logger.debug("Association not found", payload=payload)
-        return
-    logger.info("Changes to association. Checking org_units", org_unit=org_units)
-    await update(context, org_units)
-
-
-@router.register("engagement")
-async def engagement_callback(
-    context: Context, payload: PayloadUUID, _: RateLimit
-) -> None:
-    """Callback to check org_unit_hierarchy on changes to engagements."""
-    try:
-        org_units = await get_orgunit_from_engagement(
-            context["legacy_graphql_session"], payload
-        )
-    except ValueError:
-        logger.debug("Engagement not found", payload=payload)
-        return
-    logger.info("Changes to engagement. Checking org_units", org_unit=org_units)
-    await update(context, org_units)
