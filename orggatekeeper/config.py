@@ -4,28 +4,14 @@
 # pylint: disable=too-few-public-methods,missing-class-docstring
 """Settings handling."""
 
-import logging
-from enum import Enum
-from functools import cache
 from typing import Any
 from uuid import UUID
 
 import structlog
-from fastramqpi.config import Settings as FastRAMQPISettings
+from fastramqpi.config import Settings as _FastRAMQPISettings
 from fastramqpi.ramqp.config import AMQPConnectionSettings
+from pydantic import BaseSettings
 from pydantic import Field
-
-
-class LogLevel(Enum):
-    """Log levels."""
-
-    NOTSET = logging.NOTSET
-    DEBUG = logging.DEBUG
-    INFO = logging.INFO
-    WARNING = logging.WARNING
-    ERROR = logging.ERROR
-    CRITICAL = logging.CRITICAL
-
 
 logger = structlog.get_logger()
 
@@ -36,17 +22,18 @@ class OrgGatekeeperConnectionSettings(AMQPConnectionSettings):
     prefetch_count: int = 1
 
 
-class Settings(FastRAMQPISettings):
-    """Settings for organisation gatekeeper.
-
-    Note that AMQP related settings are taken directly by RAMQP:
-    * https://git.magenta.dk/rammearkitektur/ramqp/-/blob/master/ramqp/config.py
-    """
-
+class FastRAMQPISettings(_FastRAMQPISettings):
     amqp: OrgGatekeeperConnectionSettings
 
-    commit_tag: str = Field("HEAD", description="Git commit tag.")
-    commit_sha: str = Field("HEAD", description="Git commit SHA.")
+
+class Settings(BaseSettings):
+    """Settings for organisation gatekeeper."""
+
+    class Config:
+        frozen = True
+        env_nested_delimiter = "__"
+
+    fastramqpi: FastRAMQPISettings
 
     enable_hide_logic: bool = Field(
         True, description="Whether or not to enable hide logic."
@@ -146,22 +133,12 @@ class Settings(FastRAMQPISettings):
         False, description="Run in dry-run mode, only printing what would have changed."
     )
 
-    log_level: LogLevel = LogLevel.INFO  # type: ignore
-
-    expose_metrics: bool = Field(True, description="Whether to expose metrics.")
-
-    graphql_timeout: int = 120
-
     line_management_top_level_uuids: set[UUID] = Field(
         set(),
         description="set of uuids of the top organisation units in line management.",
     )
 
-    class Config:
-        env_nested_delimiter = "__"  # allows setting e.g. AMQP__QUEUE_PREFIX=foo
 
-
-@cache
 def get_settings(*args: Any, **kwargs: Any) -> Settings:
     """Fetch settings object.
 
@@ -170,7 +147,7 @@ def get_settings(*args: Any, **kwargs: Any) -> Settings:
         kwargs: overrides
 
     Return:
-        Cached settings object.
+        Settings object.
     """
     settings = Settings(*args, **kwargs)
     logger.debug("Settings fetched", settings=settings, args=args, kwargs=kwargs)
