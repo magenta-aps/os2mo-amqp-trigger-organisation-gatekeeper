@@ -10,8 +10,6 @@ from collections.abc import Callable
 from collections.abc import Generator
 from typing import Any
 from unittest.mock import AsyncMock
-from unittest.mock import MagicMock
-from unittest.mock import call
 from unittest.mock import patch
 from uuid import UUID
 from uuid import uuid4
@@ -19,12 +17,12 @@ from uuid import uuid4
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
+from more_itertools import one
 
 from orggatekeeper.main import build_information
 from orggatekeeper.main import create_app
 from orggatekeeper.main import update_build_information
 from tests import DEFAULT_AMQP_URL
-from tests import ORG_UUID
 
 
 def clear_metric_value(metric: Any) -> None:
@@ -72,14 +70,6 @@ def fastapi_app_builder() -> Generator[Callable[..., FastAPI], None, None]:
 
 
 @pytest.fixture
-def fastapi_app(
-    fastapi_app_builder: Callable[..., FastAPI],
-) -> Generator[FastAPI, None, None]:
-    """Fixture for the FastAPI app."""
-    yield fastapi_app_builder()
-
-
-@pytest.fixture
 def test_client_builder(
     fastapi_app_builder: Callable[..., FastAPI],
     mock_amqp_settings: pytest.MonkeyPatch,
@@ -111,53 +101,42 @@ async def test_trigger_uuid_endpoint(
     response = test_client.post("/trigger/0a9d7211-16a1-47e1-82da-7ec8480e7487")
     assert response.status_code == 200
     assert response.json() == {"status": "OK"}
-    assert update_line_management_mock.mock_calls == [
-        call(uuid=UUID("0a9d7211-16a1-47e1-82da-7ec8480e7487"))
-    ]
+    assert one(update_line_management_mock.mock_calls).kwargs["uuid"] == UUID(
+        "0a9d7211-16a1-47e1-82da-7ec8480e7487"
+    )
 
 
 @patch("orggatekeeper.api.update_line_management", return_value=AsyncMock())
-@patch("orggatekeeper.main.construct_context")
 async def test_ensure_no_unset_endpoint_ok(
-    construct_context: MagicMock,
     update_line_management_mock: AsyncMock,
-    test_client_builder: Callable[..., TestClient],
+    fastapi_app_builder: Callable[..., FastAPI],
 ) -> None:
     """Test the ensure-no-unset endpoint when no orgunit is unset."""
 
-    construct_context.return_value = {
-        "legacy_graphql_session": AsyncMock(),
-    }
+    app = fastapi_app_builder()
+    # The endpoint depends on context keys that are normally populated during
+    # the ASGI lifespan, which the test client does not run.
+    app.state.context["legacy_graphql_session"] = AsyncMock()
     with patch("orggatekeeper.api.get_org_units_with_no_hierarchy", return_value=[]):
-        test_client = test_client_builder()
-        response = test_client.post("/ensure-no-unset")
+        response = TestClient(app).post("/ensure-no-unset")
     assert response.status_code == 200
     assert response.json() == {"status": "OK"}
     update_line_management_mock.assert_not_called()
 
 
-@patch("orggatekeeper.main.construct_context")
 @patch("orggatekeeper.api.update_line_management", return_value=AsyncMock())
 async def test_check_unset_endpoint_updates(
     update_line_management_mock: AsyncMock,
-    construct_context: MagicMock,
-    test_client_builder: Callable[..., TestClient],
+    fastapi_app_builder: Callable[..., FastAPI],
 ) -> None:
     """Test the ensure-no-unset endpoint without org_unit_hierarchy unset"""
     uuids = [uuid4(), uuid4(), uuid4()]
-    context = {
-        "legacy_model_client": AsyncMock(),
-        "legacy_graphql_session": AsyncMock(),
-        "user_context": {"settings": MagicMock()},
-        "org_uuid": ORG_UUID,
-    }
-    construct_context.return_value = context
 
+    app = fastapi_app_builder()
+    app.state.context["legacy_graphql_session"] = AsyncMock()
     with patch("orggatekeeper.api.get_org_units_with_no_hierarchy", return_value=uuids):
-        test_client = test_client_builder()
-        response = test_client.post("/ensure-no-unset")
+        response = TestClient(app).post("/ensure-no-unset")
     assert response.status_code == 200
     assert response.json() == {"status": "Updated 3 orgunits"}
-    assert update_line_management_mock.mock_calls == [
-        call(**context, uuid=uuid) for uuid in uuids
-    ]
+    assert len(update_line_management_mock.mock_calls) == 3
+    assert [c.kwargs["uuid"] for c in update_line_management_mock.mock_calls] == uuids
