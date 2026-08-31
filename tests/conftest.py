@@ -115,4 +115,5 @@ def context(
         "legacy_graphql_session": gql_client,
         "legacy_model_client": model_client,
         "user_context": {"settings": mock_settings, "org_uuid": ORG_UUID},
+        "graphql_client": AsyncMock(),
     }
