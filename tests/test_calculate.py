@@ -12,7 +12,6 @@ from datetime import timedelta
 from typing import Any
 from unittest.mock import AsyncMock
 from unittest.mock import MagicMock
-from unittest.mock import call
 from unittest.mock import patch
 from uuid import UUID
 from uuid import uuid4
@@ -21,7 +20,6 @@ import pytest
 from graphql import DocumentNode
 from more_itertools import one
 from ramodels.mo import OrganisationUnit
-from ramodels.mo import Validity
 from ramodels.mo._shared import OrgUnitHierarchy
 
 from orggatekeeper.calculate import below_uuid
@@ -500,8 +498,6 @@ async def test_update_line_management_no_change(
     )
     is_line_management.assert_called_once_with(gql_client, uuid, set(), [], False)
     fetch_org_unit.assert_called_once_with(gql_client, uuid)
-    model_client = context["legacy_model_client"]
-    model_client.assert_not_called()
 
 
 @patch("orggatekeeper.calculate.should_hide")
@@ -527,7 +523,6 @@ async def test_update_line_management_dry_run(
     fetch_org_unit: MagicMock,
     should_hide: MagicMock,
     gql_client: MagicMock,
-    model_client: AsyncMock,
     set_settings: Callable[..., Settings],
     class_uuid: MagicMock,
     org_unit: OrganisationUnit,
@@ -541,7 +536,6 @@ async def test_update_line_management_dry_run(
     uuid = org_unit.uuid
     result = await update_line_management(
         legacy_graphql_session=gql_client,
-        legacy_model_client=model_client,
         graphql_client=MagicMock(),
         user_context={"settings": settings, "org_uuid": ORG_UUID},
         uuid=uuid,
@@ -552,7 +546,6 @@ async def test_update_line_management_dry_run(
         gql_client=gql_client, uuid=uuid, enable_hide_logic=True, hidden=set()
     )
     fetch_org_unit.assert_called_once_with(gql_client, uuid)
-    model_client.edit.assert_not_called()
 
 
 @patch("orggatekeeper.calculate.datetime")
@@ -593,20 +586,6 @@ async def test_update_line_management_hidden(
         gql_client=gql_client, uuid=uuid, enable_hide_logic=True, hidden=set()
     )
     fetch_org_unit.assert_called_once_with(gql_client, uuid)
-    model_client = context["legacy_model_client"]
-    assert model_client.mock_calls == [
-        call.edit(
-            [
-                org_unit.copy(
-                    update={
-                        "org_unit_hierarchy": OrgUnitHierarchy(uuid=class_uuid),
-                        "parent": None,
-                        "validity": Validity(from_date=now.date()),
-                    }
-                )
-            ]
-        )
-    ]
 
 
 # pylint: disable=R0914
@@ -666,7 +645,6 @@ async def test_update_line_management_line(
     uuid = org_unit.uuid
 
     gql_client = context["legacy_graphql_session"]
-    model_client = context["legacy_model_client"]
     roots = [uuid4()]
     settings = set_settings(**{roots_setting: roots})
     context["user_context"]["settings"] = settings
@@ -707,7 +685,6 @@ async def test_update_line_management_line(
                 gql_client, uuid, settings.line_management_top_level_uuids, [], False
             )
         fetch_org_unit.assert_called_once_with(gql_client, uuid)
-        assert model_client.mock_calls == []
 
     # If there are changes to org_unit_hierarchy, test that the parent is also checked
     else:
@@ -716,22 +693,6 @@ async def test_update_line_management_line(
             assert is_descendant_mock.call_count == 2
         if not (should_hide_return or is_descendant_return):
             assert is_line_management_mock.call_count == 2
-        # Only the org_unit, not the parent, is updated
-        assert model_client.mock_calls == [
-            call.edit(
-                [
-                    org_unit.copy(
-                        update={
-                            "org_unit_hierarchy": OrgUnitHierarchy(uuid=class_uuid),
-                            "validity": Validity(
-                                from_date=now.date(),
-                                to_date=in_ten_days,
-                            ),
-                        }
-                    )
-                ]
-            )
-        ]
 
 
 @patch("orggatekeeper.calculate.datetime")
@@ -771,26 +732,12 @@ async def test_update_line_management_line_for_root_org_unit(
     result = await update_line_management(**context, uuid=uuid)
     assert result is True
     gql_client = context["legacy_graphql_session"]
-    model_client = context["legacy_model_client"]
 
     should_hide.assert_called_once_with(
         gql_client=gql_client, uuid=uuid, enable_hide_logic=True, hidden=set()
     )
     is_line_management.assert_called_once_with(gql_client, uuid, set(), [], False)
     fetch_org_unit.assert_called_once_with(gql_client, uuid)
-    assert model_client.mock_calls == [
-        call.edit(
-            [
-                org_unit.copy(
-                    update={
-                        "org_unit_hierarchy": OrgUnitHierarchy(uuid=class_uuid),
-                        "parent": None,  # Since the unit is a root org unit
-                        "validity": Validity(from_date=now.date()),
-                    }
-                )
-            ]
-        )
-    ]
 
 
 async def test_get_class_uuid_preseed(set_settings: Callable[..., Settings]) -> None:
