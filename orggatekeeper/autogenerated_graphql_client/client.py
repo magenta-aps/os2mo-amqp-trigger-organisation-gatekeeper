@@ -9,6 +9,10 @@ from .create_i_t_user import CreateITUser, CreateITUserItuserCreate
 from .create_org_unit import CreateOrgUnit, CreateOrgUnitOrgUnitCreate
 from .get_class_by_user_key import GetClassByUserKey, GetClassByUserKeyClasses
 from .get_org_unit_hierarchy import GetOrgUnitHierarchy, GetOrgUnitHierarchyOrgUnits
+from .get_org_unit_hierarchy_and_parent import (
+    GetOrgUnitHierarchyAndParent,
+    GetOrgUnitHierarchyAndParentOrgUnits,
+)
 from .input_types import (
     AssociationCreateInput,
     ClassCreateInput,
@@ -50,6 +54,34 @@ class GraphQLClient(AsyncBaseClient):
         response = await self.execute(query=query, variables=variables)
         data = self.get_data(response)
         return GetOrgUnitHierarchy.parse_obj(data).org_units
+
+    async def get_org_unit_hierarchy_and_parent(
+        self, filter: OrganisationUnitFilter
+    ) -> GetOrgUnitHierarchyAndParentOrgUnits:
+        query = gql("""
+            query GetOrgUnitHierarchyAndParent($filter: OrganisationUnitFilter!) {
+              org_units(filter: $filter) {
+                objects {
+                  validities {
+                    unit_hierarchy_response {
+                      uuid
+                    }
+                    parent_response {
+                      uuid
+                    }
+                    validity {
+                      from
+                      to
+                    }
+                  }
+                }
+              }
+            }
+            """)
+        variables: dict[str, object] = {"filter": filter}
+        response = await self.execute(query=query, variables=variables)
+        data = self.get_data(response)
+        return GetOrgUnitHierarchyAndParent.parse_obj(data).org_units
 
     async def get_class_by_user_key(
         self, filter: ClassFilter

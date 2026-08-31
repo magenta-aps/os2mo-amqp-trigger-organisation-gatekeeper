@@ -31,6 +31,15 @@ from .get_org_unit_hierarchy import (
     GetOrgUnitHierarchyOrgUnitsObjectsValiditiesUnitHierarchyResponse,
     GetOrgUnitHierarchyOrgUnitsObjectsValiditiesUnitHierarchyResponseValidities,
 )
+from .get_org_unit_hierarchy_and_parent import (
+    GetOrgUnitHierarchyAndParent,
+    GetOrgUnitHierarchyAndParentOrgUnits,
+    GetOrgUnitHierarchyAndParentOrgUnitsObjects,
+    GetOrgUnitHierarchyAndParentOrgUnitsObjectsValidities,
+    GetOrgUnitHierarchyAndParentOrgUnitsObjectsValiditiesParentResponse,
+    GetOrgUnitHierarchyAndParentOrgUnitsObjectsValiditiesUnitHierarchyResponse,
+    GetOrgUnitHierarchyAndParentOrgUnitsObjectsValiditiesValidity,
+)
 from .input_types import (
     AccessLogFilter,
     AddressCreateInput,
@@ -244,6 +253,13 @@ __all__ = [
     "GetClassByUserKeyClassesObjects",
     "GetClassByUserKeyClassesObjectsCurrent",
     "GetOrgUnitHierarchy",
+    "GetOrgUnitHierarchyAndParent",
+    "GetOrgUnitHierarchyAndParentOrgUnits",
+    "GetOrgUnitHierarchyAndParentOrgUnitsObjects",
+    "GetOrgUnitHierarchyAndParentOrgUnitsObjectsValidities",
+    "GetOrgUnitHierarchyAndParentOrgUnitsObjectsValiditiesParentResponse",
+    "GetOrgUnitHierarchyAndParentOrgUnitsObjectsValiditiesUnitHierarchyResponse",
+    "GetOrgUnitHierarchyAndParentOrgUnitsObjectsValiditiesValidity",
     "GetOrgUnitHierarchyOrgUnits",
     "GetOrgUnitHierarchyOrgUnitsObjects",
     "GetOrgUnitHierarchyOrgUnitsObjectsValidities",
