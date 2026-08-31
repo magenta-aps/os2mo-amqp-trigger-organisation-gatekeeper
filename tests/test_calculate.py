@@ -542,6 +542,7 @@ async def test_update_line_management_dry_run(
     result = await update_line_management(
         legacy_graphql_session=gql_client,
         legacy_model_client=model_client,
+        graphql_client=MagicMock(),
         user_context={"settings": settings, "org_uuid": ORG_UUID},
         uuid=uuid,
     )
