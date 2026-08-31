@@ -23,6 +23,17 @@ from .get_class_by_user_key import (
     GetClassByUserKeyClassesObjects,
     GetClassByUserKeyClassesObjectsCurrent,
 )
+from .get_org_unit_details import (
+    GetOrgUnitDetails,
+    GetOrgUnitDetailsOrgUnits,
+    GetOrgUnitDetailsOrgUnitsObjects,
+    GetOrgUnitDetailsOrgUnitsObjectsValidities,
+    GetOrgUnitDetailsOrgUnitsObjectsValiditiesParentResponse,
+    GetOrgUnitDetailsOrgUnitsObjectsValiditiesUnitHierarchyResponse,
+    GetOrgUnitDetailsOrgUnitsObjectsValiditiesUnitLevelResponse,
+    GetOrgUnitDetailsOrgUnitsObjectsValiditiesUnitTypeResponse,
+    GetOrgUnitDetailsOrgUnitsObjectsValiditiesValidity,
+)
 from .get_org_unit_hierarchy import (
     GetOrgUnitHierarchy,
     GetOrgUnitHierarchyOrgUnits,
@@ -243,6 +254,15 @@ __all__ = [
     "GetClassByUserKeyClasses",
     "GetClassByUserKeyClassesObjects",
     "GetClassByUserKeyClassesObjectsCurrent",
+    "GetOrgUnitDetails",
+    "GetOrgUnitDetailsOrgUnits",
+    "GetOrgUnitDetailsOrgUnitsObjects",
+    "GetOrgUnitDetailsOrgUnitsObjectsValidities",
+    "GetOrgUnitDetailsOrgUnitsObjectsValiditiesParentResponse",
+    "GetOrgUnitDetailsOrgUnitsObjectsValiditiesUnitHierarchyResponse",
+    "GetOrgUnitDetailsOrgUnitsObjectsValiditiesUnitLevelResponse",
+    "GetOrgUnitDetailsOrgUnitsObjectsValiditiesUnitTypeResponse",
+    "GetOrgUnitDetailsOrgUnitsObjectsValiditiesValidity",
     "GetOrgUnitHierarchy",
     "GetOrgUnitHierarchyOrgUnits",
     "GetOrgUnitHierarchyOrgUnitsObjects",
