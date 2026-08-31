@@ -27,6 +27,11 @@ repos:
     hooks:
       - id: reuse
 
+  - repo: https://github.com/fpgmaas/deptry.git
+    rev: 0.25.1
+    hooks:
+      - id: deptry
+
   - repo: https://github.com/pre-commit/pre-commit-hooks.git
     rev: v4.6.0
     hooks:
