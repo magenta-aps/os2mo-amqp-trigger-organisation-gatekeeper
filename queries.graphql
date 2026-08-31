@@ -15,6 +15,25 @@ query GetOrgUnitHierarchy($filter: OrganisationUnitFilter!) {
   }
 }
 
+query GetOrgUnitHierarchyAndParent($filter: OrganisationUnitFilter!) {
+  org_units(filter: $filter) {
+    objects {
+      validities {
+        unit_hierarchy_response {
+          uuid
+        }
+        parent_response {
+          uuid
+        }
+        validity {
+          from
+          to
+        }
+      }
+    }
+  }
+}
+
 query GetClassByUserKey($filter: ClassFilter!) {
   classes(filter: $filter) {
     objects {
