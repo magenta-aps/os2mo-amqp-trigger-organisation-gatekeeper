@@ -4,6 +4,7 @@
 # pylint: disable=redefined-outer-name
 """This module contains pytest specific code, fixtures and helpers."""
 
+import logging
 from collections.abc import Callable
 from collections.abc import Generator
 from datetime import datetime
@@ -20,6 +21,9 @@ from ramodels.mo import OrganisationUnit
 from orggatekeeper.config import Settings
 from tests import DEFAULT_AMQP_URL
 from tests import ORG_UUID
+
+# httpcore spams the logs making them useless for debugging
+logging.getLogger("httpcore").setLevel(logging.WARNING)
 
 
 @pytest.fixture
