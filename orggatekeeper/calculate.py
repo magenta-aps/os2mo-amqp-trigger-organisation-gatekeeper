@@ -12,7 +12,6 @@ from uuid import UUID
 
 import structlog
 from fastramqpi.raclients.graph.client import PersistentGraphQLClient
-from fastramqpi.raclients.modelclient.mo import ModelClient
 from fastramqpi.ramqp.depends import Context
 from gql import gql
 from more_itertools import one
@@ -281,7 +280,6 @@ class UserContextDict(TypedDict):
 
 async def update_line_management(
     legacy_graphql_session: PersistentGraphQLClient,
-    legacy_model_client: ModelClient,
     graphql_client: GraphQLClient,
     user_context: UserContextDict,
     uuid: UUID,
@@ -297,8 +295,7 @@ async def update_line_management(
     * Their user-key is contained within hidden_user_key or a child of it.
 
     Args:
-        legacy_graphql_session: The legacy GraphQL client to run queries on.
-        legacy_model_client: The MO Model client to modify MO with.
+        legacy_graphql_session: The GraphQL client to run queries on.
         graphql_client: ariadne-generated GraphQL client
         user_context: The integration's user context, containing the settings
             module at "settings" and the UUID of the LoRa organisation at
@@ -425,7 +422,6 @@ async def update_line_management(
         # Check if parent org_unit needs to be updated.
         await update_line_management(
             legacy_graphql_session,
-            legacy_model_client,
             graphql_client,
             user_context,
             org_unit.parent.uuid,

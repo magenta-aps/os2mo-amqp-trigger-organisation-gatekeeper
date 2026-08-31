@@ -56,12 +56,6 @@ def gql_client() -> Generator[MagicMock, None, None]:
 
 
 @pytest.fixture()
-def model_client() -> Generator[AsyncMock, None, None]:
-    """Fixture to mock ModelClient."""
-    yield AsyncMock()
-
-
-@pytest.fixture()
 def set_settings() -> Generator[Callable[..., Settings], None, None]:
     """Fixture to mock get_settings."""
 
@@ -108,12 +102,17 @@ def class_uuid() -> Generator[UUID, None, None]:
 
 @pytest.fixture()
 def context(
-    gql_client: MagicMock, model_client: AsyncMock, mock_settings: Settings
-) -> dict[str, Any]:
+    gql_client: MagicMock, mock_settings: Settings
+) -> Generator[dict[str, Any], None, None]:
     """Fixture to generate context"""
-    return {
-        "legacy_graphql_session": gql_client,
-        "legacy_model_client": model_client,
-        "user_context": {"settings": mock_settings, "org_uuid": ORG_UUID},
-        "graphql_client": AsyncMock(),
-    }
+    with patch(
+        "orggatekeeper.calculate.model_client_shim",
+        # `edit` is async, so autospeccing would produce an AsyncMock
+        edit=AsyncMock(),
+    ) as model_client_shim:
+        yield {
+            "legacy_graphql_session": gql_client,
+            "user_context": {"settings": mock_settings, "org_uuid": ORG_UUID},
+            "graphql_client": AsyncMock(),
+            "model_client_shim": model_client_shim,
+        }
