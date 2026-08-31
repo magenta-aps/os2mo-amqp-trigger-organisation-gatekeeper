@@ -176,6 +176,7 @@ from .input_types import (
     UuidsBoundOrganisationUnitFilter,
     ValidityInput,
 )
+from .update_org_unit import UpdateOrgUnit, UpdateOrgUnitOrgUnitUpdate
 
 __all__ = [
     "AccessLogFilter",
@@ -348,6 +349,8 @@ __all__ = [
     "RoleBindingTerminateInput",
     "RoleBindingUpdateInput",
     "RoleRegistrationFilter",
+    "UpdateOrgUnit",
+    "UpdateOrgUnitOrgUnitUpdate",
     "UuidsBoundClassFilter",
     "UuidsBoundEmployeeFilter",
     "UuidsBoundEngagementFilter",

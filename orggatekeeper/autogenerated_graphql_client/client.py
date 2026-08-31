@@ -24,7 +24,9 @@ from .input_types import (
     ITUserCreateInput,
     OrganisationUnitCreateInput,
     OrganisationUnitFilter,
+    OrganisationUnitUpdateInput,
 )
+from .update_org_unit import UpdateOrgUnit, UpdateOrgUnitOrgUnitUpdate
 
 
 def gql(q: str) -> str:
@@ -218,3 +220,18 @@ class GraphQLClient(AsyncBaseClient):
         response = await self.execute(query=query, variables=variables)
         data = self.get_data(response)
         return CreateITUser.parse_obj(data).ituser_create
+
+    async def update_org_unit(
+        self, input: OrganisationUnitUpdateInput
+    ) -> UpdateOrgUnitOrgUnitUpdate:
+        query = gql("""
+            mutation UpdateOrgUnit($input: OrganisationUnitUpdateInput!) {
+              org_unit_update(input: $input) {
+                uuid
+              }
+            }
+            """)
+        variables: dict[str, object] = {"input": input}
+        response = await self.execute(query=query, variables=variables)
+        data = self.get_data(response)
+        return UpdateOrgUnit.parse_obj(data).org_unit_update
