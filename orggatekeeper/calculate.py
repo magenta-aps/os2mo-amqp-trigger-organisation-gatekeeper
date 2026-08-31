@@ -413,6 +413,12 @@ async def update_line_management(
     )
     logger.debug("Sending GraphQL update request", org_unit=org_unit)
 
+    # FIXME: this can fail due to race conditions. There is an obvious
+    #   race condition in this integration, because it isn't possible to make
+    #   a sequence of queries and mutations atomic with the GraphQL API (see
+    #   #60000 for a proposed solution). There might also be other race conditions
+    #   in os2mo. I thought the issue was in the service API (see #71355), but
+    #   it still happens without the service API.
     response = await model_client_shim.edit(graphql_client, org_unit)
     logger.debug("GraphQL update response", response=response)
     if org_unit.parent is not None:
