@@ -19,6 +19,8 @@ from more_itertools import one
 from ramodels.mo import Validity
 from ramodels.mo._shared import OrgUnitHierarchy
 
+from orggatekeeper import model_client_shim
+
 from .config import Settings
 from .mo import fetch_org_unit
 from .mo import get_class_uuid
@@ -411,7 +413,7 @@ async def update_line_management(
     # FIXME(#71355): this can fail on occasion due to a bug in the service API.
     #   I didn't fix it because the service API is gonna be deprecated soon
     #   and the integration will just run again at a later point if it fails
-    response = await legacy_model_client.edit([org_unit])
+    response = await model_client_shim.edit(legacy_model_client, org_unit)
     logger.debug("ModelClient response", response=response)
     if org_unit.parent is not None:
         # Check if parent org_unit needs to be updated.
