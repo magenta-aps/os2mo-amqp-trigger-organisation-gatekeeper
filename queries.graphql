@@ -100,3 +100,9 @@ mutation CreateITUser($input: ITUserCreateInput!) {
     uuid
   }
 }
+
+mutation UpdateOrgUnit($input: OrganisationUnitUpdateInput!) {
+  org_unit_update(input: $input) {
+    uuid
+  }
+}
