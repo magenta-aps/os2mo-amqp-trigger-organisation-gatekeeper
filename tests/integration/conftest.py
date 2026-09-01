@@ -1,7 +1,6 @@
 # SPDX-FileCopyrightText: Magenta ApS <https://magenta.dk>
 # SPDX-License-Identifier: MPL-2.0
 
-import uuid
 from collections.abc import AsyncIterator
 from datetime import datetime
 from unittest.mock import MagicMock
@@ -93,6 +92,7 @@ async def org_unit_hierarchy_classes(
 @pytest.fixture
 async def default_org_unit(
     graphql_client: GraphQLClient,
+    default_org_unit_type: CreateClassClassCreate,
 ) -> CreateOrgUnitOrgUnitCreate:
     tz = ZoneInfo("Europe/Copenhagen")
     long_time_ago = datetime(1970, 1, 1, tzinfo=tz)
@@ -102,12 +102,36 @@ async def default_org_unit(
             uuid=None,
             validity=RAValidityInput(**{"from": long_time_ago}),
             name="E Corp",
-            org_unit_type=uuid.uuid4(),
+            org_unit_type=default_org_unit_type.uuid,
             user_key=None,
             parent=None,
             time_planning=None,
             org_unit_level=None,
             org_unit_hierarchy=None,
+        )
+    )
+
+
+@pytest.fixture
+async def org_unit_type_facet(
+    graphql_client: GraphQLClient,
+) -> CreateFacetFacetCreate:
+    return await graphql_client.create_facet(
+        FacetCreateInput(user_key="org_unit_type", validity=ValidityInput())
+    )
+
+
+@pytest.fixture
+async def default_org_unit_type(
+    graphql_client: GraphQLClient,
+    org_unit_type_facet: CreateFacetFacetCreate,
+) -> CreateClassClassCreate:
+    return await graphql_client.create_class(
+        ClassCreateInput(
+            name="Enhed",
+            user_key="Enhed",
+            facet_uuid=org_unit_type_facet.uuid,
+            validity=ValidityInput(),
         )
     )
 
