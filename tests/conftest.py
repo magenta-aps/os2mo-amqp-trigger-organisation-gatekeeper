@@ -4,6 +4,7 @@
 # pylint: disable=redefined-outer-name
 """This module contains pytest specific code, fixtures and helpers."""
 
+import logging
 from collections.abc import Callable
 from collections.abc import Generator
 from datetime import datetime
@@ -20,6 +21,9 @@ from ramodels.mo import OrganisationUnit
 from orggatekeeper.config import Settings
 from tests import DEFAULT_AMQP_URL
 from tests import ORG_UUID
+
+# httpcore spams the logs making them useless for debugging
+logging.getLogger("httpcore").setLevel(logging.WARNING)
 
 
 @pytest.fixture
@@ -49,12 +53,6 @@ def org_unit() -> Generator[OrganisationUnit, None, None]:
 def gql_client() -> Generator[MagicMock, None, None]:
     """Fixture to mock GraphQLClient."""
     yield MagicMock()
-
-
-@pytest.fixture()
-def model_client() -> Generator[AsyncMock, None, None]:
-    """Fixture to mock ModelClient."""
-    yield AsyncMock()
 
 
 @pytest.fixture()
@@ -104,11 +102,17 @@ def class_uuid() -> Generator[UUID, None, None]:
 
 @pytest.fixture()
 def context(
-    gql_client: MagicMock, model_client: AsyncMock, mock_settings: Settings
-) -> dict[str, Any]:
+    gql_client: MagicMock, mock_settings: Settings
+) -> Generator[dict[str, Any], None, None]:
     """Fixture to generate context"""
-    return {
-        "legacy_graphql_session": gql_client,
-        "legacy_model_client": model_client,
-        "user_context": {"settings": mock_settings, "org_uuid": ORG_UUID},
-    }
+    with patch(
+        "orggatekeeper.calculate.model_client_shim",
+        # `edit` is async, so autospeccing would produce an AsyncMock
+        edit=AsyncMock(),
+    ) as model_client_shim:
+        yield {
+            "legacy_graphql_session": gql_client,
+            "user_context": {"settings": mock_settings, "org_uuid": ORG_UUID},
+            "graphql_client": AsyncMock(),
+            "model_client_shim": model_client_shim,
+        }

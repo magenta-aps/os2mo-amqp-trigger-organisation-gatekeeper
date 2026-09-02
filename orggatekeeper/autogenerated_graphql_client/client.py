@@ -8,6 +8,7 @@ from .create_i_t_system import CreateITSystem, CreateITSystemItsystemCreate
 from .create_i_t_user import CreateITUser, CreateITUserItuserCreate
 from .create_org_unit import CreateOrgUnit, CreateOrgUnitOrgUnitCreate
 from .get_class_by_user_key import GetClassByUserKey, GetClassByUserKeyClasses
+from .get_org_unit_details import GetOrgUnitDetails, GetOrgUnitDetailsOrgUnits
 from .get_org_unit_hierarchy import GetOrgUnitHierarchy, GetOrgUnitHierarchyOrgUnits
 from .input_types import (
     AssociationCreateInput,
@@ -20,7 +21,9 @@ from .input_types import (
     ITUserCreateInput,
     OrganisationUnitCreateInput,
     OrganisationUnitFilter,
+    OrganisationUnitUpdateInput,
 )
+from .update_org_unit import UpdateOrgUnit, UpdateOrgUnitOrgUnitUpdate
 
 
 def gql(q: str) -> str:
@@ -50,6 +53,42 @@ class GraphQLClient(AsyncBaseClient):
         response = await self.execute(query=query, variables=variables)
         data = self.get_data(response)
         return GetOrgUnitHierarchy.parse_obj(data).org_units
+
+    async def get_org_unit_details(
+        self, filter: OrganisationUnitFilter
+    ) -> GetOrgUnitDetailsOrgUnits:
+        query = gql("""
+            query GetOrgUnitDetails($filter: OrganisationUnitFilter!) {
+              org_units(filter: $filter) {
+                objects {
+                  validities {
+                    name
+                    user_key
+                    unit_hierarchy_response {
+                      uuid
+                    }
+                    unit_type_response {
+                      uuid
+                    }
+                    unit_level_response {
+                      uuid
+                    }
+                    parent_response {
+                      uuid
+                    }
+                    validity {
+                      from
+                      to
+                    }
+                  }
+                }
+              }
+            }
+            """)
+        variables: dict[str, object] = {"filter": filter}
+        response = await self.execute(query=query, variables=variables)
+        data = self.get_data(response)
+        return GetOrgUnitDetails.parse_obj(data).org_units
 
     async def get_class_by_user_key(
         self, filter: ClassFilter
@@ -186,3 +225,18 @@ class GraphQLClient(AsyncBaseClient):
         response = await self.execute(query=query, variables=variables)
         data = self.get_data(response)
         return CreateITUser.parse_obj(data).ituser_create
+
+    async def update_org_unit(
+        self, input: OrganisationUnitUpdateInput
+    ) -> UpdateOrgUnitOrgUnitUpdate:
+        query = gql("""
+            mutation UpdateOrgUnit($input: OrganisationUnitUpdateInput!) {
+              org_unit_update(input: $input) {
+                uuid
+              }
+            }
+            """)
+        variables: dict[str, object] = {"input": input}
+        response = await self.execute(query=query, variables=variables)
+        data = self.get_data(response)
+        return UpdateOrgUnit.parse_obj(data).org_unit_update

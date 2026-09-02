@@ -15,6 +15,33 @@ query GetOrgUnitHierarchy($filter: OrganisationUnitFilter!) {
   }
 }
 
+query GetOrgUnitDetails($filter: OrganisationUnitFilter!) {
+  org_units(filter: $filter) {
+    objects {
+      validities {
+        name
+        user_key
+        unit_hierarchy_response {
+          uuid
+        }
+        unit_type_response {
+          uuid
+        }
+        unit_level_response {
+          uuid
+        }
+        parent_response {
+          uuid
+        }
+        validity {
+          from
+          to
+        }
+      }
+    }
+  }
+}
+
 query GetClassByUserKey($filter: ClassFilter!) {
   classes(filter: $filter) {
     objects {
@@ -70,6 +97,12 @@ mutation CreateITSystem($input: ITSystemCreateInput!) {
 
 mutation CreateITUser($input: ITUserCreateInput!) {
   ituser_create(input: $input) {
+    uuid
+  }
+}
+
+mutation UpdateOrgUnit($input: OrganisationUnitUpdateInput!) {
+  org_unit_update(input: $input) {
     uuid
   }
 }
